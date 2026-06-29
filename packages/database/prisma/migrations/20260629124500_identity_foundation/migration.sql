@@ -1,18 +1,34 @@
-CREATE TYPE "OrganizationStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'ARCHIVED');
-CREATE TYPE "UserStatus" AS ENUM ('PENDING', 'ACTIVE', 'SUSPENDED', 'DISABLED');
-CREATE TYPE "MembershipRole" AS ENUM (
-  'OWNER',
-  'ADMIN',
-  'BROKER',
-  'AGENT',
-  'OPERATIONS',
-  'FINANCE',
-  'EXTERNAL_AGENT',
-  'READONLY'
-);
-CREATE TYPE "MembershipStatus" AS ENUM ('INVITED', 'ACTIVE', 'SUSPENDED');
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-CREATE TABLE "organizations" (
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'OrganizationStatus') THEN
+    CREATE TYPE "OrganizationStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'ARCHIVED');
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'UserStatus') THEN
+    CREATE TYPE "UserStatus" AS ENUM ('PENDING', 'ACTIVE', 'SUSPENDED', 'DISABLED');
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'MembershipRole') THEN
+    CREATE TYPE "MembershipRole" AS ENUM (
+      'OWNER',
+      'ADMIN',
+      'BROKER',
+      'AGENT',
+      'OPERATIONS',
+      'FINANCE',
+      'EXTERNAL_AGENT',
+      'READONLY'
+    );
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'MembershipStatus') THEN
+    CREATE TYPE "MembershipStatus" AS ENUM ('INVITED', 'ACTIVE', 'SUSPENDED');
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS "organizations" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   "name" text NOT NULL,
   "slug" text NOT NULL,
@@ -21,7 +37,7 @@ CREATE TABLE "organizations" (
   "updated_at" timestamp(3) NOT NULL
 );
 
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   "email" text NOT NULL,
   "first_name" text NOT NULL,
@@ -34,7 +50,7 @@ CREATE TABLE "users" (
   "updated_at" timestamp(3) NOT NULL
 );
 
-CREATE TABLE "memberships" (
+CREATE TABLE IF NOT EXISTS "memberships" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   "organization_id" uuid NOT NULL,
   "user_id" uuid NOT NULL,
@@ -48,7 +64,7 @@ CREATE TABLE "memberships" (
     FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
-CREATE TABLE "audit_logs" (
+CREATE TABLE IF NOT EXISTS "audit_logs" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   "organization_id" uuid,
   "actor_user_id" uuid,
@@ -65,10 +81,15 @@ CREATE TABLE "audit_logs" (
     FOREIGN KEY ("actor_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
-CREATE UNIQUE INDEX "organizations_slug_key" ON "organizations"("slug");
-CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
-CREATE UNIQUE INDEX "memberships_organization_id_user_id_key" ON "memberships"("organization_id", "user_id");
-CREATE INDEX "memberships_user_id_idx" ON "memberships"("user_id");
-CREATE INDEX "memberships_organization_id_status_idx" ON "memberships"("organization_id", "status");
-CREATE INDEX "audit_logs_organization_id_created_at_idx" ON "audit_logs"("organization_id", "created_at");
-CREATE INDEX "audit_logs_actor_user_id_created_at_idx" ON "audit_logs"("actor_user_id", "created_at");
+CREATE UNIQUE INDEX IF NOT EXISTS "organizations_slug_key" ON "organizations"("slug");
+CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "users"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "memberships_organization_id_user_id_key" ON "memberships"("organization_id", "user_id");
+CREATE INDEX IF NOT EXISTS "memberships_user_id_idx" ON "memberships"("user_id");
+CREATE INDEX IF NOT EXISTS "memberships_organization_id_status_idx" ON "memberships"("organization_id", "status");
+CREATE INDEX IF NOT EXISTS "audit_logs_organization_id_created_at_idx" ON "audit_logs"("organization_id", "created_at");
+CREATE INDEX IF NOT EXISTS "audit_logs_actor_user_id_created_at_idx" ON "audit_logs"("actor_user_id", "created_at");
+
+ALTER TABLE "organizations" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "users" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "memberships" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "audit_logs" ENABLE ROW LEVEL SECURITY;
