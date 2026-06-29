@@ -1,0 +1,31 @@
+{
+  "name": "soyre",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "format": "prettier --write .",
+    "db:generate": "pnpm --filter @soyre/database db:generate",
+    "db:migrate": "pnpm db:migrate:deploy",
+    "db:migrate:dev": "pnpm --filter @soyre/database db:migrate:dev",
+    "db:migrate:deploy": "pnpm --filter @soyre/database db:migrate:deploy",
+    "db:studio": "pnpm --filter @soyre/database db:studio"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.6.0",
+    "prettier": "^3.9.3",
+    "tsx": "^4.22.4",
+    "turbo": "^2.10.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.0"
+  }
+}

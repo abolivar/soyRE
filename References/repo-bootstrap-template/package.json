@@ -1,0 +1,23 @@
+{
+  "name": "real-estate-broker-ops",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "format": "prettier --write .",
+    "db:generate": "pnpm --filter @brokerops/database db:generate",
+    "db:migrate": "pnpm --filter @brokerops/database db:migrate",
+    "db:studio": "pnpm --filter @brokerops/database db:studio"
+  },
+  "devDependencies": {
+    "turbo": "latest",
+    "typescript": "latest",
+    "prettier": "latest",
+    "eslint": "latest"
+  }
+}

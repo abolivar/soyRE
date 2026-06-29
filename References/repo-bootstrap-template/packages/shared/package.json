@@ -1,0 +1,12 @@
+{
+  "name": "@brokerops/shared",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'No lint configured yet for shared package'",
+    "test": "echo 'No tests configured yet for shared package'",
+    "build": "echo 'No build required yet for shared package'"
+  }
+}

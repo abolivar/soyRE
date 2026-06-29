@@ -1,0 +1,16 @@
+{
+  "name": "@brokerops/database",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'No lint configured yet for database package'",
+    "test": "echo 'No tests configured yet for database package'",
+    "build": "echo 'No build required yet for database package'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
