@@ -13,3 +13,9 @@ No usar `tenant` para inquilinos de alquiler, porque puede confundirse con multi
 - Los permisos se calculan por organización, rol y recurso.
 - Los endpoints deben impedir filtración entre organizaciones.
 - Los tests de módulos críticos deben cubrir aislamiento multi-tenant.
+
+## Identidad Inicial
+
+El primer registro crea una `organization`, un `user` y un `membership` con rol `OWNER`.
+
+Los usuarios adicionales pertenecen a una organización mediante `membership`. La activación o suspensión de un usuario dentro de una organización se hace sobre el membership.

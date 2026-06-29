@@ -11,8 +11,17 @@
 - Proteger documentos sensibles.
 - Evitar filtrado cross-tenant.
 
-## Auth Futura
+## Auth MVP
 
-La autenticación debe ser propiedad del backend/API. Para el MVP se recomienda email/password y sesiones o JWT en cookies httpOnly, con autorización basada en roles, memberships y organización.
+La autenticación es propiedad del backend/API.
 
-No implementar auth durante bootstrap.
+El MVP usa:
+
+- Email/password.
+- Hash de password con `bcryptjs`.
+- JWT de acceso en cookie httpOnly.
+- Estados de usuario: `PENDING`, `ACTIVE`, `SUSPENDED`, `DISABLED`.
+- Roles por organización mediante memberships.
+- Validación administrativa de usuarios por organización.
+
+Las cookies deben ser `httpOnly`, `sameSite=lax` y `secure` en producción. El frontend no debe persistir tokens manualmente.
