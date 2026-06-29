@@ -22,7 +22,7 @@
 ## TASK-0005 — Crear configuración de entorno
 
 - Crear `.env.example`.
-- Documentar conexión directa a proveedor PostgreSQL.
+- Documentar operación remota de PostgreSQL por MCP.
 - No crear Docker Compose.
 
 ## TASK-0006 — Crear documentación base

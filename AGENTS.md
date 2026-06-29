@@ -4,6 +4,8 @@
 
 soyRE is a SaaS platform for real estate brokers.
 
+Before changing code or architecture, read `CODEX.md`. It is the operative project contract for Codex and assistant work.
+
 The system is not a generic CRM. It is an operational platform for the real estate property as a product. The future domain includes:
 
 - Intake.
@@ -32,11 +34,14 @@ The system is not a generic CRM. It is an operational platform for the real esta
 - ORM: Prisma.
 - Language: strict TypeScript.
 - SaaS tenancy concept: `organization`.
-- The database is not local Docker and not a virtual machine. Development connects directly to a provider-owned PostgreSQL database.
+- The database is not local Docker, not a virtual machine, and not a local connection from this workspace.
+- Database schema/data changes are applied remotely through the Supabase MCP.
+- `DATABASE_URL` and `DIRECT_URL` are runtime/deploy variables, not local development requirements here.
 
 ## Work Rules
 
 - Treat `References/` as reference material, not binding architecture.
+- Treat `CODEX.md` as the binding local project rules after system/developer/user instructions.
 - Do not build outside the current ticket scope.
 - Do not turn the product into a generic CRM.
 - Keep `property` as the central future entity.
@@ -72,9 +77,8 @@ For database changes:
 
 ```bash
 pnpm db:generate
-pnpm db:migrate:dev
 pnpm typecheck
 pnpm test
 ```
 
-Use `pnpm db:migrate:dev` only with a dedicated development database.
+Apply remote schema/data changes through the Supabase MCP and verify with SQL, `list_tables`, and advisors.

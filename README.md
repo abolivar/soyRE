@@ -1,18 +1,65 @@
-# soyRE
+# SoyRE
 
-soyRE is a SaaS platform for real estate brokers focused on operating the property as the core product.
+SoyRE es un SaaS inmobiliario para brokers, inmobiliarias y equipos comerciales.
 
-It is not a generic CRM. The future product centers on the complete property lifecycle: intake, mandate, documents, publication, showings, offers, sale or lease, closing, commissions, archive, and audit.
+El producto no es un CRM generico. El centro operativo es el inmueble como producto: captacion, validacion documental, preparacion comercial, publicacion, visitas, ofertas, venta o alquiler, cierre, comisiones, archivo y auditoria.
 
-## Requirements
+El CRM de clientes existe como modulo centralizado, pero no reemplaza el foco principal: operar mejor el ciclo completo de cada propiedad y sus procesos relacionados.
 
-- Node.js 22 LTS
-- pnpm 10 through Corepack or the project Node installation
-- Access to a managed PostgreSQL database provider
+## Documentos Principales
 
-This project intentionally does not use Docker, Docker Compose, or local virtual machines for database development.
+Antes de modificar codigo o arquitectura:
 
-## Setup
+- `CODEX.md`: reglas obligatorias para Codex y asistentes de desarrollo.
+- `docs/product/foundational.md`: definicion base del producto.
+- `docs/architecture/overview.md`: vision tecnica general.
+- `docs/architecture/stack.md`: stack y decisiones firmes.
+- `docs/architecture/database.md`: reglas de base de datos remota.
+- `docs/modules/*/overview.md`: alcance por modulo.
+
+`References/` contiene material de referencia. No es arquitectura vinculante.
+
+## Estado Actual
+
+Fase 0 esta implementada como base inicial de identidad:
+
+- Registro de organizacion owner.
+- Login/logout con cookie httpOnly.
+- Usuario actual y memberships.
+- Roles por organizacion.
+- Validacion, suspension y cambio de rol de usuarios.
+- Auditoria base de acciones sensibles.
+- Migracion remota aplicada en Supabase por MCP.
+
+La fase siguiente es app shell/navegacion autenticada: sidebar, topbar, rutas principales, estados vacios y layout operativo.
+
+## Stack
+
+- Node.js 22 LTS.
+- pnpm 10.
+- Turborepo.
+- Next.js App Router en `apps/web`.
+- NestJS REST API en `apps/api`.
+- Prisma 7 en `packages/database`.
+- PostgreSQL gestionado en Supabase.
+- TypeScript estricto.
+
+## Base De Datos
+
+No hay conexion local a Postgres.
+
+La base de datos se administra remotamente mediante MCP de Supabase. Esta maquina no debe depender de `DATABASE_URL` local para desarrollo. Las variables `DATABASE_URL` y `DIRECT_URL` se configuran solo en entornos runtime/deploy cuando el API deba conectarse a Postgres.
+
+Para cambios de schema:
+
+1. Editar `packages/database/prisma/schema.prisma`.
+2. Crear o actualizar la migracion SQL correspondiente.
+3. Aplicar y verificar en Supabase por MCP.
+4. Ejecutar validaciones locales sin conexion a DB.
+
+No introducir Docker, Docker Compose, VM ni Postgres local.
+
+## Setup Local
 
 ```bash
 nvm use
@@ -20,20 +67,15 @@ pnpm install
 cp .env.example .env
 ```
 
-Then set `DATABASE_URL` in `.env` with a dedicated development PostgreSQL database from the provider.
-
-## Development
+El `.env` local debe mantener `DATABASE_URL` y `DIRECT_URL` vacios salvo decision explicita de arquitectura. Para desarrollo visual puedes correr el frontend:
 
 ```bash
-pnpm dev
+pnpm --filter @soyre/web dev
 ```
 
-Default local services:
+El API local requiere una conexion runtime a Postgres; por decision actual no se usa conexion local.
 
-- Web: `http://localhost:3000`
-- API: `http://localhost:4000/api/health`
-
-## Validation
+## Validacion
 
 ```bash
 pnpm lint
@@ -42,30 +84,18 @@ pnpm test
 pnpm build
 ```
 
-## Database
+Para cambios de Prisma sin conexion runtime:
 
 ```bash
 pnpm db:generate
-pnpm db:migrate:dev
-pnpm db:migrate:deploy
-pnpm db:studio
+pnpm typecheck
 ```
 
-Use `db:migrate:dev` only against a dedicated development database. Use `db:migrate:deploy` for shared environments.
+## Convenciones
 
-## Documentation
-
-Read these before changing code:
-
-- `AGENTS.md`
-- `docs/product/foundational.md`
-- `docs/architecture/overview.md`
-- `docs/architecture/stack.md`
-- The module document under `docs/modules/*`
-
-## Conventions
-
-- Folders and code use technical English.
-- File and folder names use `lowercase-kebab-case`.
-- Product documentation may be written in Spanish.
-- Domain code, models, routes, and APIs use English.
+- UI visible al usuario en espanol.
+- Codigo, carpetas tecnicas, rutas API y modelos en ingles.
+- `organization` es el limite SaaS.
+- No usar `tenant` para inquilinos de alquiler; usar `lessee`.
+- Toda entidad critica futura debe aislarse por organizacion.
+- Toda accion sensible debe validar permisos del lado servidor y dejar auditoria cuando aplique.

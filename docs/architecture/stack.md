@@ -16,11 +16,13 @@ El proyecto usa:
 - Prisma como ORM.
 - TypeScript estricto.
 
-## Decisión Explícita Sobre Desarrollo Local
+## Decisión Explícita Sobre Base De Datos
 
-No se usará Docker Compose, máquinas virtuales ni PostgreSQL local. El desarrollo se conecta directamente a una base PostgreSQL gestionada por proveedor.
+No se usará Docker Compose, máquinas virtuales, PostgreSQL local ni conexión local a la base desde este workspace.
 
-Cada desarrollador debe usar una base dedicada de desarrollo o una rama/base aislada del proveedor. No se debe usar producción para migraciones locales.
+La base PostgreSQL gestionada vive en Supabase. Los cambios de schema y datos administrativos se aplican remotamente mediante MCP de Supabase.
+
+`DATABASE_URL` y `DIRECT_URL` son variables de runtime/deploy para entornos donde el API deba conectarse a Postgres. No son requisito de desarrollo local en esta máquina.
 
 ## Principios
 

@@ -15,7 +15,6 @@
     "format": "prettier --write .",
     "db:generate": "pnpm --filter @soyre/database db:generate",
     "db:migrate": "pnpm db:migrate:deploy",
-    "db:migrate:dev": "pnpm --filter @soyre/database db:migrate:dev",
     "db:migrate:deploy": "pnpm --filter @soyre/database db:migrate:deploy",
     "db:studio": "pnpm --filter @soyre/database db:studio"
   },

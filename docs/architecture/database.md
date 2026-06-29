@@ -8,13 +8,17 @@ PostgreSQL gestionado por proveedor.
 
 Prisma.
 
-## Conexión
+## Conexión Y Operación
 
-El proyecto usa `DATABASE_URL` para la conexión principal. Si el proveedor separa conexión pooled y conexión directa, usar `DIRECT_URL` para migraciones Prisma.
+No hay conexión local a Postgres desde este workspace.
 
-Para `prisma migrate dev` contra una base gestionada, usar una base de datos dedicada de desarrollo y, si el proveedor lo requiere, `SHADOW_DATABASE_URL`.
+La base remota se administra mediante MCP de Supabase. Los cambios de schema deben quedar reflejados en `packages/database/prisma/schema.prisma` y en migraciones SQL revisables, pero se aplican y verifican remotamente por MCP.
+
+`DATABASE_URL` es para entornos runtime/deploy donde el API deba conectarse a Postgres. Si el proveedor separa conexión pooled y directa, `DIRECT_URL` se configura también en esos entornos.
 
 Prisma 7 no define `url` ni `directUrl` dentro de `schema.prisma`. Las URLs viven en `packages/database/prisma.config.ts`. El cliente se genera con `provider = "prisma-client"` y se instancia con `@prisma/adapter-pg`.
+
+La migración inicial de identidad fue aplicada en Supabase remoto y registrada en `_prisma_migrations`.
 
 ## Principios Futuros
 
@@ -23,7 +27,7 @@ Prisma 7 no define `url` ni `directUrl` dentro de `schema.prisma`. Las URLs vive
 - Registrar auditoría para acciones sensibles.
 - Usar migraciones revisables.
 - Mantener enums explícitos para estados de negocio.
-- Separar migraciones de desarrollo y despliegue.
+- Verificar cambios remotos con SQL, `list_tables` y advisors de Supabase.
 
 ## Modelos Futuros Principales
 
