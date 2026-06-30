@@ -59,6 +59,52 @@ export type UsersResponse = {
   users: OrganizationUser[];
 };
 
+export type RealEstateAgentCategory = 'BROKER' | 'EXTERNAL_BROKER' | 'REFERRER';
+
+export type OrganizationRealEstateAgent = {
+  id: string;
+  organizationId: string;
+  category: RealEstateAgentCategory;
+  firstName: string;
+  lastName: string;
+  displayName: string;
+  companyName: string | null;
+  email: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  licenseNumber: string | null;
+  notes: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RealEstateAgentsResponse = {
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  agents: OrganizationRealEstateAgent[];
+};
+
+export type RealEstateAgentDetailResponse = {
+  agent: OrganizationRealEstateAgent;
+};
+
+export type CreateRealEstateAgentPayload = {
+  organizationId?: string;
+  category: RealEstateAgentCategory;
+  firstName: string;
+  lastName: string;
+  companyName?: string;
+  email?: string;
+  phone?: string;
+  whatsapp?: string;
+  licenseNumber?: string;
+  notes?: string;
+};
+
 export type ClientType = 'PERSON' | 'COMPANY';
 
 export type ClientRole =
