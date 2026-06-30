@@ -127,6 +127,294 @@ enum RealEstateAgentCategory {
   REFERRER
 }
 
+enum BusinessStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  CONTRACT_GENERATED
+  PENDING_SIGNATURE
+  ACTIVE
+  CLOSED
+  CANCELLED
+  REJECTED
+}
+
+enum BusinessMode {
+  SIMPLE
+  ADVANCED
+}
+
+enum BusinessOperationType {
+  SALE
+  RENT
+  RESERVATION
+  ASSIGNMENT
+  PRE_SALE
+  SEPARATION
+  OTHER
+}
+
+enum BusinessPartyType {
+  CLIENT
+  USER
+  COMPANY
+  REAL_ESTATE_AGENT
+  EXTERNAL
+}
+
+enum BusinessParticipantRole {
+  BUYER
+  SELLER
+  TENANT
+  LANDLORD
+  PRIMARY_AGENT
+  CO_AGENT
+  REFERRER
+  BROKER
+  DEVELOPER
+  LEGAL_REPRESENTATIVE
+  LAWYER
+  NOTARY
+  BANK
+  GUARANTOR
+  WITNESS
+  OTHER
+}
+
+enum BusinessContractStatus {
+  DRAFT
+  GENERATED
+  SENT_FOR_REVIEW
+  APPROVED
+  SENT_FOR_SIGNATURE
+  SIGNED
+  VOIDED
+}
+
+enum ContractClauseType {
+  MATERIAL_ESCALATION
+  ASSIGNMENT_FEE
+  LATE_FEE
+  PENALTY
+  CANCELLATION
+  SPECIAL_CONDITION
+  FINANCING_CONDITION
+  DELIVERY_CONDITION
+  OTHER
+}
+
+enum ClauseCalculationType {
+  NONE
+  FIXED_AMOUNT
+  PERCENTAGE
+  FORMULA
+  MANUAL
+  INDEX_BASED
+}
+
+enum ClauseAppliesTo {
+  BUYER
+  SELLER
+  DEVELOPER
+  AGENT
+  OTHER
+}
+
+enum BusinessTriggerEvent {
+  ON_SIGNATURE
+  ON_ASSIGNMENT_REQUEST
+  ON_MATERIAL_INCREASE
+  ON_LATE_PAYMENT
+  ON_CLOSING
+  MANUAL
+}
+
+enum PaymentPlanStatus {
+  DRAFT
+  ACTIVE
+  LOCKED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentPlanType {
+  CASH
+  REGULAR_INSTALLMENTS
+  SIGNATURE_PLUS_INSTALLMENTS
+  MILESTONE_BASED
+  CUSTOM
+  FINANCED
+}
+
+enum PaymentFrequency {
+  NONE
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+  SEMIANNUAL
+  ANNUAL
+  CUSTOM
+}
+
+enum RoundingStrategy {
+  LAST_INSTALLMENT
+  FIRST_INSTALLMENT
+  DISTRIBUTE
+  MANUAL
+}
+
+enum PaymentScheduleLineType {
+  RESERVATION
+  DOWN_PAYMENT
+  SIGNATURE
+  REGULAR_INSTALLMENT
+  SPECIAL_INSTALLMENT
+  MILESTONE
+  CLOSING
+  HANDOVER
+  ASSIGNMENT_FEE
+  MATERIAL_ADJUSTMENT
+  LATE_FEE
+  OTHER
+}
+
+enum PaymentScheduleLineStatus {
+  PENDING
+  INVOICED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentScheduleLineSource {
+  GENERATED
+  USER_ADDED
+  CONTRACT_CLAUSE
+  ADJUSTMENT
+}
+
+enum CommissionPlanStatus {
+  DRAFT
+  ACTIVE
+  LOCKED
+  PAID
+  CANCELLED
+}
+
+enum CommissionPlanMode {
+  SIMPLE
+  ADVANCED
+}
+
+enum CommissionBase {
+  SALE_PRICE
+  NEGOTIATED_PRICE
+  COLLECTED_AMOUNT
+  NET_AMOUNT
+  CUSTOM_AMOUNT
+}
+
+enum CommissionReleasePolicy {
+  ON_SIGNATURE
+  ON_CLOSING
+  ON_COLLECTION
+  BY_PAYMENT_MILESTONE
+  MANUAL
+}
+
+enum CommissionRecipientType {
+  AGENT
+  CO_AGENT
+  REFERRER
+  BROKER
+  COMPANY
+  EXTERNAL
+  OTHER
+}
+
+enum CommissionCalculationType {
+  PERCENTAGE_OF_SALE
+  PERCENTAGE_OF_COMMISSION
+  FIXED_AMOUNT
+  TIERED
+  SLIDING_SCALE
+  CAPPED
+  CUSTOM
+}
+
+enum CommissionReleaseTrigger {
+  ON_SIGNATURE
+  ON_CLOSING
+  ON_COLLECTION
+  BY_PAYMENT_LINE
+  MANUAL_APPROVAL
+}
+
+enum CommissionAllocationStatus {
+  PENDING
+  APPROVED
+  PAYABLE
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum BusinessFeeType {
+  ASSIGNMENT
+  MATERIAL_ESCALATION
+  ADMIN
+  LEGAL
+  NOTARY
+  TAX
+  MAINTENANCE
+  PENALTY
+  OTHER
+}
+
+enum BusinessFeePayerRole {
+  BUYER
+  SELLER
+  COMPANY
+  AGENT
+  OTHER
+}
+
+enum BusinessFeeStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  CHARGED
+  WAIVED
+  CANCELLED
+}
+
+enum CalculationSnapshotType {
+  PAYMENT_PLAN
+  COMMISSION_PLAN
+  CONTRACT_TOTAL
+  FULL_PREVIEW
+}
+
+enum ScheduledActionType {
+  PAYMENT_DUE
+  PAYMENT_OVERDUE
+  COMMISSION_DUE
+  CONTRACT_REVIEW_DUE
+  SIGNATURE_DUE
+  DOCUMENT_REQUIRED
+  APPROVAL_REQUIRED
+  CUSTOM
+}
+
+enum ScheduledActionStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
 model Organization {
   id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                    String
@@ -140,6 +428,9 @@ model Organization {
   clientIdentityDocuments ClientIdentityDocument[]
   properties              Property[]
   realEstateAgents        RealEstateAgent[]
+  businesses              Business[]
+  businessParticipants    BusinessParticipant[]
+  contractTypes           ContractType[]
 
   @@map("organizations")
 }
@@ -160,6 +451,18 @@ model User {
   assignedClients                Client[]                 @relation("AssignedClients")
   assignedProperties             Property[]               @relation("AssignedProperties")
   createdClientIdentityDocuments ClientIdentityDocument[] @relation("CreatedClientIdentityDocuments")
+  createdBusinesses              Business[]               @relation("CreatedBusinesses")
+  updatedBusinesses              Business[]               @relation("UpdatedBusinesses")
+  lockedBusinesses               Business[]               @relation("LockedBusinesses")
+  businessParticipants           BusinessParticipant[]    @relation("BusinessParticipantUsers")
+  createdBusinessContracts       BusinessContract[]       @relation("CreatedBusinessContracts")
+  updatedBusinessContracts       BusinessContract[]       @relation("UpdatedBusinessContracts")
+  createdPaymentPlans            PaymentPlan[]            @relation("CreatedPaymentPlans")
+  updatedPaymentPlans            PaymentPlan[]            @relation("UpdatedPaymentPlans")
+  createdCommissionPlans         CommissionPlan[]         @relation("CreatedCommissionPlans")
+  updatedCommissionPlans         CommissionPlan[]         @relation("UpdatedCommissionPlans")
+  createdCalculationSnapshots    CalculationSnapshot[]    @relation("CreatedCalculationSnapshots")
+  assignedScheduledActions       ScheduledAction[]        @relation("AssignedScheduledActions")
 
   @@map("users")
 }
@@ -248,6 +551,8 @@ model Client {
   assignedUser           User?                    @relation("AssignedClients", fields: [assignedUserId], references: [id], onDelete: SetNull)
   identityDocuments      ClientIdentityDocument[]
   ownedProperties         Property[]               @relation("PropertyOwnerClient")
+  primaryBusinesses       Business[]               @relation("BusinessPrimaryClient")
+  businessParticipants    BusinessParticipant[]    @relation("BusinessParticipantClients")
 
   @@unique([organizationId, email])
   @@index([organizationId, status])
@@ -327,6 +632,7 @@ model Property {
   organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   assignedUser      User?               @relation("AssignedProperties", fields: [assignedUserId], references: [id], onDelete: SetNull)
   ownerClient       Client?             @relation("PropertyOwnerClient", fields: [ownerClientId], references: [id], onDelete: SetNull)
+  businesses        Business[]
 
   @@unique([organizationId, internalCode])
   @@index([organizationId, status])
@@ -353,9 +659,363 @@ model RealEstateAgent {
   createdAt      DateTime                @default(now()) @map("created_at")
   updatedAt      DateTime                @updatedAt @map("updated_at")
   organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  businessParticipants BusinessParticipant[]
 
   @@unique([organizationId, email])
   @@index([organizationId, category])
   @@index([organizationId, isActive])
   @@map("real_estate_agents")
+}
+
+model Business {
+  id                        String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId            String                @map("organization_id") @db.Uuid
+  code                      String?
+  title                     String?
+  status                    BusinessStatus        @default(DRAFT)
+  mode                      BusinessMode          @default(SIMPLE)
+  operationType             BusinessOperationType @map("operation_type")
+  propertyId                String?               @map("property_id") @db.Uuid
+  primaryClientId           String?               @map("primary_client_id") @db.Uuid
+  contractTypeId            String?               @map("contract_type_id") @db.Uuid
+  currency                  String                @default("USD")
+  basePriceCents            BigInt?               @map("base_price_cents")
+  negotiatedPriceCents      BigInt?               @map("negotiated_price_cents")
+  totalContractAmountCents  BigInt?               @map("total_contract_amount_cents")
+  payableAmountCents        BigInt?               @map("payable_amount_cents")
+  commissionBaseAmountCents BigInt?               @map("commission_base_amount_cents")
+  expectedSignatureDate     DateTime?             @map("expected_signature_date") @db.Date
+  expectedClosingDate       DateTime?             @map("expected_closing_date") @db.Date
+  effectiveDate             DateTime?             @map("effective_date") @db.Date
+  notes                     String?
+  draftData                 Json?                 @map("draft_data")
+  lastPreview               Json?                 @map("last_preview")
+  idempotencyKey            String?               @map("idempotency_key")
+  createdByUserId           String?               @map("created_by_user_id") @db.Uuid
+  updatedByUserId           String?               @map("updated_by_user_id") @db.Uuid
+  lockedAt                  DateTime?             @map("locked_at")
+  lockedByUserId            String?               @map("locked_by_user_id") @db.Uuid
+  version                   Int                   @default(1)
+  committedAt               DateTime?             @map("committed_at")
+  cancelledAt               DateTime?             @map("cancelled_at")
+  createdAt                 DateTime              @default(now()) @map("created_at")
+  updatedAt                 DateTime              @updatedAt @map("updated_at")
+  organization              Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  property                  Property?             @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  primaryClient             Client?               @relation("BusinessPrimaryClient", fields: [primaryClientId], references: [id], onDelete: SetNull)
+  contractType              ContractType?         @relation(fields: [contractTypeId], references: [id], onDelete: Restrict)
+  createdByUser             User?                 @relation("CreatedBusinesses", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser             User?                 @relation("UpdatedBusinesses", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  lockedByUser              User?                 @relation("LockedBusinesses", fields: [lockedByUserId], references: [id], onDelete: SetNull)
+  participants              BusinessParticipant[]
+  contracts                 BusinessContract[]
+  fees                      BusinessFee[]
+  paymentPlans              PaymentPlan[]
+  paymentScheduleLines      PaymentScheduleLine[]
+  commissionPlans           CommissionPlan[]
+  commissionAllocations     CommissionAllocation[]
+  calculationSnapshots      CalculationSnapshot[]
+  scheduledActions          ScheduledAction[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status])
+  @@index([organizationId, operationType])
+  @@index([propertyId])
+  @@index([primaryClientId])
+  @@index([contractTypeId])
+  @@index([createdByUserId])
+  @@map("businesses")
+}
+
+model BusinessParticipant {
+  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId         String                  @map("organization_id") @db.Uuid
+  businessId             String                  @map("business_id") @db.Uuid
+  partyType              BusinessPartyType       @map("party_type")
+  clientId               String?                 @map("client_id") @db.Uuid
+  userId                 String?                 @map("user_id") @db.Uuid
+  realEstateAgentId      String?                 @map("real_estate_agent_id") @db.Uuid
+  displayName            String                  @map("display_name")
+  email                  String?
+  phone                  String?
+  documentId             String?                 @map("document_id")
+  role                   BusinessParticipantRole
+  isPrimary              Boolean                 @default(false) @map("is_primary")
+  ownershipPercentageBps Int?                    @map("ownership_percentage_bps")
+  commissionEligible     Boolean                 @default(false) @map("commission_eligible")
+  receivesNotifications  Boolean                 @default(true) @map("receives_notifications")
+  metadata               Json?
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+  organization           Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  business               Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client                 Client?                 @relation("BusinessParticipantClients", fields: [clientId], references: [id], onDelete: SetNull)
+  user                   User?                   @relation("BusinessParticipantUsers", fields: [userId], references: [id], onDelete: SetNull)
+  realEstateAgent        RealEstateAgent?        @relation(fields: [realEstateAgentId], references: [id], onDelete: SetNull)
+  commissionAllocations  CommissionAllocation[]
+
+  @@index([organizationId, role])
+  @@index([businessId, role])
+  @@index([clientId])
+  @@index([userId])
+  @@index([realEstateAgentId])
+  @@map("business_participants")
+}
+
+model ContractType {
+  id                    String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId         String?               @map("organization_id") @db.Uuid
+  name                  String
+  operationType          BusinessOperationType @map("operation_type")
+  description            String?
+  isActive               Boolean               @default(true) @map("is_active")
+  requiresProperty       Boolean               @default(false) @map("requires_property")
+  requiresPaymentPlan    Boolean               @default(true) @map("requires_payment_plan")
+  requiresCommissionPlan Boolean               @default(false) @map("requires_commission_plan")
+  defaultTemplateId      String?               @map("default_template_id") @db.Uuid
+  defaultClauses         Json?                 @map("default_clauses")
+  createdAt              DateTime              @default(now()) @map("created_at")
+  updatedAt              DateTime              @updatedAt @map("updated_at")
+  organization           Organization?         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  businesses             Business[]
+  businessContracts      BusinessContract[]
+
+  @@unique([organizationId, name, operationType])
+  @@index([organizationId, operationType, isActive])
+  @@map("contract_types")
+}
+
+model BusinessContract {
+  id                  String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId          String                 @map("business_id") @db.Uuid
+  contractTypeId      String                 @map("contract_type_id") @db.Uuid
+  templateId          String?                @map("template_id") @db.Uuid
+  status              BusinessContractStatus @default(DRAFT)
+  contractNumber      String?                @map("contract_number")
+  generatedDocumentId String?                @map("generated_document_id") @db.Uuid
+  signedDocumentId    String?                @map("signed_document_id") @db.Uuid
+  selectedClauses     Json?                  @map("selected_clauses")
+  customConditions    Json?                  @map("custom_conditions")
+  legalNotes          String?                @map("legal_notes")
+  generatedAt         DateTime?              @map("generated_at")
+  signedAt            DateTime?              @map("signed_at")
+  createdByUserId     String?                @map("created_by_user_id") @db.Uuid
+  updatedByUserId     String?                @map("updated_by_user_id") @db.Uuid
+  version             Int                    @default(1)
+  createdAt           DateTime               @default(now()) @map("created_at")
+  updatedAt           DateTime               @updatedAt @map("updated_at")
+  business            Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  contractType        ContractType           @relation(fields: [contractTypeId], references: [id], onDelete: Restrict)
+  createdByUser       User?                  @relation("CreatedBusinessContracts", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser       User?                  @relation("UpdatedBusinessContracts", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  clauses             BusinessContractClause[]
+
+  @@index([businessId, status])
+  @@index([contractTypeId])
+  @@map("business_contracts")
+}
+
+model BusinessContractClause {
+  id                 String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessContractId String                @map("business_contract_id") @db.Uuid
+  clauseType         ContractClauseType    @map("clause_type")
+  title              String
+  description        String?
+  calculationType    ClauseCalculationType @default(NONE) @map("calculation_type")
+  amountCents        BigInt?               @map("amount_cents")
+  percentageBps      Int?                  @map("percentage_bps")
+  formula            Json?
+  appliesTo          ClauseAppliesTo       @default(OTHER) @map("applies_to")
+  triggerEvent       BusinessTriggerEvent  @default(MANUAL) @map("trigger_event")
+  createsReceivable  Boolean               @default(false) @map("creates_receivable")
+  requiresApproval   Boolean               @default(false) @map("requires_approval")
+  metadata           Json?
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+  businessContract   BusinessContract      @relation(fields: [businessContractId], references: [id], onDelete: Cascade)
+
+  @@index([businessContractId, clauseType])
+  @@map("business_contract_clauses")
+}
+
+model PaymentPlan {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId           String            @map("business_id") @db.Uuid
+  status               PaymentPlanStatus @default(DRAFT)
+  planType             PaymentPlanType   @map("plan_type")
+  currency             String            @default("USD")
+  totalAmountCents     BigInt            @map("total_amount_cents")
+  generatedTotalCents  BigInt            @map("generated_total_cents")
+  differenceCents      BigInt            @map("difference_cents")
+  roundingStrategy     RoundingStrategy  @default(LAST_INSTALLMENT) @map("rounding_strategy")
+  startDate            DateTime?         @map("start_date") @db.Date
+  endDate              DateTime?         @map("end_date") @db.Date
+  frequency            PaymentFrequency  @default(NONE)
+  numberOfInstallments Int?              @map("number_of_installments")
+  dueDay               Int?              @map("due_day")
+  graceDays            Int?              @map("grace_days")
+  lateFeePolicyId      String?           @map("late_fee_policy_id") @db.Uuid
+  notes                String?
+  createdByUserId      String?           @map("created_by_user_id") @db.Uuid
+  updatedByUserId      String?           @map("updated_by_user_id") @db.Uuid
+  version              Int               @default(1)
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+  business             Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdByUser        User?             @relation("CreatedPaymentPlans", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser        User?             @relation("UpdatedPaymentPlans", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  lines                PaymentScheduleLine[]
+
+  @@index([businessId, status])
+  @@map("payment_plans")
+}
+
+model PaymentScheduleLine {
+  id            String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentPlanId String                    @map("payment_plan_id") @db.Uuid
+  businessId    String                    @map("business_id") @db.Uuid
+  sequence      Int
+  label         String
+  lineType      PaymentScheduleLineType   @map("line_type")
+  amountCents   BigInt                    @map("amount_cents")
+  percentageBps Int?                      @map("percentage_bps")
+  dueDate       DateTime?                 @map("due_date") @db.Date
+  dueEvent      String?                   @map("due_event")
+  milestoneId   String?                   @map("milestone_id") @db.Uuid
+  isManual      Boolean                   @default(false) @map("is_manual")
+  isLocked      Boolean                   @default(false) @map("is_locked")
+  status        PaymentScheduleLineStatus @default(PENDING)
+  source        PaymentScheduleLineSource @default(GENERATED)
+  metadata      Json?
+  createdAt     DateTime                  @default(now()) @map("created_at")
+  updatedAt     DateTime                  @updatedAt @map("updated_at")
+  paymentPlan   PaymentPlan               @relation(fields: [paymentPlanId], references: [id], onDelete: Cascade)
+  business      Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([paymentPlanId, sequence])
+  @@index([businessId, status])
+  @@index([dueDate, status])
+  @@map("payment_schedule_lines")
+}
+
+model CommissionPlan {
+  id                         String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId                 String                  @map("business_id") @db.Uuid
+  status                     CommissionPlanStatus    @default(DRAFT)
+  mode                       CommissionPlanMode      @default(SIMPLE)
+  commissionBase             CommissionBase          @map("commission_base")
+  baseAmountCents            BigInt                  @map("base_amount_cents")
+  totalCommissionAmountCents BigInt                  @map("total_commission_amount_cents")
+  currency                   String                  @default("USD")
+  releasePolicy              CommissionReleasePolicy @default(ON_CLOSING) @map("release_policy")
+  notes                      String?
+  createdByUserId            String?                 @map("created_by_user_id") @db.Uuid
+  updatedByUserId            String?                 @map("updated_by_user_id") @db.Uuid
+  version                    Int                     @default(1)
+  createdAt                  DateTime                @default(now()) @map("created_at")
+  updatedAt                  DateTime                @updatedAt @map("updated_at")
+  business                   Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdByUser              User?                   @relation("CreatedCommissionPlans", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser              User?                   @relation("UpdatedCommissionPlans", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  allocations                CommissionAllocation[]
+
+  @@index([businessId, status])
+  @@map("commission_plans")
+}
+
+model CommissionAllocation {
+  id                    String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commissionPlanId      String                     @map("commission_plan_id") @db.Uuid
+  businessId            String                     @map("business_id") @db.Uuid
+  participantId         String?                    @map("participant_id") @db.Uuid
+  recipientType         CommissionRecipientType    @map("recipient_type")
+  label                 String
+  calculationType       CommissionCalculationType  @map("calculation_type")
+  percentageBps         Int?                       @map("percentage_bps")
+  fixedAmountCents      BigInt?                    @map("fixed_amount_cents")
+  capAmountCents        BigInt?                    @map("cap_amount_cents")
+  minAmountCents        BigInt?                    @map("min_amount_cents")
+  priority              Int                        @default(0)
+  parentAllocationId    String?                    @map("parent_allocation_id") @db.Uuid
+  appliesAfterDeductions Boolean                   @default(false) @map("applies_after_deductions")
+  releaseTrigger        CommissionReleaseTrigger   @default(ON_CLOSING) @map("release_trigger")
+  payableAmountCents    BigInt                     @map("payable_amount_cents")
+  paidAmountCents       BigInt                     @default(0) @map("paid_amount_cents")
+  status                CommissionAllocationStatus @default(PENDING)
+  metadata              Json?
+  createdAt             DateTime                   @default(now()) @map("created_at")
+  updatedAt             DateTime                   @updatedAt @map("updated_at")
+  commissionPlan        CommissionPlan             @relation(fields: [commissionPlanId], references: [id], onDelete: Cascade)
+  business              Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  participant           BusinessParticipant?       @relation(fields: [participantId], references: [id], onDelete: SetNull)
+  parentAllocation      CommissionAllocation?      @relation("CommissionAllocationChildren", fields: [parentAllocationId], references: [id], onDelete: SetNull)
+  childAllocations      CommissionAllocation[]     @relation("CommissionAllocationChildren")
+
+  @@index([commissionPlanId, status])
+  @@index([businessId, recipientType])
+  @@index([participantId])
+  @@map("commission_allocations")
+}
+
+model BusinessFee {
+  id                      String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId              String               @map("business_id") @db.Uuid
+  name                    String
+  feeType                 BusinessFeeType      @map("fee_type")
+  amountCents             BigInt               @map("amount_cents")
+  percentageBps           Int?                 @map("percentage_bps")
+  calculationBaseCents    BigInt?              @map("calculation_base_cents")
+  currency                String               @default("USD")
+  payerRole               BusinessFeePayerRole @default(OTHER) @map("payer_role")
+  includedInContractTotal Boolean              @default(false) @map("included_in_contract_total")
+  includedInPaymentPlan   Boolean              @default(false) @map("included_in_payment_plan")
+  triggerEvent            BusinessTriggerEvent @default(MANUAL) @map("trigger_event")
+  status                  BusinessFeeStatus    @default(DRAFT)
+  metadata                Json?
+  createdAt               DateTime             @default(now()) @map("created_at")
+  updatedAt               DateTime             @updatedAt @map("updated_at")
+  business                Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, feeType])
+  @@index([businessId, status])
+  @@map("business_fees")
+}
+
+model CalculationSnapshot {
+  id              String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId      String                  @map("business_id") @db.Uuid
+  snapshotType    CalculationSnapshotType @map("snapshot_type")
+  engineVersion   String                  @map("engine_version")
+  inputJson       Json                    @map("input_json")
+  outputJson      Json                    @map("output_json")
+  hash            String
+  createdByUserId String?                 @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime                @default(now()) @map("created_at")
+  business        Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdByUser   User?                   @relation("CreatedCalculationSnapshots", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, snapshotType, createdAt])
+  @@map("calculation_snapshots")
+}
+
+model ScheduledAction {
+  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId        String                @map("business_id") @db.Uuid
+  eventType         ScheduledActionType   @map("event_type")
+  relatedEntityType String?               @map("related_entity_type")
+  relatedEntityId   String?               @map("related_entity_id") @db.Uuid
+  scheduledFor      DateTime              @map("scheduled_for")
+  status            ScheduledActionStatus @default(PENDING)
+  assignedToUserId  String?               @map("assigned_to_user_id") @db.Uuid
+  metadata          Json?
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+  business          Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assignedToUser    User?                 @relation("AssignedScheduledActions", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, status])
+  @@index([scheduledFor, status])
+  @@index([assignedToUserId, status])
+  @@map("scheduled_actions")
 }

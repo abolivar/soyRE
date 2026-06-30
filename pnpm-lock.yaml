@@ -47,6 +47,9 @@ importers:
       '@soyre/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@soyre/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -75,6 +78,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@soyre/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@soyre/ui':
         specifier: workspace:*
         version: link:../../packages/ui

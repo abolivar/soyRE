@@ -423,6 +423,201 @@ export type CreateClientPayload = {
   };
 };
 
+export type BusinessStatus =
+  | 'DRAFT'
+  | 'PENDING_REVIEW'
+  | 'APPROVED'
+  | 'CONTRACT_GENERATED'
+  | 'PENDING_SIGNATURE'
+  | 'ACTIVE'
+  | 'CLOSED'
+  | 'CANCELLED'
+  | 'REJECTED';
+
+export type BusinessMode = 'SIMPLE' | 'ADVANCED';
+
+export type BusinessOperationType =
+  | 'SALE'
+  | 'RENT'
+  | 'RESERVATION'
+  | 'ASSIGNMENT'
+  | 'PRE_SALE'
+  | 'SEPARATION'
+  | 'OTHER';
+
+export type BusinessParticipantRole =
+  | 'BUYER'
+  | 'SELLER'
+  | 'TENANT'
+  | 'LANDLORD'
+  | 'PRIMARY_AGENT'
+  | 'CO_AGENT'
+  | 'REFERRER'
+  | 'BROKER'
+  | 'DEVELOPER'
+  | 'LEGAL_REPRESENTATIVE'
+  | 'LAWYER'
+  | 'NOTARY'
+  | 'BANK'
+  | 'GUARANTOR'
+  | 'WITNESS'
+  | 'OTHER';
+
+export type ContractTypeSummary = {
+  id: string;
+  organizationId: string | null;
+  name: string;
+  operationType: BusinessOperationType;
+  description: string | null;
+  isActive: boolean;
+  requiresProperty: boolean;
+  requiresPaymentPlan: boolean;
+  requiresCommissionPlan: boolean;
+  defaultTemplateId: string | null;
+};
+
+export type BusinessContextClient = {
+  id: string;
+  displayName: string;
+  email: string | null;
+  phone: string | null;
+  roles: ClientRole[];
+  legalId: string | null;
+  identityDocumentValidated: boolean;
+};
+
+export type BusinessContextProperty = {
+  id: string;
+  title: string;
+  internalCode: string | null;
+  status: PropertyStatus;
+  city: string;
+  zone: string;
+  salePrice: number | null;
+  rentPrice: number | null;
+  currency: string;
+  suggestedPriceCents: string | null;
+};
+
+export type BusinessContextAgent = {
+  id: string;
+  category: RealEstateAgentCategory;
+  displayName: string;
+  email: string | null;
+  phone: string | null;
+};
+
+export type BusinessContextUser = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string | null;
+  role: MembershipRole;
+};
+
+export type BusinessContextResponse = {
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  operationTypes: BusinessOperationType[];
+  modes: BusinessMode[];
+  currencies: string[];
+  participantRoles: BusinessParticipantRole[];
+  contractTypes: ContractTypeSummary[];
+  clients: BusinessContextClient[];
+  properties: BusinessContextProperty[];
+  agents: BusinessContextAgent[];
+  users: BusinessContextUser[];
+  paymentPresets: string[];
+  commissionDefaults: {
+    simpleBasisPoints: number;
+    releaseTrigger: string;
+    commissionBase: string;
+  };
+  permissionHints: {
+    canViewCommissions: boolean;
+    canCommit: boolean;
+  };
+};
+
+export type BusinessRecord = {
+  id: string;
+  organizationId: string;
+  code: string | null;
+  title: string | null;
+  status: BusinessStatus;
+  mode: BusinessMode;
+  operationType: BusinessOperationType;
+  currency: string;
+  version: number;
+  draftData: Record<string, unknown> | null;
+  lastPreview: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BusinessDraftResponse = {
+  business: BusinessRecord;
+};
+
+export type BusinessValidationItem = {
+  level: 'ERROR' | 'WARNING' | 'INFO';
+  code: string;
+  message: string;
+};
+
+export type PaymentScheduleLineCalculation = {
+  sequence: number;
+  label: string;
+  lineType: string;
+  amountCents: string;
+  percentageBasisPoints?: number;
+  dueDate?: string;
+  dueEvent?: string;
+  isManual: boolean;
+  source: string;
+};
+
+export type PaymentPlanCalculation = {
+  currency: string;
+  totalAmountCents: string;
+  generatedTotalCents: string;
+  differenceCents: string;
+  roundingStrategy: string;
+  lines: PaymentScheduleLineCalculation[];
+  warnings: string[];
+  errors: string[];
+};
+
+export type CommissionAllocationCalculation = {
+  participantKey: string;
+  recipientType: string;
+  label: string;
+  calculationType: string;
+  payableAmountCents: string;
+  releaseTrigger: string;
+};
+
+export type CommissionPlanCalculation = {
+  currency: string;
+  baseAmountCents: string;
+  totalCommissionAmountCents: string;
+  payableNowCents: string;
+  allocations: CommissionAllocationCalculation[];
+  warnings: string[];
+  errors: string[];
+};
+
+export type BusinessPreview = {
+  entitiesToCreate: Array<{ entity: string; count: number }>;
+  impactReports: string[];
+  paymentPlan: PaymentPlanCalculation;
+  commissionPlan: CommissionPlanCalculation;
+  validation: BusinessValidationItem[];
+};
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},

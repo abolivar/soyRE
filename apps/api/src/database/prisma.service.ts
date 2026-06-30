@@ -12,6 +12,30 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this.prismaClient.auditLog;
   }
 
+  get business() {
+    return this.prismaClient.business;
+  }
+
+  get businessContract() {
+    return this.prismaClient.businessContract;
+  }
+
+  get businessContractClause() {
+    return this.prismaClient.businessContractClause;
+  }
+
+  get businessFee() {
+    return this.prismaClient.businessFee;
+  }
+
+  get businessParticipant() {
+    return this.prismaClient.businessParticipant;
+  }
+
+  get calculationSnapshot() {
+    return this.prismaClient.calculationSnapshot;
+  }
+
   get client() {
     return this.prismaClient.client;
   }
@@ -28,12 +52,36 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this.prismaClient.organization;
   }
 
+  get commissionAllocation() {
+    return this.prismaClient.commissionAllocation;
+  }
+
+  get commissionPlan() {
+    return this.prismaClient.commissionPlan;
+  }
+
+  get contractType() {
+    return this.prismaClient.contractType;
+  }
+
+  get paymentPlan() {
+    return this.prismaClient.paymentPlan;
+  }
+
+  get paymentScheduleLine() {
+    return this.prismaClient.paymentScheduleLine;
+  }
+
   get property() {
     return this.prismaClient.property;
   }
 
   get realEstateAgent() {
     return this.prismaClient.realEstateAgent;
+  }
+
+  get scheduledAction() {
+    return this.prismaClient.scheduledAction;
   }
 
   get user() {

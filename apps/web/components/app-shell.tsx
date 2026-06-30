@@ -3,6 +3,7 @@
 import {
   Bell,
   Building2,
+  BriefcaseBusiness,
   CheckSquare,
   FileText,
   Handshake,
@@ -28,6 +29,7 @@ type NavigationItem = {
 
 const businessNavigation: NavigationItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/businesses/new', label: 'Negocios', icon: BriefcaseBusiness },
   { href: '/properties', label: 'Propiedades', icon: Building2 },
   { href: '/clients', label: 'Clientes', icon: Users },
   { href: '/agents', label: 'Agentes', icon: Handshake },
