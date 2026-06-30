@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
 } from '@nestjs/common';
 import {
@@ -38,7 +39,7 @@ type SerializableClient = Client & {
 
 @Injectable()
 export class ClientsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async list(auth: AuthenticatedUser, query: ListClientsQueryDto) {
     const membership = this.resolveMembership(auth, query.organizationId);

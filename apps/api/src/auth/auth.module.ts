@@ -9,6 +9,6 @@ import { PasswordService } from './password.service.js';
   imports: [JwtModule.register({})],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard, PasswordService],
-  exports: [JwtAuthGuard, PasswordService],
+  exports: [JwtModule, JwtAuthGuard, PasswordService],
 })
 export class AuthModule {}

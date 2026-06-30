@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -43,7 +44,9 @@ type SerializableMembership = {
 @Injectable()
 export class UsersService {
   constructor(
+    @Inject(PasswordService)
     private readonly passwordService: PasswordService,
+    @Inject(PrismaService)
     private readonly prisma: PrismaService,
   ) {}
 

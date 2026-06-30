@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -34,8 +35,11 @@ type AuthMembershipFromDb = {
 @Injectable()
 export class AuthService {
   constructor(
+    @Inject(JwtService)
     private readonly jwtService: JwtService,
+    @Inject(PasswordService)
     private readonly passwordService: PasswordService,
+    @Inject(PrismaService)
     private readonly prisma: PrismaService,
   ) {}
 

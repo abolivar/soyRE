@@ -1,6 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -35,7 +36,9 @@ type MembershipWithOrganization = {
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
+    @Inject(JwtService)
     private readonly jwtService: JwtService,
+    @Inject(PrismaService)
     private readonly prisma: PrismaService,
   ) {}
 
