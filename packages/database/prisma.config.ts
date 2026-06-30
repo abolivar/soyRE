@@ -20,6 +20,7 @@ const fallbackDatabaseUrl =
 
 const migrationUrl =
   process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? fallbackDatabaseUrl;
+const shadowDatabaseUrl = process.env.SHADOW_DATABASE_URL?.trim() || undefined;
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
@@ -28,6 +29,6 @@ export default defineConfig({
   },
   datasource: {
     url: migrationUrl,
-    shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL,
+    shadowDatabaseUrl,
   },
 });

@@ -240,6 +240,56 @@ function scoreCheckDigit(value: string, checkDigit: string, points: number) {
 }
 
 function repairPassportFirstLine(value: string) {
+  const candidates = repairPassportFirstLineCandidates(value);
+
+  return (
+    candidates.sort(
+      (left, right) => scorePassportFirstLine(right) - scorePassportFirstLine(left),
+    )[0] ?? repairPassportFirstLineCandidate(value)
+  );
+}
+
+function repairPassportFirstLineCandidates(value: string) {
+  const variants = new Set<string>();
+
+  addFirstLineDeletionVariants(variants, normalizeMrzLine(value));
+  addFirstLineDeletionVariants(variants, repairDoubleKNameSeparators(value));
+
+  return Array.from(
+    new Set(
+      Array.from(variants)
+        .filter(Boolean)
+        .map(repairPassportFirstLineCandidate),
+    ),
+  );
+}
+
+function addFirstLineDeletionVariants(variants: Set<string>, value: string) {
+  if (!value) {
+    return;
+  }
+
+  variants.add(value);
+
+  const removableIndexes = value
+    .split('')
+    .map((character, index) =>
+      isLikelySpuriousNameK(value, index) && character === 'K' ? index : -1,
+    )
+    .filter((index) => index >= 0)
+    .slice(0, 10);
+  const maxMask = 1 << removableIndexes.length;
+
+  for (let mask = 1; mask < maxMask; mask += 1) {
+    if (countMaskBits(mask) > 4) {
+      continue;
+    }
+
+    variants.add(removeCharactersAt(value, removableIndexes, mask));
+  }
+}
+
+function repairPassportFirstLineCandidate(value: string) {
   const characters = fitMrzLine(value).split('');
 
   characters[0] = repairPassportCode(characters[0]);
@@ -253,10 +303,37 @@ function repairPassportFirstLine(value: string) {
     characters[index] = repairFillerOrLetter(characters[index]);
   }
 
-  return characters.join('');
+  return repairNameFillerNoise(characters.join(''));
 }
 
 function repairPassportSecondLine(value: string) {
+  const candidates = repairPassportSecondLineCandidates(value);
+
+  return (
+    candidates.sort(
+      (left, right) => scorePassportSecondLine(right) - scorePassportSecondLine(left),
+    )[0] ?? repairPassportSecondLineCandidate(value)
+  );
+}
+
+function repairPassportSecondLineCandidates(value: string) {
+  const normalized = normalizeMrzLine(value);
+  const variants = new Set<string>([normalized]);
+
+  for (let index = 0; index <= Math.min(13, normalized.length - 1); index += 1) {
+    variants.add(`${normalized.slice(0, index)}${normalized.slice(index + 1)}`);
+  }
+
+  return Array.from(
+    new Set(
+      Array.from(variants)
+        .filter(Boolean)
+        .map(repairPassportSecondLineCandidate),
+    ),
+  );
+}
+
+function repairPassportSecondLineCandidate(value: string) {
   const characters = fitMrzLine(value).split('');
 
   repairRange(characters, 0, 9, repairDocumentCharacter);
@@ -282,8 +359,189 @@ function repairPassportSecondLine(value: string) {
     characters[42] ?? '',
   );
   replaceRange(characters, 28, optionalData);
+  repairOptionalFillerNoise(characters);
+  enforcePassportTrailingCheckDigits(characters);
 
   return characters.join('');
+}
+
+function scorePassportFirstLine(line: string) {
+  let score = 0;
+  const nameSection = line.slice(5);
+  const separatorIndex = nameSection.indexOf('<<');
+  const names = parseNames(nameSection);
+
+  if (line.startsWith('P<')) {
+    score += 12;
+  }
+
+  if (COUNTRY_NAMES[line.slice(2, 5)]) {
+    score += 6;
+  } else if (/^[A-Z]{3}$/.test(line.slice(2, 5))) {
+    score += 3;
+  }
+
+  if (separatorIndex >= 0) {
+    score += 10;
+  }
+
+  if (names.firstName) {
+    score += 4;
+  }
+
+  if (names.lastName) {
+    score += 4;
+  }
+
+  score -= countSuspiciousNameFillers(nameSection);
+
+  return score;
+}
+
+function scorePassportSecondLine(line: string) {
+  const compositeValue = [
+    line.slice(0, 10),
+    line.slice(13, 20),
+    line.slice(21, 43),
+  ].join('');
+  let score = 0;
+
+  if (COUNTRY_NAMES[line.slice(10, 13)]) {
+    score += 6;
+  } else if (/^[A-Z]{3}$/.test(line.slice(10, 13))) {
+    score += 3;
+  }
+
+  score += scoreCheckDigit(line.slice(0, 9), line.slice(9, 10), 12);
+  score += scoreCheckDigit(line.slice(13, 19), line.slice(19, 20), 10);
+  score += scoreCheckDigit(line.slice(21, 27), line.slice(27, 28), 10);
+  score += scoreCheckDigit(line.slice(28, 42), line.slice(42, 43), 4);
+  score += scoreCheckDigit(compositeValue, line.slice(43, 44), 12);
+
+  return score;
+}
+
+function isLikelySpuriousNameK(value: string, index: number) {
+  if (index < 5 || value[index] !== 'K') {
+    return false;
+  }
+
+  const previous = value[index - 1];
+  const next = value[index + 1];
+
+  return previous === '<' || next === '<' || previous === 'K' || next === 'K';
+}
+
+function repairDoubleKNameSeparators(value: string) {
+  const normalized = normalizeMrzLine(value);
+  const prefix = normalized.slice(0, 5);
+  const nameSection = normalized.slice(5).replace(/KK/g, '<<');
+
+  return `${prefix}${nameSection}`;
+}
+
+function repairNameFillerNoise(line: string) {
+  const characters = line.split('');
+  const nameSection = characters.slice(5).join('');
+  const trailingFiller = nameSection.match(/[<KL]{3,}$/);
+
+  if (!trailingFiller || trailingFiller.index === undefined) {
+    return line;
+  }
+
+  const start = 5 + trailingFiller.index;
+
+  for (let index = start; index < characters.length; index += 1) {
+    if (characters[index] === 'K' || characters[index] === 'L') {
+      characters[index] = '<';
+    }
+  }
+
+  return characters.join('');
+}
+
+function repairOptionalFillerNoise(characters: string[]) {
+  const optionalData = characters.slice(28, 42).join('');
+  const trailingFiller = optionalData.match(/[<KL]{3,}$/);
+
+  if (!trailingFiller || trailingFiller.index === undefined) {
+    return;
+  }
+
+  const start = 28 + trailingFiller.index;
+
+  for (let index = start; index < 42; index += 1) {
+    if (characters[index] === 'K' || characters[index] === 'L') {
+      characters[index] = '<';
+    }
+  }
+}
+
+function enforcePassportTrailingCheckDigits(characters: string[]) {
+  const optionalCheckDigit = calculateMrzCheckDigit(characters.slice(28, 42).join(''));
+
+  if (
+    !/^\d$/.test(characters[42] ?? '') ||
+    characters[42] !== optionalCheckDigit
+  ) {
+    characters[42] = optionalCheckDigit;
+  }
+
+  const compositeValue = [
+    characters.slice(0, 10).join(''),
+    characters.slice(13, 20).join(''),
+    characters.slice(21, 43).join(''),
+  ].join('');
+  const compositeCheckDigit = calculateMrzCheckDigit(compositeValue);
+
+  if (
+    !/^\d$/.test(characters[43] ?? '') ||
+    characters[43] !== compositeCheckDigit
+  ) {
+    characters[43] = compositeCheckDigit;
+  }
+}
+
+function countSuspiciousNameFillers(value: string) {
+  const fillerLikeCharacters = value.split('').filter((character, index) => {
+    const previous = value[index - 1];
+    const next = value[index + 1];
+
+    return (
+      (character === 'K' || character === 'L') &&
+      (previous === '<' || next === '<' || previous === character || next === character)
+    );
+  }).length;
+  const longLeadingKTokens = value.match(/<KL[A-Z]{4,}/g)?.length ?? 0;
+
+  return fillerLikeCharacters + longLeadingKTokens * 6;
+}
+
+function countMaskBits(value: number) {
+  let count = 0;
+  let remaining = value;
+
+  while (remaining > 0) {
+    count += remaining & 1;
+    remaining >>= 1;
+  }
+
+  return count;
+}
+
+function removeCharactersAt(value: string, indexes: number[], mask: number) {
+  const indexesToRemove = new Set<number>();
+
+  indexes.forEach((index, bitIndex) => {
+    if (mask & (1 << bitIndex)) {
+      indexesToRemove.add(index);
+    }
+  });
+
+  return value
+    .split('')
+    .filter((_, index) => !indexesToRemove.has(index))
+    .join('');
 }
 
 function fitMrzLine(value: string) {

@@ -370,8 +370,8 @@ export class ClientsService {
             roles,
             status: dto.status ?? ClientStatus.NEW,
             temperature: dto.temperature ?? ClientTemperature.WARM,
-            firstName: cleanText(dto.firstName),
-            lastName: cleanText(dto.lastName),
+            firstName: cleanPersonName(dto.firstName),
+            lastName: cleanPersonName(dto.lastName),
             companyName: cleanText(dto.companyName),
             displayName,
             legalId: cleanText(dto.legalId) ?? identityDocument?.documentNumber,
@@ -532,8 +532,8 @@ export class ClientsService {
 
   private resolveDisplayName(dto: CreateClientDto, type: ClientType) {
     const companyName = cleanText(dto.companyName);
-    const firstName = cleanText(dto.firstName);
-    const lastName = cleanText(dto.lastName);
+    const firstName = cleanPersonName(dto.firstName);
+    const lastName = cleanPersonName(dto.lastName);
     const personName = [firstName, lastName].filter(Boolean).join(' ').trim();
 
     if (type === ClientType.COMPANY) {
@@ -693,8 +693,8 @@ export class ClientsService {
       type: dto.type,
       documentNumber: cleanText(dto.documentNumber),
       issuingCountry: cleanText(dto.issuingCountry),
-      firstName: cleanText(dto.firstName),
-      lastName: cleanText(dto.lastName),
+      firstName: cleanPersonName(dto.firstName),
+      lastName: cleanPersonName(dto.lastName),
       birthDate: toDate(dto.birthDate),
       expirationDate: toDate(dto.expirationDate),
       fileName,
@@ -711,6 +711,20 @@ function cleanText(value?: string) {
   const normalized = value?.trim();
 
   return normalized ? normalized : null;
+}
+
+function cleanPersonName(value?: string) {
+  const normalized = cleanText(value);
+
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized
+    .toLocaleLowerCase('es-PA')
+    .replace(/(^|[\s'-])(\p{L})/gu, (_match, prefix: string, letter: string) =>
+      `${prefix}${letter.toLocaleUpperCase('es-PA')}`,
+    );
 }
 
 function normalizeEmail(value?: string) {

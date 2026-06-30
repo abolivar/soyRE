@@ -64,6 +64,8 @@ type IdentityOcrStatus = 'idle' | 'reading' | 'ready' | 'error';
 
 type IdentityDocumentPayload = NonNullable<CreateClientPayload['identityDocument']>;
 
+type ClientLegalDocumentType = 'NATIONAL_ID' | 'PASSPORT' | 'RUC' | 'OTHER';
+
 const clientWriteRoles = new Set<MembershipRole>([
   'OWNER',
   'ADMIN',
@@ -90,6 +92,16 @@ const propertyTypeOptions = [
   'Oficina',
   'Terreno',
   'Bodega',
+];
+
+const documentTypeOptions: Array<{
+  value: ClientLegalDocumentType;
+  label: string;
+}> = [
+  { value: 'NATIONAL_ID', label: 'Cedula' },
+  { value: 'PASSPORT', label: 'Pasaporte' },
+  { value: 'RUC', label: 'RUC' },
+  { value: 'OTHER', label: 'Otro' },
 ];
 
 const statusTone: Record<ClientStatus, 'primary' | 'success' | 'warning' | 'neutral'> = {
@@ -135,9 +147,20 @@ export function ClientsWorkspace() {
   );
   const [passportError, setPassportError] = useState<string | null>(null);
   const [passportFileName, setPassportFileName] = useState<string | null>(null);
+  const [identityDocumentPreviewUrl, setIdentityDocumentPreviewUrl] = useState<
+    string | null
+  >(null);
   const [passportMrz, setPassportMrz] = useState('');
   const [passportStatus, setPassportStatus] =
     useState<IdentityOcrStatus>('idle');
+
+  useEffect(() => {
+    return () => {
+      if (identityDocumentPreviewUrl) {
+        URL.revokeObjectURL(identityDocumentPreviewUrl);
+      }
+    };
+  }, [identityDocumentPreviewUrl]);
 
   useEffect(() => {
     apiFetch<{ user: AuthUser }>('/auth/me')
@@ -348,6 +371,7 @@ export function ClientsWorkspace() {
     setNationalIdData(null);
     setPassportError(null);
     setPassportFileName(null);
+    setIdentityDocumentPreviewUrl(null);
     setPassportMrz('');
     setPassportStatus('idle');
   }
@@ -388,6 +412,7 @@ export function ClientsWorkspace() {
     setNationalIdData(null);
     setPassportError(null);
     setPassportFileName(null);
+    setIdentityDocumentPreviewUrl(null);
     setPassportMrz('');
     setPassportStatus('idle');
   }
@@ -404,6 +429,7 @@ export function ClientsWorkspace() {
     if (!isSupportedIdentityFile(file)) {
       setPassportStatus('error');
       setPassportError('El documento debe ser una imagen JPEG, PNG o WebP.');
+      setIdentityDocumentPreviewUrl(null);
       input.value = '';
       return;
     }
@@ -411,6 +437,7 @@ export function ClientsWorkspace() {
     const documentType = createModeToDocumentType(createMode);
 
     if (!documentType) {
+      setIdentityDocumentPreviewUrl(null);
       input.value = '';
       return;
     }
@@ -420,6 +447,7 @@ export function ClientsWorkspace() {
     setNationalIdData(null);
     setPassportError(null);
     setPassportFileName(file.name);
+    setIdentityDocumentPreviewUrl(URL.createObjectURL(file));
     setPassportStatus('reading');
 
     try {
@@ -470,8 +498,8 @@ export function ClientsWorkspace() {
           setIdentityDocumentPayload({
             ...basePayload,
             documentNumber: parsed.documentNumber ?? undefined,
-            firstName: parsed.firstName ?? undefined,
-            lastName: parsed.lastName ?? undefined,
+            firstName: toNameCase(parsed.firstName),
+            lastName: toNameCase(parsed.lastName),
             ocrText: parsed.rawText,
             extractedData: {
               parser: 'generic-national-id-ocr',
@@ -513,8 +541,8 @@ export function ClientsWorkspace() {
           type: 'PASSPORT',
           documentNumber: parsed.documentNumber,
           issuingCountry: parsed.issuingCountry,
-          firstName: parsed.firstName,
-          lastName: parsed.lastName,
+          firstName: toNameCase(parsed.firstName),
+          lastName: toNameCase(parsed.lastName),
           birthDate: parsed.birthDate ?? undefined,
           expirationDate: parsed.expirationDate ?? undefined,
           extractedData: {
@@ -544,9 +572,12 @@ export function ClientsWorkspace() {
     }
 
     setFormValue(form, 'type', 'PERSON');
-    setFormValue(form, 'firstName', data.firstName);
-    setFormValue(form, 'lastName', data.lastName);
+    setFormValue(form, 'documentType', 'PASSPORT');
+    setFormValue(form, 'firstName', toNameCase(data.firstName));
+    setFormValue(form, 'lastName', toNameCase(data.lastName));
     setFormValue(form, 'legalId', data.documentNumber);
+    setFormValue(form, 'nationality', data.nationality || data.issuingCountry);
+    setFormValue(form, 'birthDate', data.birthDate);
     setFormValue(form, 'country', data.nationality || data.issuingCountry);
     setFormValue(form, 'source', 'Pasaporte');
     setFormValue(form, 'notes', passportNotes(data, form));
@@ -560,9 +591,10 @@ export function ClientsWorkspace() {
     }
 
     setFormValue(form, 'type', 'PERSON');
+    setFormValue(form, 'documentType', 'NATIONAL_ID');
     setFormValue(form, 'legalId', data.documentNumber);
-    setFormValue(form, 'firstName', data.firstName);
-    setFormValue(form, 'lastName', data.lastName);
+    setFormValue(form, 'firstName', toNameCase(data.firstName));
+    setFormValue(form, 'lastName', toNameCase(data.lastName));
     setFormValue(form, 'source', 'Cedula');
     setFormValue(form, 'notes', nationalIdNotes(data, form));
   }
@@ -916,6 +948,20 @@ export function ClientsWorkspace() {
                 />
               </label>
 
+              {identityDocumentPreviewUrl ? (
+                <figure className="identity-document-preview">
+                  <img
+                    alt={
+                      createMode === 'passport'
+                        ? 'Previsualizacion del pasaporte'
+                        : 'Previsualizacion de la cedula'
+                    }
+                    src={identityDocumentPreviewUrl}
+                  />
+                  <figcaption>{passportFileName ?? 'Documento seleccionado'}</figcaption>
+                </figure>
+              ) : null}
+
               {createMode === 'passport' ? (
                 <>
                   <label>
@@ -989,7 +1035,7 @@ export function ClientsWorkspace() {
                 <div className="passport-result compact" aria-live="polite">
                   <span>
                     <strong>Nombre MRZ</strong>
-                    {passportData.firstName} {passportData.lastName}
+                    {toNameCase(`${passportData.firstName} ${passportData.lastName}`)}
                   </span>
                   <span>
                     <strong>Expira</strong>
@@ -1002,9 +1048,11 @@ export function ClientsWorkspace() {
                 <div className="passport-result compact" aria-live="polite">
                   <span>
                     <strong>Nombre OCR</strong>
-                    {[nationalIdData.firstName, nationalIdData.lastName]
-                      .filter(Boolean)
-                      .join(' ') || 'Pendiente'}
+                    {toNameCase(
+                      [nationalIdData.firstName, nationalIdData.lastName]
+                        .filter(Boolean)
+                        .join(' '),
+                    ) || 'Pendiente'}
                   </span>
                   <span>
                     <strong>Cedula</strong>
@@ -1020,7 +1068,7 @@ export function ClientsWorkspace() {
               <h3>Identificacion basica</h3>
               <p>Datos minimos para reconocer al cliente en la organizacion.</p>
             </div>
-            <div className="form-grid two">
+            <div className="form-grid three">
               <label>
                 Tipo
                 <select defaultValue="PERSON" name="type">
@@ -1029,18 +1077,46 @@ export function ClientsWorkspace() {
                 </select>
               </label>
               <label>
-                Cedula, pasaporte o RUC
+                Tipo de documento
+                <select defaultValue="NATIONAL_ID" name="documentType">
+                  {documentTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Numero de documento
                 <input name="legalId" placeholder="8-000-000" />
               </label>
             </div>
             <div className="form-grid two">
               <label>
                 Nombre
-                <input name="firstName" placeholder="Maria" />
+                <input
+                  name="firstName"
+                  onBlur={normalizeNameField}
+                  placeholder="Maria"
+                />
               </label>
               <label>
                 Apellido
-                <input name="lastName" placeholder="Moreno" />
+                <input
+                  name="lastName"
+                  onBlur={normalizeNameField}
+                  placeholder="Moreno"
+                />
+              </label>
+            </div>
+            <div className="form-grid two">
+              <label>
+                Nacionalidad
+                <input name="nationality" placeholder="Panama" />
+              </label>
+              <label>
+                Fecha de cumpleanos
+                <input name="birthDate" type="date" />
               </label>
             </div>
             <div className="form-grid two">
@@ -1435,13 +1511,15 @@ function activeMemberships(user: AuthUser | null): AuthMembership[] {
 }
 
 function buildClientPayload(form: FormData): CreateClientPayload {
+  const notes = stringValue(form, 'notes');
+
   return compactPayload({
     type: stringValue(form, 'type'),
     roles: form.getAll('roles').map(String) as ClientRole[],
     status: stringValue(form, 'status'),
     temperature: stringValue(form, 'temperature'),
-    firstName: stringValue(form, 'firstName'),
-    lastName: stringValue(form, 'lastName'),
+    firstName: nameValue(form, 'firstName'),
+    lastName: nameValue(form, 'lastName'),
     companyName: stringValue(form, 'companyName'),
     legalId: stringValue(form, 'legalId'),
     email: stringValue(form, 'email'),
@@ -1469,7 +1547,7 @@ function buildClientPayload(form: FormData): CreateClientPayload {
     financingStatus: stringValue(form, 'financingStatus'),
     lastContactAt: stringValue(form, 'lastContactAt'),
     nextFollowUpAt: stringValue(form, 'nextFollowUpAt'),
-    notes: stringValue(form, 'notes'),
+    notes: mergeNotes(notes, identityFieldNotes(form, notes)),
     tags: csvValue(form, 'tags'),
     marketingConsent: form.get('marketingConsent') === 'on',
     dataConsent: form.get('dataConsent') === 'on',
@@ -1494,6 +1572,10 @@ function stringValue(form: FormData, key: string) {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
+function nameValue(form: FormData, key: string) {
+  return toNameCase(stringValue(form, key));
+}
+
 function numberValue(form: FormData, key: string) {
   const value = stringValue(form, key);
 
@@ -1507,6 +1589,30 @@ function csvValue(form: FormData, key: string) {
       .map((value) => value.trim())
       .filter(Boolean) ?? []
   );
+}
+
+function identityFieldNotes(form: FormData, existingNotes?: string) {
+  const documentType = stringValue(form, 'documentType') as
+    | ClientLegalDocumentType
+    | undefined;
+  const nationality = stringValue(form, 'nationality');
+  const birthDate = stringValue(form, 'birthDate');
+  const hasNote = (label: string) => existingNotes?.includes(`${label}:`);
+  const lines = [
+    documentType && !hasNote('Tipo de documento')
+      ? `Tipo de documento: ${documentTypeLabel(documentType)}`
+      : null,
+    nationality && !hasNote('Nacionalidad') ? `Nacionalidad: ${nationality}` : null,
+    birthDate && !hasNote('Fecha de nacimiento')
+      ? `Fecha de nacimiento: ${birthDate}`
+      : null,
+  ].filter(Boolean);
+
+  return lines.length > 0 ? lines.join('\n') : undefined;
+}
+
+function mergeNotes(...values: Array<string | undefined>) {
+  return values.filter(Boolean).join('\n\n') || undefined;
 }
 
 function createModeToDocumentType(
@@ -1556,7 +1662,11 @@ function fileToDataUrl(file: File) {
   });
 }
 
-function setFormValue(form: HTMLFormElement, name: string, value: string | null) {
+function setFormValue(
+  form: HTMLFormElement,
+  name: string,
+  value: string | null | undefined,
+) {
   if (!value) {
     return;
   }
@@ -1572,6 +1682,24 @@ function setFormValue(form: HTMLFormElement, name: string, value: string | null)
     field.dispatchEvent(new Event('input', { bubbles: true }));
     field.dispatchEvent(new Event('change', { bubbles: true }));
   }
+}
+
+function normalizeNameField(event: ChangeEvent<HTMLInputElement>) {
+  event.currentTarget.value = toNameCase(event.currentTarget.value) ?? '';
+}
+
+function toNameCase(value?: string | null) {
+  const normalized = value?.trim();
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  return normalized
+    .toLocaleLowerCase('es-PA')
+    .replace(/(^|[\s'-])(\p{L})/gu, (_match, prefix: string, letter: string) =>
+      `${prefix}${letter.toLocaleUpperCase('es-PA')}`,
+    );
 }
 
 function passportNotes(data: PassportMrzData, form: HTMLFormElement) {
@@ -1605,6 +1733,10 @@ function nationalIdNotes(data: NationalIdOcrData, form: HTMLFormElement) {
 
 function identityDocumentLabel(type: ClientIdentityDocumentType) {
   return type === 'PASSPORT' ? 'Pasaporte' : 'Cedula';
+}
+
+function documentTypeLabel(type: ClientLegalDocumentType | null | undefined) {
+  return documentTypeOptions.find((option) => option.value === type)?.label ?? 'Documento';
 }
 
 function roleLabel(role: ClientRole) {
