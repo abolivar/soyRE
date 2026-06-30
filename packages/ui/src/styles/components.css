@@ -1138,3 +1138,109 @@
     width: 100%;
   }
 }
+
+/* ============================================================
+ * Badge — metadata pill / tag (per design.md §7.2)
+ * ============================================================ */
+
+.badge {
+  align-items: center;
+  border-radius: 4px;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+}
+
+.badge.tag {
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.tone-primary.badge {
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.tone-rent.badge {
+  background: var(--rent-soft);
+  color: var(--rent-strong);
+}
+
+.tone-featured.badge {
+  background: var(--featured-soft);
+  color: var(--featured-strong);
+}
+
+.tone-success.badge {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.tone-warning.badge {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.tone-danger.badge {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.tone-neutral.badge {
+  background: var(--surface-muted);
+  color: var(--muted);
+}
+
+/* ============================================================
+ * Card — generic surface (per design.md §7.4)
+ * ============================================================ */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+/* ============================================================
+ * Input field — label + control + hint/error wrapper
+ * (per design.md §7.3)
+ * ============================================================ */
+
+.input-field {
+  display: grid;
+  gap: 6px;
+}
+
+.input-field-label {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.input-field-hint {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.input-field-error {
+  color: var(--danger);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.input-field input[aria-invalid="true"],
+.input-field select[aria-invalid="true"],
+.input-field textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.input-field input[aria-invalid="true"]:focus,
+.input-field select[aria-invalid="true"]:focus,
+.input-field textarea[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.14);
+}

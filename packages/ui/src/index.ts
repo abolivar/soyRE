@@ -8,6 +8,26 @@
 
 export type { Tone } from './types';
 
+// Atoms
+export { Button } from './components/Button';
+export type { ButtonProps, ButtonVariant } from './components/Button';
+
+export { Badge } from './components/Badge';
+export type { BadgeProps, BadgeShape } from './components/Badge';
+
+export { Card } from './components/Card';
+export type { CardProps } from './components/Card';
+
+export { Input } from './components/Input';
+export type { InputProps } from './components/Input';
+
+export { Select } from './components/Select';
+export type { SelectProps } from './components/Select';
+
+export { Textarea } from './components/Textarea';
+export type { TextareaProps } from './components/Textarea';
+
+// Composites
 export { PageHeader } from './components/PageHeader';
 export { MetricCard } from './components/MetricCard';
 export { StatusBadge } from './components/StatusBadge';
