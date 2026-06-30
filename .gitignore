@@ -10,8 +10,13 @@ node_modules/
 dist/
 build/
 coverage/
+playwright-report/
+test-results/
 .turbo/
 packages/database/src/generated/
+
+apps/web/playwright-report/
+apps/web/test-results/
 
 *.log
 pnpm-debug.log*

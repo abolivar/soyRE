@@ -97,6 +97,17 @@ pnpm test
 pnpm build
 ```
 
+Para validacion visual con Playwright:
+
+```bash
+pnpm playwright:install
+pnpm test:e2e
+```
+
+Playwright levanta `apps/web` en `http://127.0.0.1:3000` si no hay servidor
+activo. En desarrollo reutiliza el servidor existente y guarda screenshots,
+traces y reportes en carpetas ignoradas por git.
+
 Para cambios de Prisma sin conexion runtime:
 
 ```bash
