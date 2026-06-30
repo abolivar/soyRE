@@ -1230,6 +1230,101 @@ button:hover,
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.intake-mode-toggle {
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 6px;
+}
+
+.mode-button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.86rem;
+  font-weight: 850;
+  gap: 8px;
+  justify-content: center;
+  min-height: 42px;
+}
+
+.mode-button.active {
+  background: var(--surface);
+  border-color: rgba(26, 158, 143, 0.34);
+  color: var(--primary-strong);
+  box-shadow: 0 8px 20px rgba(20, 20, 18, 0.06);
+}
+
+.passport-upload {
+  align-items: center;
+  background: var(--surface-muted);
+  border: 1px dashed rgba(26, 158, 143, 0.5);
+  border-radius: 8px;
+  color: var(--primary-strong);
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  min-height: 64px;
+  padding: 14px;
+}
+
+.passport-upload input {
+  display: none;
+}
+
+.passport-upload span {
+  display: grid;
+  gap: 3px;
+}
+
+.passport-upload small,
+.passport-status {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.mrz-textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  min-height: 92px;
+  text-transform: uppercase;
+}
+
+.passport-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.passport-result {
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 12px;
+}
+
+.passport-result span {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.83rem;
+  gap: 3px;
+}
+
+.passport-result strong {
+  color: var(--ink-strong);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
 .check-card {
   align-items: center;
   background: var(--surface-muted);
@@ -1341,6 +1436,7 @@ button:hover,
   }
 
   .option-grid,
+  .passport-result,
   .summary-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1384,6 +1480,7 @@ button:hover,
   .module-grid,
   .app-nav,
   .option-grid,
+  .passport-result,
   .summary-strip {
     grid-template-columns: 1fr;
   }

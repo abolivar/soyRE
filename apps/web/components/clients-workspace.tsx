@@ -1,7 +1,16 @@
 'use client';
 
-import { Plus, RefreshCcw, UserRoundPlus, Users } from 'lucide-react';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import {
+  FileText,
+  Keyboard,
+  Loader2,
+  Plus,
+  RefreshCcw,
+  Upload,
+  UserRoundPlus,
+  Users,
+} from 'lucide-react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   apiFetch,
   AuthMembership,
@@ -13,6 +22,11 @@ import {
   MembershipRole,
   OrganizationClient,
 } from '../lib/api';
+import {
+  extractPassportMrz,
+  parsePassportMrz,
+  PassportMrzData,
+} from '../lib/passport-mrz';
 import {
   DataTable,
   EmptyState,
@@ -30,6 +44,10 @@ type ClientFilters = {
   status: string;
   role: string;
 };
+
+type ClientCreateMode = 'manual' | 'passport';
+
+type PassportOcrStatus = 'idle' | 'reading' | 'ready' | 'error';
 
 const clientWriteRoles = new Set<MembershipRole>([
   'OWNER',
@@ -68,6 +86,8 @@ const statusTone: Record<ClientStatus, 'primary' | 'success' | 'warning' | 'neut
 };
 
 export function ClientsWorkspace() {
+  const formRef = useRef<HTMLFormElement>(null);
+  const passportReadIdRef = useRef(0);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [activeOrganizationId, setActiveOrganizationId] = useState<string | null>(
     null,
@@ -83,6 +103,13 @@ export function ClientsWorkspace() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [createMode, setCreateMode] = useState<ClientCreateMode>('manual');
+  const [passportData, setPassportData] = useState<PassportMrzData | null>(null);
+  const [passportError, setPassportError] = useState<string | null>(null);
+  const [passportFileName, setPassportFileName] = useState<string | null>(null);
+  const [passportMrz, setPassportMrz] = useState('');
+  const [passportStatus, setPassportStatus] =
+    useState<PassportOcrStatus>('idle');
 
   useEffect(() => {
     apiFetch<{ user: AuthUser }>('/auth/me')
@@ -204,6 +231,7 @@ export function ClientsWorkspace() {
       setClients((current) => [response.client, ...current]);
       setIsDrawerOpen(false);
       event.currentTarget.reset();
+      resetPassportIntake();
     } catch (caught) {
       setFormError(
         caught instanceof Error ? caught.message : 'No se pudo crear el cliente.',
@@ -211,6 +239,119 @@ export function ClientsWorkspace() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function openCreateClientDrawer() {
+    setFormError(null);
+    resetPassportIntake();
+    setIsDrawerOpen(true);
+  }
+
+  function closeCreateClientDrawer() {
+    setIsDrawerOpen(false);
+    setFormError(null);
+    resetPassportIntake();
+  }
+
+  function resetPassportIntake() {
+    passportReadIdRef.current += 1;
+    setCreateMode('manual');
+    setPassportData(null);
+    setPassportError(null);
+    setPassportFileName(null);
+    setPassportMrz('');
+    setPassportStatus('idle');
+  }
+
+  async function processPassportImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    const input = event.currentTarget;
+    const readId = passportReadIdRef.current + 1;
+
+    if (!file) {
+      return;
+    }
+
+    passportReadIdRef.current = readId;
+    setCreateMode('passport');
+    setPassportData(null);
+    setPassportError(null);
+    setPassportFileName(file.name);
+    setPassportStatus('reading');
+
+    try {
+      const { createWorker } = await import('tesseract.js');
+      const worker = await createWorker('eng');
+
+      try {
+        const {
+          data: { text },
+        } = await worker.recognize(file, { rotateAuto: true });
+        const detectedMrz = extractPassportMrz(text);
+
+        if (!detectedMrz) {
+          throw new Error(
+            'No se detecto la MRZ del pasaporte. Puedes pegarla o corregirla manualmente.',
+          );
+        }
+
+        if (passportReadIdRef.current !== readId) {
+          return;
+        }
+
+        setPassportMrz(detectedMrz);
+        applyPassportMrz(detectedMrz);
+      } finally {
+        await worker.terminate();
+      }
+    } catch (caught) {
+      if (passportReadIdRef.current !== readId) {
+        return;
+      }
+
+      setPassportStatus('error');
+      setPassportError(
+        caught instanceof Error
+          ? caught.message
+          : 'No se pudo leer el pasaporte.',
+      );
+    } finally {
+      input.value = '';
+    }
+  }
+
+  function applyPassportMrz(nextMrz = passportMrz) {
+    try {
+      const parsed = parsePassportMrz(nextMrz);
+      setPassportData(parsed);
+      setPassportError(null);
+      setPassportStatus('ready');
+      fillFormFromPassport(parsed);
+    } catch (caught) {
+      setPassportData(null);
+      setPassportStatus('error');
+      setPassportError(
+        caught instanceof Error
+          ? caught.message
+          : 'La MRZ no pudo interpretarse.',
+      );
+    }
+  }
+
+  function fillFormFromPassport(data: PassportMrzData) {
+    const form = formRef.current;
+
+    if (!form) {
+      return;
+    }
+
+    setFormValue(form, 'type', 'PERSON');
+    setFormValue(form, 'firstName', data.firstName);
+    setFormValue(form, 'lastName', data.lastName);
+    setFormValue(form, 'legalId', data.documentNumber);
+    setFormValue(form, 'country', data.nationality || data.issuingCountry);
+    setFormValue(form, 'source', 'Pasaporte');
+    setFormValue(form, 'notes', passportNotes(data, form));
   }
 
   return (
@@ -227,7 +368,7 @@ export function ClientsWorkspace() {
           <button
             className="button primary"
             disabled={!canCreateClients}
-            onClick={() => setIsDrawerOpen(true)}
+            onClick={openCreateClientDrawer}
             type="button"
           >
             <Plus size={17} strokeWidth={2.2} />
@@ -454,7 +595,7 @@ export function ClientsWorkspace() {
             <button
               className="button secondary"
               disabled={isSubmitting}
-              onClick={() => setIsDrawerOpen(false)}
+              onClick={closeCreateClientDrawer}
               type="button"
             >
               Cancelar
@@ -469,11 +610,117 @@ export function ClientsWorkspace() {
             </button>
           </>
         }
-        onClose={() => setIsDrawerOpen(false)}
+        onClose={closeCreateClientDrawer}
         open={isDrawerOpen && canCreateClients}
         title="Nuevo cliente"
       >
-        <form className="drawer-form" id="client-create-form" onSubmit={createClient}>
+        <form
+          className="drawer-form"
+          id="client-create-form"
+          onSubmit={createClient}
+          ref={formRef}
+        >
+          <section className="form-section">
+            <div>
+              <h3>Metodo de alta</h3>
+              <p>Selecciona entrada manual o precarga desde la MRZ del pasaporte.</p>
+            </div>
+            <div className="intake-mode-toggle" aria-label="Metodo de alta">
+              <button
+                className={createMode === 'manual' ? 'mode-button active' : 'mode-button'}
+                onClick={() => setCreateMode('manual')}
+                type="button"
+              >
+                <Keyboard size={18} strokeWidth={2.2} />
+                Manual
+              </button>
+              <button
+                className={
+                  createMode === 'passport' ? 'mode-button active' : 'mode-button'
+                }
+                onClick={() => setCreateMode('passport')}
+                type="button"
+              >
+                <FileText size={18} strokeWidth={2.2} />
+                Pasaporte
+              </button>
+            </div>
+          </section>
+
+          {createMode === 'passport' ? (
+            <section className="form-section">
+              <div>
+                <h3>Lectura de pasaporte</h3>
+                <p>La imagen se procesa localmente para detectar la MRZ y precargar datos.</p>
+              </div>
+              <label className="passport-upload">
+                <Upload size={18} strokeWidth={2.2} />
+                <span>
+                  <strong>Seleccionar imagen</strong>
+                  <small>{passportFileName ?? 'JPG o PNG del pasaporte'}</small>
+                </span>
+                <input
+                  accept="image/*"
+                  disabled={passportStatus === 'reading'}
+                  onChange={processPassportImage}
+                  type="file"
+                />
+              </label>
+
+              <label>
+                MRZ detectada
+                <textarea
+                  className="mrz-textarea"
+                  onChange={(event) => setPassportMrz(event.target.value)}
+                  placeholder="P<PANAPELLIDO<<NOMBRES..."
+                  value={passportMrz}
+                />
+              </label>
+
+              <div className="passport-actions">
+                <button
+                  className="button secondary"
+                  disabled={passportStatus === 'reading' || !passportMrz.trim()}
+                  onClick={() => applyPassportMrz()}
+                  type="button"
+                >
+                  {passportStatus === 'reading' ? (
+                    <Loader2 size={16} strokeWidth={2.2} />
+                  ) : (
+                    <FileText size={16} strokeWidth={2.2} />
+                  )}
+                  Aplicar datos
+                </button>
+                {passportStatus === 'reading' ? (
+                  <span className="passport-status">Leyendo pasaporte...</span>
+                ) : null}
+              </div>
+
+              {passportError ? <p className="form-error">{passportError}</p> : null}
+
+              {passportData ? (
+                <div className="passport-result" aria-live="polite">
+                  <span>
+                    <strong>Nombre</strong>
+                    {passportData.firstName} {passportData.lastName}
+                  </span>
+                  <span>
+                    <strong>Pasaporte</strong>
+                    {passportData.documentNumber}
+                  </span>
+                  <span>
+                    <strong>Nacionalidad</strong>
+                    {passportData.nationality}
+                  </span>
+                  <span>
+                    <strong>Expira</strong>
+                    {passportData.expirationDate ?? 'Sin fecha'}
+                  </span>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
           <section className="form-section">
             <div>
               <h3>Identidad</h3>
@@ -833,6 +1080,40 @@ function csvValue(form: FormData, key: string) {
       .map((value) => value.trim())
       .filter(Boolean) ?? []
   );
+}
+
+function setFormValue(form: HTMLFormElement, name: string, value: string | null) {
+  if (!value) {
+    return;
+  }
+
+  const field = form.elements.namedItem(name);
+
+  if (
+    field instanceof HTMLInputElement ||
+    field instanceof HTMLSelectElement ||
+    field instanceof HTMLTextAreaElement
+  ) {
+    field.value = value;
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+}
+
+function passportNotes(data: PassportMrzData, form: HTMLFormElement) {
+  const existingNotes = stringValue(new FormData(form), 'notes');
+  const detectedNotes = [
+    `Pasaporte detectado: ${data.documentNumber}`,
+    `Pais emisor: ${data.issuingCountry}`,
+    `Nacionalidad: ${data.nationality}`,
+    data.birthDate ? `Fecha de nacimiento: ${data.birthDate}` : null,
+    data.expirationDate ? `Fecha de expiracion: ${data.expirationDate}` : null,
+    data.sex ? `Sexo MRZ: ${data.sex}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return [existingNotes, detectedNotes].filter(Boolean).join('\n\n');
 }
 
 function roleLabel(role: ClientRole) {
