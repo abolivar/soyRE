@@ -2,8 +2,11 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'soyRE',
-  description: 'Operational SaaS for real estate brokers.',
+  title: 'SoyPMS',
+  description: 'Workspace operativo para equipos inmobiliarios.',
+  icons: {
+    icon: '/brands/soypms/seal-teal.svg',
+  },
 };
 
 export default function RootLayout({

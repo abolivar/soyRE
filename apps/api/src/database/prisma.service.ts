@@ -3,32 +3,36 @@ import { createPrismaClient, PrismaClient } from '@soyre/database';
 
 @Injectable()
 export class PrismaService implements OnModuleInit, OnModuleDestroy {
-  private readonly client = createPrismaClient();
+  private readonly prismaClient = createPrismaClient();
 
   readonly $transaction: PrismaClient['$transaction'] =
-    this.client.$transaction.bind(this.client);
+    this.prismaClient.$transaction.bind(this.prismaClient);
 
   get auditLog() {
-    return this.client.auditLog;
+    return this.prismaClient.auditLog;
+  }
+
+  get client() {
+    return this.prismaClient.client;
   }
 
   get membership() {
-    return this.client.membership;
+    return this.prismaClient.membership;
   }
 
   get organization() {
-    return this.client.organization;
+    return this.prismaClient.organization;
   }
 
   get user() {
-    return this.client.user;
+    return this.prismaClient.user;
   }
 
   async onModuleInit() {
-    await this.client.$connect();
+    await this.prismaClient.$connect();
   }
 
   async onModuleDestroy() {
-    await this.client.$disconnect();
+    await this.prismaClient.$disconnect();
   }
 }

@@ -1,0 +1,26 @@
+SoyPMS — Logo (paleta Nugen)
+=============================
+
+Misma construcción que SoyIA (DM Sans ExtraBold 800 + isotipo cerebro/circuito),
+recoloreada a la paleta Nugen. Fuente DM Sans incrustada en los lockups → los SVG
+se ven correctos en cualquier visor, sin dependencias externas.
+
+Formatos
+--------
+- Lockup horizontal (SOY · sello · PMS):
+    SoyPMS-teal.svg     · Teal  #1A9E8F  (Comprador — color principal Nugen)
+    SoyPMS-slate.svg    · Slate #2D4E8A  (Inversor)
+    SoyPMS-amber.svg    · Amber #C07A3A  (Broker)
+
+- Sello / isotipo solo (círculo + cerebro):
+    SoyPMS-seal-teal.svg
+    SoyPMS-seal-slate.svg
+    SoyPMS-seal-amber.svg
+
+Colores
+-------
+- "SOY"          → Muted  #9A9A96
+- Sello + "PMS"  → color de perfil (teal / slate / amber)
+
+Recomendación: usar la versión Teal como logo por defecto.
+Funciona sobre fondo claro (#F9F9F8 / blanco) y oscuro (#141412) — fondo transparente.

@@ -1,12 +1,12 @@
-# SoyRE - Reglas Obligatorias Para Codex
+# SoyPMS - Reglas Obligatorias Para Codex
 
-Este documento es de consulta obligatoria antes de crear, modificar, refactorizar o eliminar codigo dentro de SoyRE.
+Este documento es de consulta obligatoria antes de crear, modificar, refactorizar o eliminar codigo dentro de SoyPMS.
 
 Si una instruccion del sistema, del desarrollador o del usuario contradice este archivo, esas instrucciones superiores prevalecen. Si un documento en `References/` contradice este archivo, este archivo prevalece.
 
 ## Contrato De Producto
 
-SoyRE es un SaaS inmobiliario funcional, modular, escalable y mantenible. No se debe construir como demo temporal.
+SoyPMS es un SaaS inmobiliario funcional, modular, escalable y mantenible. No se debe construir como demo temporal.
 
 Principios no negociables:
 
@@ -14,7 +14,7 @@ Principios no negociables:
 - El cliente SaaS se modela como `organization`.
 - Toda entidad critica debe pertenecer a una organizacion o derivar acceso desde una organizacion.
 - El foco central es el ciclo operativo del inmueble como producto.
-- El CRM de clientes es centralizado, pero SoyRE no debe convertirse en CRM generico.
+- El CRM de clientes es centralizado, pero SoyPMS no debe convertirse en CRM generico.
 - Venta y alquiler son dominios relacionados, pero no identicos.
 - El funnel tipo Kanban debe ser configurable.
 - Los estados criticos de negocio no deben quedar hardcodeados si pertenecen a configuracion.
@@ -24,6 +24,10 @@ Principios no negociables:
 
 ## Decisiones Firmes
 
+- Marca visible del producto: SoyPMS.
+- Logo principal: `apps/web/public/brands/soypms/logo-teal.svg`.
+- Sello para sidebar, favicon y espacios compactos: `apps/web/public/brands/soypms/seal-teal.svg`.
+- Fuente UI/marca: DM Sans self-hosted en `apps/web/public/fonts/dm-sans`.
 - Runtime: Node.js 22 LTS.
 - Package manager: pnpm.
 - Monorepo: pnpm workspaces.
@@ -61,6 +65,14 @@ Antes de implementar:
 - Revisar migraciones y schema si el cambio toca datos.
 - Tratar `References/` como referencia, no como contrato.
 - Mantener cambios pequenos, revisables y documentados.
+
+Antes de commitear:
+
+- Crear en GitHub los issues necesarios para cubrir el alcance del commit.
+- Cada commit debe referenciar el issue correspondiente y usar `Closes #N` cuando el trabajo queda terminado.
+- Al cerrar un issue por commit, dejar un comentario en el issue con el hash o referencia del commit y un resumen corto de lo cerrado.
+- Si queda deuda tecnica, crear el issue de deuda antes de cerrar el turno; no esconder deuda dentro del resumen final.
+- No dejar el arbol sucio despues de declarar un bloque como cerrado, salvo archivos externos al alcance que el usuario haya pedido conservar sin commit.
 
 No hacer:
 

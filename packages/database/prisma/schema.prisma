@@ -37,6 +37,69 @@ enum MembershipStatus {
   SUSPENDED
 }
 
+enum ClientType {
+  PERSON
+  COMPANY
+}
+
+enum ClientRole {
+  BUYER
+  SELLER
+  LESSOR
+  LESSEE
+  INVESTOR
+  LEAD
+  REFERRER
+  RELATED_CONTACT
+}
+
+enum ClientStatus {
+  NEW
+  ACTIVE
+  NURTURING
+  INACTIVE
+  ARCHIVED
+}
+
+enum ClientTemperature {
+  COLD
+  WARM
+  HOT
+}
+
+enum ContactMethod {
+  EMAIL
+  PHONE
+  WHATSAPP
+  SMS
+  IN_PERSON
+}
+
+enum ClientInterestType {
+  BUY
+  RENT
+  SELL
+  LEASE
+  INVEST
+  MANAGE
+  REFER
+}
+
+enum ClientTimeline {
+  IMMEDIATE
+  ONE_TO_THREE_MONTHS
+  THREE_TO_SIX_MONTHS
+  SIX_PLUS_MONTHS
+  EXPLORING
+}
+
+enum FinancingStatus {
+  CASH
+  PRE_APPROVED
+  NEEDS_FINANCING
+  UNKNOWN
+}
+
 model Organization {
   id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name        String
@@ -46,6 +109,7 @@ model Organization {
   updatedAt   DateTime           @updatedAt @map("updated_at")
   memberships Membership[]
   auditLogs   AuditLog[]
+  clients     Client[]
 
   @@map("organizations")
 }
@@ -63,6 +127,7 @@ model User {
   updatedAt       DateTime     @updatedAt @map("updated_at")
   memberships     Membership[]
   auditLogs       AuditLog[]   @relation("ActorAuditLogs")
+  assignedClients Client[]     @relation("AssignedClients")
 
   @@map("users")
 }
@@ -101,4 +166,58 @@ model AuditLog {
   @@index([organizationId, createdAt])
   @@index([actorUserId, createdAt])
   @@map("audit_logs")
+}
+
+model Client {
+  id                     String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId         String              @map("organization_id") @db.Uuid
+  assignedUserId         String?             @map("assigned_user_id") @db.Uuid
+  type                   ClientType          @default(PERSON)
+  roles                  ClientRole[]        @default([])
+  status                 ClientStatus        @default(NEW)
+  temperature            ClientTemperature   @default(WARM)
+  firstName              String?             @map("first_name")
+  lastName               String?             @map("last_name")
+  companyName            String?             @map("company_name")
+  displayName            String              @map("display_name")
+  legalId                String?             @map("legal_id")
+  email                  String?
+  phone                  String?
+  alternatePhone         String?             @map("alternate_phone")
+  whatsapp               String?
+  preferredContactMethod ContactMethod?      @map("preferred_contact_method")
+  country                String?
+  city                   String?
+  zone                   String?
+  address                String?
+  source                 String?
+  interestType           ClientInterestType? @map("interest_type")
+  budgetMin              Int?                @map("budget_min")
+  budgetMax              Int?                @map("budget_max")
+  currency               String              @default("USD")
+  preferredZones         String[]            @default([]) @map("preferred_zones")
+  propertyTypes          String[]            @default([]) @map("property_types")
+  bedroomsMin            Int?                @map("bedrooms_min")
+  bathroomsMin           Int?                @map("bathrooms_min")
+  parkingMin             Int?                @map("parking_min")
+  areaMin                Int?                @map("area_min")
+  areaMax                Int?                @map("area_max")
+  timeline               ClientTimeline?
+  financingStatus        FinancingStatus?    @map("financing_status")
+  lastContactAt          DateTime?           @map("last_contact_at")
+  nextFollowUpAt         DateTime?           @map("next_follow_up_at")
+  notes                  String?
+  tags                   String[]            @default([])
+  marketingConsent       Boolean             @default(false) @map("marketing_consent")
+  dataConsent            Boolean             @default(false) @map("data_consent")
+  createdAt              DateTime            @default(now()) @map("created_at")
+  updatedAt              DateTime            @updatedAt @map("updated_at")
+  organization           Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignedUser           User?               @relation("AssignedClients", fields: [assignedUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, email])
+  @@index([organizationId, status])
+  @@index([organizationId, nextFollowUpAt])
+  @@index([assignedUserId])
+  @@map("clients")
 }

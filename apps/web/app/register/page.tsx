@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
+import { BrandLogo } from '../../components/brand-logo';
 import { apiFetch, AuthUser } from '../../lib/api';
 
 export default function RegisterPage() {
@@ -41,10 +42,14 @@ export default function RegisterPage() {
     <main className="auth-shell">
       <section className="auth-panel wide">
         <div>
-          <Link className="brand-link" href="/">
-            soyRE
+          <Link className="brand-link" href="/" aria-label="SoyPMS inicio">
+            <BrandLogo />
           </Link>
           <h1>Crear organizacion</h1>
+          <p className="lead">
+            Crea el owner inicial y deja la organizacion lista para validacion
+            de usuarios.
+          </p>
         </div>
 
         <form className="stack" onSubmit={handleSubmit}>
@@ -73,7 +78,7 @@ export default function RegisterPage() {
             <input name="email" required type="email" />
           </label>
           <label>
-            Password
+            Contrasena
             <input minLength={10} name="password" required type="password" />
           </label>
           {error ? <p className="form-error">{error}</p> : null}

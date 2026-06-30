@@ -1,6 +1,6 @@
-# SoyRE
+# SoyPMS
 
-SoyRE es un SaaS inmobiliario para brokers, inmobiliarias y equipos comerciales.
+SoyPMS es un SaaS inmobiliario para brokers, inmobiliarias y equipos comerciales.
 
 El producto no es un CRM generico. El centro operativo es el inmueble como producto: captacion, validacion documental, preparacion comercial, publicacion, visitas, ofertas, venta o alquiler, cierre, comisiones, archivo y auditoria.
 
@@ -43,6 +43,13 @@ La fase siguiente es app shell/navegacion autenticada: sidebar, topbar, rutas pr
 - Prisma 7 en `packages/database`.
 - PostgreSQL gestionado en Supabase.
 - TypeScript estricto.
+
+## Marca
+
+- Nombre visible del producto: SoyPMS.
+- Logo principal: `apps/web/public/brands/soypms/logo-teal.svg`.
+- Sello para sidebar, favicon y espacios compactos: `apps/web/public/brands/soypms/seal-teal.svg`.
+- Fuente UI/marca: DM Sans self-hosted en `apps/web/public/fonts/dm-sans`.
 
 ## Base De Datos
 

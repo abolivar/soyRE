@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
+import { BrandLogo } from '../../components/brand-logo';
 import { apiFetch, AuthUser } from '../../lib/api';
 
 export default function LoginPage() {
@@ -37,10 +38,13 @@ export default function LoginPage() {
     <main className="auth-shell">
       <section className="auth-panel">
         <div>
-          <Link className="brand-link" href="/">
-            soyRE
+          <Link className="brand-link" href="/" aria-label="SoyPMS inicio">
+            <BrandLogo />
           </Link>
           <h1>Ingresar</h1>
+          <p className="lead">
+            Acceso al workspace operativo de propiedades, clientes y usuarios.
+          </p>
         </div>
 
         <form className="stack" onSubmit={handleSubmit}>
@@ -49,7 +53,7 @@ export default function LoginPage() {
             <input name="email" required type="email" />
           </label>
           <label>
-            Password
+            Contrasena
             <input minLength={10} name="password" required type="password" />
           </label>
           {error ? <p className="form-error">{error}</p> : null}
