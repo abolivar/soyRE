@@ -3,7 +3,7 @@ import {
   PageHeader,
   SectionPanel,
   StatusBadge,
-} from '../../../components/ui';
+} from '@soyre/ui';
 
 export default function SettingsPage() {
   return (

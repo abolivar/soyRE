@@ -19,7 +19,7 @@ import {
   PageHeader,
   SectionPanel,
   StatusBadge,
-} from '../../../components/ui';
+} from '@soyre/ui';
 
 const metricCards = [
   { ...dashboardMetrics[0], icon: Building2 },

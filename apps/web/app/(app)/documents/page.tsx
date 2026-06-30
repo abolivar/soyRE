@@ -6,7 +6,7 @@ import {
   PageHeader,
   SearchInput,
   StatusBadge,
-} from '../../../components/ui';
+} from '@soyre/ui';
 
 const documentRows = [
   {

@@ -41,7 +41,7 @@ import {
   SectionPanel,
   StatusBadge,
   type Tone,
-} from './ui';
+} from '@soyre/ui';
 
 type PropertyFilters = {
   search: string;

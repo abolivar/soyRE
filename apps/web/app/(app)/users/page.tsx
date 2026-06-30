@@ -8,7 +8,7 @@ import {
   SearchInput,
   SectionPanel,
   StatusBadge,
-} from '../../../components/ui';
+} from '@soyre/ui';
 
 export default function UsersPage() {
   return (

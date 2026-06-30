@@ -1,6 +1,6 @@
 import { ArrowUpRight, ListChecks, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { PageHeader, StatusBadge } from '../../../components/ui';
+import { PageHeader, StatusBadge } from '@soyre/ui';
 
 const columns = [
   {

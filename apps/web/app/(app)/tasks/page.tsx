@@ -6,7 +6,7 @@ import {
   SearchInput,
   SectionPanel,
   StatusBadge,
-} from '../../../components/ui';
+} from '@soyre/ui';
 
 const taskRows = [
   {

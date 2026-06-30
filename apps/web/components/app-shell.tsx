@@ -17,7 +17,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { BrandLogo } from './brand-logo';
-import { SearchInput } from './ui';
+import { SearchInput } from '@soyre/ui';
 
 type NavigationItem = {
   href: string;
