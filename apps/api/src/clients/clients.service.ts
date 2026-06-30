@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   Client,
@@ -61,12 +62,68 @@ const CLIENT_SERIALIZE_INCLUDE = {
   },
 } satisfies Prisma.ClientInclude;
 
+const CLIENT_DETAIL_INCLUDE = {
+  assignedUser: {
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+    },
+  },
+  identityDocuments: {
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      type: true,
+      documentNumber: true,
+      issuingCountry: true,
+      firstName: true,
+      lastName: true,
+      birthDate: true,
+      expirationDate: true,
+      fileName: true,
+      mimeType: true,
+      fileSize: true,
+      ocrText: true,
+      extractedData: true,
+      createdAt: true,
+      createdByUser: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.ClientInclude;
+
 type SerializableIdentityDocument = {
   id: string;
   type: ClientIdentityDocumentType;
   documentNumber: string | null;
   fileName: string;
   createdAt: Date;
+};
+
+type SerializableClientIdentityDocumentDetail = SerializableIdentityDocument & {
+  issuingCountry: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  birthDate: Date | null;
+  expirationDate: Date | null;
+  mimeType: string;
+  fileSize: number;
+  ocrText: string | null;
+  extractedData: Prisma.JsonValue | null;
+  createdByUser: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string | null;
+  } | null;
 };
 
 type SerializableClient = Client & {
@@ -77,6 +134,10 @@ type SerializableClient = Client & {
     lastName: string | null;
   } | null;
   identityDocuments: SerializableIdentityDocument[];
+};
+
+type SerializableClientDetail = Omit<SerializableClient, 'identityDocuments'> & {
+  identityDocuments: SerializableClientIdentityDocumentDetail[];
 };
 
 type PreparedIdentityDocument = {
@@ -123,16 +184,7 @@ export class ClientsService {
 
     const clients = await this.prisma.client.findMany({
       where,
-      include: {
-        assignedUser: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
+      include: CLIENT_SERIALIZE_INCLUDE,
       orderBy: [
         { nextFollowUpAt: { sort: 'asc', nulls: 'last' } },
         { createdAt: 'desc' },
@@ -149,6 +201,91 @@ export class ClientsService {
       clients: clients.map((client: SerializableClient) =>
         this.serializeClient(client),
       ),
+    };
+  }
+
+  async get(
+    auth: AuthenticatedUser,
+    clientId: string,
+    organizationId?: string,
+  ) {
+    const where = this.resolveClientAccessWhere(auth, clientId, organizationId);
+    const client = await this.prisma.client.findFirst({
+      where,
+      include: CLIENT_DETAIL_INCLUDE,
+    });
+
+    if (!client) {
+      throw new NotFoundException('Client was not found in this organization.');
+    }
+
+    return { client: this.serializeClientDetail(client) };
+  }
+
+  async downloadIdentityDocument(
+    auth: AuthenticatedUser,
+    clientId: string,
+    documentId: string,
+    organizationId?: string,
+  ) {
+    const where = this.resolveClientAccessWhere(auth, clientId, organizationId);
+    const document = await this.prisma.clientIdentityDocument.findFirst({
+      where: {
+        id: documentId,
+        clientId,
+        client: where,
+      },
+      select: {
+        id: true,
+        organizationId: true,
+        clientId: true,
+        type: true,
+        documentNumber: true,
+        fileName: true,
+        mimeType: true,
+        fileSize: true,
+        content: true,
+        client: {
+          select: {
+            displayName: true,
+          },
+        },
+      },
+    });
+
+    if (!document) {
+      throw new NotFoundException(
+        'Identity document was not found in this organization.',
+      );
+    }
+
+    await this.prisma.auditLog.create({
+      data: {
+        organizationId: document.organizationId,
+        actorUserId: auth.id,
+        action: 'clients.identity_document.download',
+        targetType: 'client',
+        targetId: document.clientId,
+        metadata: {
+          clientDisplayName: document.client.displayName,
+          documentId: document.id,
+          documentNumber: document.documentNumber,
+          fileName: document.fileName,
+          fileSize: document.fileSize,
+          type: document.type,
+          kyc: false,
+        },
+      },
+    });
+
+    return {
+      document: {
+        id: document.id,
+        fileName: document.fileName,
+        fileSize: document.fileSize,
+        mimeType: document.mimeType,
+      },
+      content: Buffer.from(document.content),
     };
   }
 
@@ -361,6 +498,38 @@ export class ClientsService {
     return membership;
   }
 
+  private resolveClientAccessWhere(
+    auth: AuthenticatedUser,
+    clientId: string,
+    organizationId?: string,
+  ): Prisma.ClientWhereInput {
+    if (organizationId) {
+      const membership = this.resolveMembership(auth, organizationId);
+
+      return {
+        id: clientId,
+        organizationId: membership.organizationId,
+      };
+    }
+
+    const organizationIds = auth.memberships
+      .filter(
+        (membership) =>
+          membership.status === MembershipStatus.ACTIVE &&
+          membership.organizationStatus === OrganizationStatus.ACTIVE,
+      )
+      .map((membership) => membership.organizationId);
+
+    if (organizationIds.length === 0) {
+      throw new ForbiddenException('No active membership for this organization.');
+    }
+
+    return {
+      id: clientId,
+      organizationId: { in: organizationIds },
+    };
+  }
+
   private resolveDisplayName(dto: CreateClientDto, type: ClientType) {
     const companyName = cleanText(dto.companyName);
     const firstName = cleanText(dto.firstName);
@@ -451,6 +620,40 @@ export class ClientsService {
       identityDocumentValidated: Boolean(identityDocument),
       createdAt: client.createdAt.toISOString(),
       updatedAt: client.updatedAt.toISOString(),
+    };
+  }
+
+  private serializeClientDetail(client: SerializableClientDetail) {
+    return {
+      ...this.serializeClient({
+        ...client,
+        identityDocuments: client.identityDocuments.slice(0, 1),
+      }),
+      identityDocuments: client.identityDocuments.map((document) => ({
+        id: document.id,
+        type: document.type,
+        documentNumber: document.documentNumber,
+        issuingCountry: document.issuingCountry,
+        firstName: document.firstName,
+        lastName: document.lastName,
+        birthDate: document.birthDate?.toISOString().slice(0, 10) ?? null,
+        expirationDate:
+          document.expirationDate?.toISOString().slice(0, 10) ?? null,
+        fileName: document.fileName,
+        mimeType: document.mimeType,
+        fileSize: document.fileSize,
+        ocrText: document.ocrText,
+        extractedData: document.extractedData,
+        validatedAt: document.createdAt.toISOString(),
+        createdByUser: document.createdByUser
+          ? {
+              id: document.createdByUser.id,
+              email: document.createdByUser.email,
+              firstName: document.createdByUser.firstName,
+              lastName: document.createdByUser.lastName,
+            }
+          : null,
+      })),
     };
   }
 

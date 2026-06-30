@@ -16,6 +16,10 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this.prismaClient.client;
   }
 
+  get clientIdentityDocument() {
+    return this.prismaClient.clientIdentityDocument;
+  }
+
   get membership() {
     return this.prismaClient.membership;
   }
