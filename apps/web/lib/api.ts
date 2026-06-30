@@ -201,6 +201,125 @@ export type ClientDetailResponse = {
   client: OrganizationClientDetail;
 };
 
+export type PropertyStatus =
+  | 'DRAFT'
+  | 'ACTIVE'
+  | 'PUBLISHED'
+  | 'RESERVED'
+  | 'UNDER_CONTRACT'
+  | 'CLOSED'
+  | 'WITHDRAWN'
+  | 'ARCHIVED';
+
+export type PropertyOperation = 'SALE' | 'RENT';
+
+export type OrganizationProperty = {
+  id: string;
+  organizationId: string;
+  assignedUserId: string | null;
+  assignedUser: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string | null;
+  } | null;
+  ownerClientId: string | null;
+  ownerClient: {
+    id: string;
+    displayName: string;
+    email: string | null;
+    phone: string | null;
+    roles: ClientRole[];
+  } | null;
+  title: string;
+  internalCode: string | null;
+  type: string;
+  operations: PropertyOperation[];
+  status: PropertyStatus;
+  country: string;
+  city: string;
+  zone: string;
+  address: string | null;
+  buildingName: string | null;
+  unitNumber: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  parkingSpaces: number | null;
+  builtArea: number | null;
+  lotArea: number | null;
+  floor: number | null;
+  yearBuilt: number | null;
+  salePrice: number | null;
+  rentPrice: number | null;
+  currency: string;
+  maintenanceFee: number | null;
+  rentalDeposit: number | null;
+  availableFrom: string | null;
+  source: string | null;
+  publicDescription: string | null;
+  privateNotes: string | null;
+  listingConditions: string | null;
+  amenities: string[];
+  tags: string[];
+  withdrawnAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PropertiesResponse = {
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  properties: OrganizationProperty[];
+};
+
+export type PropertyDetailResponse = {
+  property: OrganizationProperty;
+};
+
+export type CreatePropertyPayload = {
+  organizationId?: string;
+  assignedUserId?: string;
+  ownerClientId?: string;
+  title: string;
+  internalCode?: string;
+  type: string;
+  operations: PropertyOperation[];
+  status?: PropertyStatus;
+  country: string;
+  city: string;
+  zone: string;
+  address?: string;
+  buildingName?: string;
+  unitNumber?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  parkingSpaces?: number;
+  builtArea?: number;
+  lotArea?: number;
+  floor?: number;
+  yearBuilt?: number;
+  salePrice?: number;
+  rentPrice?: number;
+  currency?: string;
+  maintenanceFee?: number;
+  rentalDeposit?: number;
+  availableFrom?: string;
+  source?: string;
+  publicDescription?: string;
+  privateNotes?: string;
+  listingConditions?: string;
+  amenities?: string[];
+  tags?: string[];
+};
+
+export type WithdrawPropertyPayload = {
+  organizationId?: string;
+  reason?: string;
+};
+
 export type CreateClientPayload = {
   organizationId?: string;
   assignedUserId?: string;
