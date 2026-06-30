@@ -53,3 +53,5 @@ export { ActivityTimeline } from './components/ActivityTimeline';
 export type { ActivityTimelineItem } from './components/ActivityTimeline';
 export { ConfirmDialog } from './components/ConfirmDialog';
 export { FormDrawer } from './components/FormDrawer';
+export { Tabs } from './components/Tabs';
+export type { TabItem, TabsProps } from './components/Tabs';

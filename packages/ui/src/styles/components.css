@@ -1423,3 +1423,85 @@
   margin-top: 4px;
   width: max-content;
 }
+
+/* ============================================================
+ * Tabs — primitive (per design.md §7.8)
+ * ============================================================ */
+
+.tabs {
+  display: grid;
+  gap: 16px;
+}
+
+.tab-list {
+  border-bottom: 2px solid var(--line);
+  display: flex;
+  gap: 0;
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+  margin-bottom: -2px;
+  padding: 10px 16px;
+  position: relative;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.tab.active {
+  color: var(--ink-strong);
+  font-weight: 700;
+}
+
+.tab.active::after {
+  bottom: 0;
+  content: "";
+  height: 3px;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+.tab.tone-primary.active::after {
+  background: var(--primary);
+}
+
+.tab.tone-rent.active::after {
+  background: var(--rent);
+}
+
+.tab.tone-featured.active::after {
+  background: var(--featured);
+}
+
+.tab.tone-success.active::after {
+  background: var(--success);
+}
+
+.tab.tone-warning.active::after {
+  background: var(--warning);
+}
+
+.tab.tone-danger.active::after {
+  background: var(--danger);
+}
+
+.tab.tone-neutral.active::after {
+  background: var(--ink);
+}
+
+.tab-panel[hidden] {
+  display: none;
+}
