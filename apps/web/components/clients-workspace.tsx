@@ -4,10 +4,13 @@ import { Plus, RefreshCcw, UserRoundPlus, Users } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   apiFetch,
+  AuthMembership,
+  AuthUser,
   ClientRole,
   ClientStatus,
   ClientsResponse,
   CreateClientPayload,
+  MembershipRole,
   OrganizationClient,
 } from '../lib/api';
 import {
@@ -27,6 +30,14 @@ type ClientFilters = {
   status: string;
   role: string;
 };
+
+const clientWriteRoles = new Set<MembershipRole>([
+  'OWNER',
+  'ADMIN',
+  'BROKER',
+  'AGENT',
+  'OPERATIONS',
+]);
 
 const roleOptions: Array<{ value: ClientRole; label: string }> = [
   { value: 'BUYER', label: 'Comprador' },
@@ -57,6 +68,10 @@ const statusTone: Record<ClientStatus, 'primary' | 'success' | 'warning' | 'neut
 };
 
 export function ClientsWorkspace() {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [activeOrganizationId, setActiveOrganizationId] = useState<string | null>(
+    null,
+  );
   const [clients, setClients] = useState<OrganizationClient[]>([]);
   const [filters, setFilters] = useState<ClientFilters>({
     search: '',
@@ -70,11 +85,48 @@ export function ClientsWorkspace() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   useEffect(() => {
-    refreshClients(filters).catch((caught) => {
+    apiFetch<{ user: AuthUser }>('/auth/me')
+      .then((response) => {
+        const memberships = activeMemberships(response.user);
+        const firstMembership = memberships[0];
+        setUser(response.user);
+
+        if (!firstMembership) {
+          setError('No tienes una organizacion activa para consultar clientes.');
+          setIsLoading(false);
+          return;
+        }
+
+        setActiveOrganizationId(firstMembership.organizationId);
+      })
+      .catch((caught) => {
+        setError(caught instanceof Error ? caught.message : 'Sesion no disponible.');
+        setIsLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!activeOrganizationId) {
+      return;
+    }
+
+    refreshClients(filters, activeOrganizationId).catch((caught) => {
       setError(caught instanceof Error ? caught.message : 'Clientes no disponibles.');
       setIsLoading(false);
     });
-  }, [filters]);
+  }, [activeOrganizationId, filters]);
+
+  const organizations = useMemo(() => activeMemberships(user), [user]);
+  const activeMembership = useMemo(
+    () =>
+      organizations.find(
+        (membership) => membership.organizationId === activeOrganizationId,
+      ) ?? null,
+    [activeOrganizationId, organizations],
+  );
+  const canCreateClients = activeMembership
+    ? clientWriteRoles.has(activeMembership.role)
+    : false;
 
   const metrics = useMemo(() => {
     const active = clients.filter((client) => client.status === 'ACTIVE').length;
@@ -84,10 +136,20 @@ export function ClientsWorkspace() {
     return { active, hot, followUps };
   }, [clients]);
 
-  async function refreshClients(nextFilters = filters) {
+  async function refreshClients(
+    nextFilters = filters,
+    organizationId = activeOrganizationId,
+  ) {
+    if (!organizationId) {
+      setClients([]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     const query = new URLSearchParams();
+    query.set('organizationId', organizationId);
 
     if (nextFilters.search) {
       query.set('search', nextFilters.search);
@@ -121,11 +183,20 @@ export function ClientsWorkspace() {
   async function createClient(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
+
+    if (!activeOrganizationId || !canCreateClients) {
+      setFormError('No tienes permiso para crear clientes en esta organizacion.');
+      return;
+    }
+
     setIsSubmitting(true);
     const form = new FormData(event.currentTarget);
 
     try {
-      const payload = buildClientPayload(form);
+      const payload = {
+        ...buildClientPayload(form),
+        organizationId: activeOrganizationId,
+      };
       const response = await apiFetch<{ client: OrganizationClient }>('/clients', {
         method: 'POST',
         body: JSON.stringify(payload),
@@ -147,10 +218,15 @@ export function ClientsWorkspace() {
       <PageHeader
         eyebrow="Relaciones"
         title="Clientes"
-        description="Personas, empresas y propietarios conectados a una necesidad inmobiliaria concreta."
+        description={
+          activeMembership
+            ? `Personas, empresas y propietarios de ${activeMembership.organizationName}.`
+            : 'Personas, empresas y propietarios conectados a una necesidad inmobiliaria concreta.'
+        }
         actions={
           <button
             className="button primary"
+            disabled={!canCreateClients}
             onClick={() => setIsDrawerOpen(true)}
             type="button"
           >
@@ -181,6 +257,22 @@ export function ClientsWorkspace() {
 
       <form onSubmit={applyFilters}>
         <FilterBar>
+          {organizations.length > 1 ? (
+            <select
+              aria-label="Organizacion"
+              onChange={(event) => setActiveOrganizationId(event.target.value)}
+              value={activeOrganizationId ?? ''}
+            >
+              {organizations.map((membership) => (
+                <option
+                  key={membership.organizationId}
+                  value={membership.organizationId}
+                >
+                  {membership.organizationName}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <label className="search-input">
             <Users size={17} strokeWidth={2.2} />
             <input
@@ -245,16 +337,22 @@ export function ClientsWorkspace() {
             empty={
               <EmptyState
                 action={
-                  <button
-                    className="button primary"
-                    onClick={() => setIsDrawerOpen(true)}
-                    type="button"
-                  >
-                    <UserRoundPlus size={17} strokeWidth={2.2} />
-                    Crear primer cliente
-                  </button>
+                  canCreateClients ? (
+                    <button
+                      className="button primary"
+                      onClick={() => setIsDrawerOpen(true)}
+                      type="button"
+                    >
+                      <UserRoundPlus size={17} strokeWidth={2.2} />
+                      Crear primer cliente
+                    </button>
+                  ) : undefined
                 }
-                description="Crea clientes con roles comerciales, presupuesto, preferencias y proxima accion para alimentar el ciclo inmobiliario."
+                description={
+                  canCreateClients
+                    ? 'Crea clientes con roles comerciales, presupuesto, preferencias y proxima accion para alimentar el ciclo inmobiliario.'
+                    : 'Tu rol actual permite consultar clientes, pero no crear registros en esta organizacion.'
+                }
                 icon={Users}
                 title="Sin clientes registrados"
               />
@@ -315,6 +413,17 @@ export function ClientsWorkspace() {
           <div className="compact-list">
             <div className="split-row">
               <span>
+                <strong className="entity-title">Organizacion activa</strong>
+                <span className="meta-row">
+                  {activeMembership?.organizationName ?? 'Sin organizacion activa'}
+                </span>
+              </span>
+              <StatusBadge tone={canCreateClients ? 'success' : 'neutral'}>
+                {canCreateClients ? 'Escritura' : 'Lectura'}
+              </StatusBadge>
+            </div>
+            <div className="split-row">
+              <span>
                 <strong className="entity-title">Roles multiples</strong>
                 <span className="meta-row">Comprador, vendedor, arrendador o lead.</span>
               </span>
@@ -361,7 +470,7 @@ export function ClientsWorkspace() {
           </>
         }
         onClose={() => setIsDrawerOpen(false)}
-        open={isDrawerOpen}
+        open={isDrawerOpen && canCreateClients}
         title="Nuevo cliente"
       >
         <form className="drawer-form" id="client-create-form" onSubmit={createClient}>
@@ -638,6 +747,16 @@ export function ClientsWorkspace() {
         </form>
       </FormDrawer>
     </>
+  );
+}
+
+function activeMemberships(user: AuthUser | null): AuthMembership[] {
+  return (
+    user?.memberships.filter(
+      (membership) =>
+        membership.status === 'ACTIVE' &&
+        membership.organizationStatus === 'ACTIVE',
+    ) ?? []
   );
 }
 

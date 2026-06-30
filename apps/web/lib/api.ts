@@ -7,9 +7,9 @@ export type AuthMembership = {
   organizationId: string;
   organizationName: string;
   organizationSlug: string;
-  organizationStatus: string;
-  role: string;
-  status: string;
+  organizationStatus: OrganizationStatus;
+  role: MembershipRole;
+  status: MembershipStatus;
 };
 
 export type AuthUser = {
@@ -20,6 +20,20 @@ export type AuthUser = {
   status: string;
   memberships: AuthMembership[];
 };
+
+export type OrganizationStatus = 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
+
+export type MembershipRole =
+  | 'OWNER'
+  | 'ADMIN'
+  | 'BROKER'
+  | 'AGENT'
+  | 'OPERATIONS'
+  | 'FINANCE'
+  | 'EXTERNAL_AGENT'
+  | 'READONLY';
+
+export type MembershipStatus = 'INVITED' | 'ACTIVE' | 'SUSPENDED';
 
 export type OrganizationUser = {
   membershipId: string;
