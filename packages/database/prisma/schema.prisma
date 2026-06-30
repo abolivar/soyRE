@@ -105,6 +105,22 @@ enum ClientIdentityDocumentType {
   NATIONAL_ID
 }
 
+enum PropertyStatus {
+  DRAFT
+  ACTIVE
+  PUBLISHED
+  RESERVED
+  UNDER_CONTRACT
+  CLOSED
+  WITHDRAWN
+  ARCHIVED
+}
+
+enum PropertyOperation {
+  SALE
+  RENT
+}
+
 model Organization {
   id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                    String
@@ -116,6 +132,7 @@ model Organization {
   auditLogs               AuditLog[]
   clients                 Client[]
   clientIdentityDocuments ClientIdentityDocument[]
+  properties              Property[]
 
   @@map("organizations")
 }
@@ -134,6 +151,7 @@ model User {
   memberships                    Membership[]
   auditLogs                      AuditLog[]               @relation("ActorAuditLogs")
   assignedClients                Client[]                 @relation("AssignedClients")
+  assignedProperties             Property[]               @relation("AssignedProperties")
   createdClientIdentityDocuments ClientIdentityDocument[] @relation("CreatedClientIdentityDocuments")
 
   @@map("users")
@@ -222,6 +240,7 @@ model Client {
   organization           Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   assignedUser           User?                    @relation("AssignedClients", fields: [assignedUserId], references: [id], onDelete: SetNull)
   identityDocuments      ClientIdentityDocument[]
+  ownedProperties         Property[]               @relation("PropertyOwnerClient")
 
   @@unique([organizationId, email])
   @@index([organizationId, status])
@@ -258,4 +277,54 @@ model ClientIdentityDocument {
   @@index([organizationId, type, documentNumber])
   @@index([createdByUserId])
   @@map("client_identity_documents")
+}
+
+model Property {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId    String              @map("organization_id") @db.Uuid
+  assignedUserId    String?             @map("assigned_user_id") @db.Uuid
+  ownerClientId     String?             @map("owner_client_id") @db.Uuid
+  title             String
+  internalCode      String?             @map("internal_code")
+  type              String
+  operations        PropertyOperation[] @default([])
+  status            PropertyStatus      @default(DRAFT)
+  country           String
+  city              String
+  zone              String
+  address           String?
+  buildingName      String?             @map("building_name")
+  unitNumber        String?             @map("unit_number")
+  bedrooms          Int?
+  bathrooms         Int?
+  parkingSpaces     Int?                @map("parking_spaces")
+  builtArea         Int?                @map("built_area")
+  lotArea           Int?                @map("lot_area")
+  floor             Int?
+  yearBuilt         Int?                @map("year_built")
+  salePrice         Int?                @map("sale_price")
+  rentPrice         Int?                @map("rent_price")
+  currency          String              @default("USD")
+  maintenanceFee    Int?                @map("maintenance_fee")
+  rentalDeposit     Int?                @map("rental_deposit")
+  availableFrom     DateTime?           @map("available_from") @db.Date
+  source            String?
+  publicDescription String?             @map("public_description")
+  privateNotes      String?             @map("private_notes")
+  listingConditions String?             @map("listing_conditions")
+  amenities         String[]            @default([])
+  tags              String[]            @default([])
+  withdrawnAt       DateTime?           @map("withdrawn_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignedUser      User?               @relation("AssignedProperties", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  ownerClient       Client?             @relation("PropertyOwnerClient", fields: [ownerClientId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, internalCode])
+  @@index([organizationId, status])
+  @@index([organizationId, zone])
+  @@index([assignedUserId])
+  @@index([ownerClientId])
+  @@map("properties")
 }
