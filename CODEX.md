@@ -39,7 +39,7 @@ Principios no negociables:
 - DB: PostgreSQL gestionado en Supabase.
 - No hay Postgres local, Docker Compose ni VM para base de datos.
 - Los cambios de schema/data remotos se aplican por MCP de Supabase.
-- `DATABASE_URL` y `DIRECT_URL` son variables de runtime/deploy, no de desarrollo local en esta maquina.
+- `DATABASE_URL` y `DIRECT_URL` apuntan al pooler remoto de Supabase cuando el API o Prisma deban operar; no deben commitearse.
 
 ## Estado Actual
 

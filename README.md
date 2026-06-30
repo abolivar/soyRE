@@ -53,9 +53,15 @@ La fase siguiente es app shell/navegacion autenticada: sidebar, topbar, rutas pr
 
 ## Base De Datos
 
-No hay conexion local a Postgres.
+No hay Postgres local.
 
-La base de datos se administra remotamente mediante MCP de Supabase. Esta maquina no debe depender de `DATABASE_URL` local para desarrollo. Las variables `DATABASE_URL` y `DIRECT_URL` se configuran solo en entornos runtime/deploy cuando el API deba conectarse a Postgres.
+La base de datos se administra remotamente mediante MCP de Supabase. Cuando el API o Prisma deban conectarse desde esta maquina, deben hacerlo contra el pooler remoto de Supabase en archivos `.env` o `.env.local` ignorados por git.
+
+Variables esperadas:
+
+- `DATABASE_URL`: shared pooler transaction mode en `aws-1-us-west-2.pooler.supabase.com:6543` para runtime.
+- `DIRECT_URL`: shared pooler session mode en `aws-1-us-west-2.pooler.supabase.com:5432` para migraciones.
+- Usuario de pooler: `prisma.dgyfhuzwmlclyhsdplrs`.
 
 Para cambios de schema:
 
@@ -74,13 +80,13 @@ pnpm install
 cp .env.example .env
 ```
 
-El `.env` local debe mantener `DATABASE_URL` y `DIRECT_URL` vacios salvo decision explicita de arquitectura. Para desarrollo visual puedes correr el frontend:
+El `.env` o `.env.local` local puede contener `DATABASE_URL` y `DIRECT_URL` solo contra Supabase remoto. No se debe introducir Docker, VM ni Postgres local. Para desarrollo visual puedes correr el frontend:
 
 ```bash
 pnpm --filter @soyre/web dev
 ```
 
-El API local requiere una conexion runtime a Postgres; por decision actual no se usa conexion local.
+El API local requiere una conexion runtime a Postgres remoto para operar endpoints con Prisma.
 
 ## Validacion
 
