@@ -1244,3 +1244,182 @@
 .input-field textarea[aria-invalid="true"]:focus {
   box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.14);
 }
+
+/* ============================================================
+ * PropertyCard — domain primitive (per design.md §7.5)
+ * ============================================================ */
+
+.property-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  display: grid;
+  grid-template-rows: 4px auto 1fr;
+  overflow: hidden;
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.property-card:hover {
+  border-color: transparent;
+  box-shadow: 0 16px 48px rgba(20, 20, 18, 0.12);
+  transform: translateY(-4px);
+}
+
+.property-card-accent {
+  height: 4px;
+}
+
+.tone-primary .property-card-accent {
+  background: var(--primary);
+}
+
+.tone-rent .property-card-accent {
+  background: var(--rent);
+}
+
+.tone-featured .property-card-accent {
+  background: var(--featured);
+}
+
+.property-card-thumbnail {
+  aspect-ratio: 16 / 10;
+  background: var(--surface-muted);
+  overflow: hidden;
+  position: relative;
+}
+
+.property-card-image {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.property-card-placeholder {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  height: 100%;
+  justify-content: center;
+}
+
+.tone-primary .property-card-placeholder {
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.tone-rent .property-card-placeholder {
+  background: var(--rent-soft);
+  color: var(--rent-strong);
+}
+
+.tone-featured .property-card-placeholder {
+  background: var(--featured-soft);
+  color: var(--featured-strong);
+}
+
+.property-card-operation {
+  left: 12px;
+  position: absolute;
+  top: 12px;
+}
+
+.property-card-body {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.property-card-insight {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 12px;
+  gap: 6px;
+  margin: 0;
+}
+
+.property-card-insight-dot {
+  background: currentColor;
+  border-radius: 999px;
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 6px;
+  width: 6px;
+}
+
+.tone-primary .property-card-insight-dot {
+  color: var(--primary);
+}
+
+.tone-rent .property-card-insight-dot {
+  color: var(--rent);
+}
+
+.tone-featured .property-card-insight-dot {
+  color: var(--featured);
+}
+
+.property-card-title {
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.property-card-location {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.property-card-price {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+}
+
+.property-card-price strong {
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.property-card-price-range {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.property-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.property-card-chip {
+  align-items: center;
+  background: var(--surface-muted);
+  border-radius: 999px;
+  color: var(--ink);
+  display: inline-flex;
+  font-size: 12px;
+  gap: 4px;
+  padding: 4px 10px;
+}
+
+.property-card-match {
+  margin-top: 4px;
+  width: max-content;
+}

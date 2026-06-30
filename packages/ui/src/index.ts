@@ -27,6 +27,16 @@ export type { SelectProps } from './components/Select';
 export { Textarea } from './components/Textarea';
 export type { TextareaProps } from './components/Textarea';
 
+// Domain
+export { PropertyCard } from './components/PropertyCard';
+export type {
+  PropertyCardProps,
+  PropertyChip,
+  PropertyMatchBadge,
+  PropertyOperation,
+  PropertyPrice,
+} from './components/PropertyCard';
+
 // Composites
 export { PageHeader } from './components/PageHeader';
 export { MetricCard } from './components/MetricCard';
