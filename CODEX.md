@@ -103,7 +103,14 @@ No hacer:
 - Acciones destructivas deben confirmar intencion.
 - Formularios deben validar y mostrar feedback.
 - Tablas/listas con volumen deben tener busqueda o filtros.
-- Componentes reutilizables esperados: `MetricCard`, `StatusBadge`, `DataTable`, `FilterBar`, `SearchInput`, `PageHeader`, `EmptyState`, `LoadingState`, `ErrorState`, `ActivityTimeline`, `ConfirmDialog`, `FormDrawer`.
+- Sistema de diseno: spec visual en `design.md`; reglas arquitectonicas en `docs/architecture/design-system.md`; decision firme en `docs/decisions/adr-0005-design-system-home.md`.
+- Las primitivas reutilizables viven en `packages/ui` (workspace `@soyre/ui`), no en `apps/web/components/`. `apps/web/components/` queda solo para componentes especificos del producto (workspaces, layouts, formularios concretos).
+- Componentes reutilizables esperados:
+  - Atomos: `Button`, `Badge`, `Input`, `Select`, `Textarea`, `Card`.
+  - Compuestos: `MetricCard`, `StatusBadge`, `DataTable`, `FilterBar`, `SearchInput`, `PageHeader`, `SectionPanel`, `EmptyState`, `LoadingState`, `ErrorState`, `ActivityTimeline`, `ConfirmDialog`, `FormDrawer`, `Tabs`.
+  - Dominio: `PropertyCard` (per `design.md §7.5`).
+- No introducir librerias de componentes de terceros (shadcn/ui, Radix, MUI, etc.) como base sin nuevo ADR que supersede o enmiende ADR-0005.
+- No usar hex literals en componentes; siempre tokens via `var(--token-name)`.
 
 ## Reglas De Dominio
 

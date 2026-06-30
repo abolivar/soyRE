@@ -11,6 +11,7 @@
 - **Tokens primero.** Nunca escribas un hex, tamaño de fuente o valor de espaciado directamente en un componente. Referencia el token (variable CSS). Si necesitas un valor que no existe como token, agrégalo al set de tokens en vez de inyectarlo inline.
 - **Los componentes son contratos.** Cada componente lista su anatomía, variantes, estados y tamaños. Constrúyelos como primitivas reutilizables (componentes de React, Web Components, o el equivalente de tu framework).
 - **La accesibilidad no es opcional.** Las reglas de §9 son requisitos, no sugerencias.
+- **Implementación canónica.** Las primitivas React viven en `packages/ui` (workspace `@soyre/ui`). Ver `docs/architecture/design-system.md` para la arquitectura del package, build pipeline y reglas de adición.
 
 **Setup recomendado (agnóstico de stack):** un solo archivo `tokens.css` (o `globals.css`) con las variables `:root` de §1–§5, y luego los componentes consumiéndolas. Si usas Tailwind, mapea estos tokens en `tailwind.config` en vez de re-derivar los valores.
 
