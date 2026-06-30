@@ -75,6 +75,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@soyre/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@supabase/ssr':
         specifier: ^0.12.0
         version: 0.12.0(@supabase/supabase-js@2.108.2)

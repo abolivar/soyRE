@@ -9,7 +9,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./styles": "./dist/styles/index.css"
+    "./styles": {
+      "types": "./dist/styles/index.d.ts",
+      "default": "./dist/styles/index.css"
+    }
   },
   "sideEffects": [
     "./dist/styles/*.css"
