@@ -170,6 +170,11 @@ const PAYMENT_PLAN_TYPE_BY_PRESET: Record<PaymentPlanPreset, PaymentPlanType> = 
   SIGNATURE_INSTALLMENTS: PaymentPlanType.SIGNATURE_PLUS_INSTALLMENTS,
 };
 
+const REMOTE_TRANSACTION_OPTIONS = {
+  maxWait: 15_000,
+  timeout: 30_000,
+};
+
 const UNAVAILABLE_PROPERTY_STATUSES = new Set<PropertyStatus>([
   PropertyStatus.RESERVED,
   PropertyStatus.UNDER_CONTRACT,
@@ -547,6 +552,7 @@ export class BusinessesService {
 
         return created;
       },
+      REMOTE_TRANSACTION_OPTIONS,
     );
 
     return { business: this.serializeBusiness(business, membership) };
@@ -596,6 +602,7 @@ export class BusinessesService {
 
         return updated;
       },
+      REMOTE_TRANSACTION_OPTIONS,
     );
 
     const membership = this.resolveReadableMembership(auth, result.organizationId);
@@ -668,119 +675,122 @@ export class BusinessesService {
   ) {
     const membership = this.resolveCommitMembership(auth);
 
-    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const business = await tx.business.findFirst({
-        where: {
-          id: businessId,
-          organizationId: membership.organizationId,
-        },
-        include: BUSINESS_DETAIL_INCLUDE,
-      });
-
-      if (!business) {
-        throw new NotFoundException('Business draft was not found.');
-      }
-
-      if (dto.idempotencyKey && business.idempotencyKey === dto.idempotencyKey) {
-        return { business: this.serializeBusiness(business, membership) };
-      }
-
-      if (business.status !== BusinessStatus.DRAFT) {
-        throw new ConflictException('Only draft businesses can be committed.');
-      }
-
-      if (dto.version !== undefined && dto.version !== business.version) {
-        throw new ConflictException('Business draft has changed. Reload before committing.');
-      }
-
-      const data = objectValue(business.draftData);
-      const preview = await this.buildPreview(business, data, {
-        forCommit: true,
-        tx,
-      });
-      const blockingErrors = preview.validation.filter(
-        (item) => item.level === 'ERROR',
-      );
-
-      if (blockingErrors.length > 0) {
-        throw new BadRequestException({
-          message: 'Business cannot be committed with blocking validation errors.',
-          validation: blockingErrors,
-        });
-      }
-
-      await this.verifyPropertyAvailability(tx, business, data);
-      await this.clearDraftChildren(tx, business.id);
-
-      const participants = await this.createParticipants(tx, business, data);
-      const contract = await this.createContract(tx, business, data);
-      const paymentPlan = await this.createPaymentPlan(
-        tx,
-        business,
-        data,
-        preview.paymentPlan,
-      );
-      const commissionPlan = await this.createCommissionPlan(
-        tx,
-        business,
-        data,
-        preview.commissionPlan,
-        participants.keyToId,
-      );
-      await this.createFees(tx, business, data);
-      await this.createScheduledActions(tx, business, data, {
-        contractId: contract?.id ?? null,
-        paymentLineIds: paymentPlan.lineIds,
-      });
-      await this.createSnapshots(tx, business, data, preview, auth.id);
-
-      const nextStatus =
-        business.mode === BusinessMode.ADVANCED ||
-        preview.validation.some(
-          (item) =>
-            item.level === 'WARNING' &&
-            ['material_approval', 'contract_review'].includes(item.code),
-        )
-          ? BusinessStatus.PENDING_REVIEW
-          : BusinessStatus.APPROVED;
-
-      const updateData = this.businessUpdateFromDraft(data, auth.id);
-      const updated = await tx.business.update({
-        where: { id: business.id },
-        data: {
-          ...updateData,
-          idempotencyKey: cleanText(dto.idempotencyKey),
-          lastPreview: sanitizeJson(preview),
-          status: nextStatus,
-          committedAt: new Date(),
-          updatedByUserId: auth.id,
-          version: { increment: 1 },
-        },
-        include: BUSINESS_DETAIL_INCLUDE,
-      });
-
-      await tx.auditLog.create({
-        data: {
-          organizationId: business.organizationId,
-          actorUserId: auth.id,
-          action: 'businesses.commit',
-          targetType: 'business',
-          targetId: business.id,
-          metadata: {
-            nextStatus,
-            paymentPlanId: paymentPlan.id,
-            commissionPlanId: commissionPlan?.id ?? null,
-            contractId: contract?.id ?? null,
-            validation: preview.validation,
+    return this.prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const business = await tx.business.findFirst({
+          where: {
+            id: businessId,
+            organizationId: membership.organizationId,
           },
-        },
-      });
+          include: BUSINESS_DETAIL_INCLUDE,
+        });
 
-      return {
-        business: this.serializeBusiness(updated, membership),
-        preview,
-      };
-    });
+        if (!business) {
+          throw new NotFoundException('Business draft was not found.');
+        }
+
+        if (dto.idempotencyKey && business.idempotencyKey === dto.idempotencyKey) {
+          return { business: this.serializeBusiness(business, membership) };
+        }
+
+        if (business.status !== BusinessStatus.DRAFT) {
+          throw new ConflictException('Only draft businesses can be committed.');
+        }
+
+        if (dto.version !== undefined && dto.version !== business.version) {
+          throw new ConflictException('Business draft has changed. Reload before committing.');
+        }
+
+        const data = objectValue(business.draftData);
+        const preview = await this.buildPreview(business, data, {
+          forCommit: true,
+          tx,
+        });
+        const blockingErrors = preview.validation.filter(
+          (item) => item.level === 'ERROR',
+        );
+
+        if (blockingErrors.length > 0) {
+          throw new BadRequestException({
+            message: 'Business cannot be committed with blocking validation errors.',
+            validation: blockingErrors,
+          });
+        }
+
+        await this.verifyPropertyAvailability(tx, business, data);
+        await this.clearDraftChildren(tx, business.id);
+
+        const participants = await this.createParticipants(tx, business, data);
+        const contract = await this.createContract(tx, business, data);
+        const paymentPlan = await this.createPaymentPlan(
+          tx,
+          business,
+          data,
+          preview.paymentPlan,
+        );
+        const commissionPlan = await this.createCommissionPlan(
+          tx,
+          business,
+          data,
+          preview.commissionPlan,
+          participants.keyToId,
+        );
+        await this.createFees(tx, business, data);
+        await this.createScheduledActions(tx, business, data, {
+          contractId: contract?.id ?? null,
+          paymentLineIds: paymentPlan.lineIds,
+        });
+        await this.createSnapshots(tx, business, data, preview, auth.id);
+
+        const nextStatus =
+          business.mode === BusinessMode.ADVANCED ||
+          preview.validation.some(
+            (item) =>
+              item.level === 'WARNING' &&
+              ['material_approval', 'contract_review'].includes(item.code),
+          )
+            ? BusinessStatus.PENDING_REVIEW
+            : BusinessStatus.APPROVED;
+
+        const updateData = this.businessUpdateFromDraft(data, auth.id);
+        const updated = await tx.business.update({
+          where: { id: business.id },
+          data: {
+            ...updateData,
+            idempotencyKey: cleanText(dto.idempotencyKey),
+            lastPreview: sanitizeJson(preview),
+            status: nextStatus,
+            committedAt: new Date(),
+            updatedByUserId: auth.id,
+            version: { increment: 1 },
+          },
+          include: BUSINESS_DETAIL_INCLUDE,
+        });
+
+        await tx.auditLog.create({
+          data: {
+            organizationId: business.organizationId,
+            actorUserId: auth.id,
+            action: 'businesses.commit',
+            targetType: 'business',
+            targetId: business.id,
+            metadata: {
+              nextStatus,
+              paymentPlanId: paymentPlan.id,
+              commissionPlanId: commissionPlan?.id ?? null,
+              contractId: contract?.id ?? null,
+              validation: preview.validation,
+            },
+          },
+        });
+
+        return {
+          business: this.serializeBusiness(updated, membership),
+          preview,
+        };
+      },
+      REMOTE_TRANSACTION_OPTIONS,
+    );
   }
 
   private async ensureDefaultContractTypes(organizationId: string) {
