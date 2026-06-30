@@ -2,6 +2,8 @@
 
 import {
   BadgeCheck,
+  Download,
+  Eye,
   FileText,
   IdCard,
   Keyboard,
@@ -17,13 +19,17 @@ import {
   apiFetch,
   AuthMembership,
   AuthUser,
+  ClientDetailResponse,
+  ClientIdentityDocumentDetail,
   ClientIdentityDocumentType,
   ClientRole,
   ClientStatus,
   ClientsResponse,
   CreateClientPayload,
+  downloadApiFile,
   MembershipRole,
   OrganizationClient,
+  OrganizationClientDetail,
 } from '../lib/api';
 import {
   extractPassportMrz,
@@ -102,15 +108,23 @@ export function ClientsWorkspace() {
     null,
   );
   const [clients, setClients] = useState<OrganizationClient[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedClientDetail, setSelectedClientDetail] =
+    useState<OrganizationClientDetail | null>(null);
   const [filters, setFilters] = useState<ClientFilters>({
     search: '',
     status: '',
     role: '',
   });
   const [error, setError] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [downloadingDocumentId, setDownloadingDocumentId] = useState<string | null>(
+    null,
+  );
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [createMode, setCreateMode] = useState<ClientCreateMode>('manual');
   const [identityDocumentPayload, setIdentityDocumentPayload] =
@@ -157,6 +171,21 @@ export function ClientsWorkspace() {
     });
   }, [activeOrganizationId, filters]);
 
+  useEffect(() => {
+    if (!activeOrganizationId || !selectedClientId) {
+      setSelectedClientDetail(null);
+      setDetailError(null);
+      return;
+    }
+
+    refreshClientDetail(selectedClientId, activeOrganizationId).catch((caught) => {
+      setDetailError(
+        caught instanceof Error ? caught.message : 'Detalle no disponible.',
+      );
+      setIsDetailLoading(false);
+    });
+  }, [activeOrganizationId, selectedClientId]);
+
   const organizations = useMemo(() => activeMemberships(user), [user]);
   const activeMembership = useMemo(
     () =>
@@ -168,6 +197,14 @@ export function ClientsWorkspace() {
   const canCreateClients = activeMembership
     ? clientWriteRoles.has(activeMembership.role)
     : false;
+  const selectedClientSummary = useMemo(
+    () => clients.find((client) => client.id === selectedClientId) ?? null,
+    [clients, selectedClientId],
+  );
+  const selectedClient =
+    selectedClientDetail?.id === selectedClientId
+      ? selectedClientDetail
+      : selectedClientSummary;
 
   const metrics = useMemo(() => {
     const active = clients.filter((client) => client.status === 'ACTIVE').length;
@@ -208,7 +245,31 @@ export function ClientsWorkspace() {
       `/clients${query.size > 0 ? `?${query.toString()}` : ''}`,
     );
     setClients(response.clients);
+    setSelectedClientId((current) =>
+      current && response.clients.some((client) => client.id === current)
+        ? current
+        : response.clients[0]?.id ?? null,
+    );
     setIsLoading(false);
+  }
+
+  async function refreshClientDetail(
+    clientId: string,
+    organizationId = activeOrganizationId,
+  ) {
+    if (!organizationId) {
+      return;
+    }
+
+    setIsDetailLoading(true);
+    setSelectedClientDetail(null);
+    setDetailError(null);
+    const query = new URLSearchParams({ organizationId });
+    const response = await apiFetch<ClientDetailResponse>(
+      `/clients/${clientId}?${query.toString()}`,
+    );
+    setSelectedClientDetail(response.client);
+    setIsDetailLoading(false);
   }
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
@@ -254,6 +315,7 @@ export function ClientsWorkspace() {
         body: JSON.stringify(payload),
       });
       setClients((current) => [response.client, ...current]);
+      setSelectedClientId(response.client.id);
       setIsDrawerOpen(false);
       event.currentTarget.reset();
       resetIdentityDocumentIntake();
@@ -288,6 +350,34 @@ export function ClientsWorkspace() {
     setPassportFileName(null);
     setPassportMrz('');
     setPassportStatus('idle');
+  }
+
+  async function downloadIdentityDocument(documentId: string) {
+    if (!activeOrganizationId || !selectedClientId) {
+      return;
+    }
+
+    setDownloadingDocumentId(documentId);
+    setDetailError(null);
+
+    try {
+      const query = new URLSearchParams({ organizationId: activeOrganizationId });
+      const { blob, fileName } = await downloadApiFile(
+        `/clients/${selectedClientId}/identity-documents/${documentId}/download?${query.toString()}`,
+      );
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (caught) {
+      setDetailError(
+        caught instanceof Error ? caught.message : 'No se pudo descargar el documento.',
+      );
+    } finally {
+      setDownloadingDocumentId(null);
+    }
   }
 
   function resetIdentityDocumentIntake() {
@@ -597,6 +687,7 @@ export function ClientsWorkspace() {
               { key: 'budget', label: 'Presupuesto' },
               { key: 'followUp', label: 'Seguimiento' },
               { key: 'owner', label: 'Owner' },
+              { key: 'actions', label: 'Detalle' },
             ]}
             empty={
               <EmptyState
@@ -671,49 +762,64 @@ export function ClientsWorkspace() {
                       client.assignedUser.lastName ?? ''
                     }`.trim()
                   : 'Sin owner',
+                actions: (
+                  <button
+                    className={
+                      client.id === selectedClientId
+                        ? 'table-action active'
+                        : 'table-action'
+                    }
+                    onClick={() => setSelectedClientId(client.id)}
+                    type="button"
+                  >
+                    <Eye size={15} strokeWidth={2.2} />
+                    Ver
+                  </button>
+                ),
               },
             }))}
           />
         )}
 
         <SectionPanel
-          title="Ficha minima"
-          description="El alta de clientes exige contexto comercial suficiente para que el siguiente asesor pueda actuar sin reconstruir la historia."
+          title="Detalle operativo"
+          description="Vista de trabajo del cliente seleccionado, su contexto comercial y documentos de identidad guardados."
         >
-          <div className="compact-list">
-            <div className="split-row">
-              <span>
-                <strong className="entity-title">Organizacion activa</strong>
-                <span className="meta-row">
-                  {activeMembership?.organizationName ?? 'Sin organizacion activa'}
-                </span>
-              </span>
-              <StatusBadge tone={canCreateClients ? 'success' : 'neutral'}>
-                {canCreateClients ? 'Escritura' : 'Lectura'}
-              </StatusBadge>
-            </div>
-            <div className="split-row">
-              <span>
-                <strong className="entity-title">Roles multiples</strong>
-                <span className="meta-row">Comprador, vendedor, arrendador o lead.</span>
-              </span>
-              <StatusBadge tone="primary">Base</StatusBadge>
-            </div>
-            <div className="split-row">
-              <span>
-                <strong className="entity-title">Preferencia inmobiliaria</strong>
-                <span className="meta-row">Zonas, presupuesto, tipo y tiempo de decision.</span>
-              </span>
-              <StatusBadge tone="featured">Contexto</StatusBadge>
-            </div>
-            <div className="split-row">
-              <span>
-                <strong className="entity-title">Seguimiento</strong>
-                <span className="meta-row">Estado, temperatura, responsable y proxima accion.</span>
-              </span>
-              <StatusBadge tone="warning">SLA</StatusBadge>
-            </div>
-          </div>
+          {isDetailLoading ? (
+            <LoadingState
+              description="Consultando ficha, preferencias y documentos del cliente."
+              title="Cargando detalle"
+            />
+          ) : detailError ? (
+            <ErrorState
+              action={
+                selectedClientId ? (
+                  <button
+                    className="button secondary"
+                    onClick={() => refreshClientDetail(selectedClientId)}
+                    type="button"
+                  >
+                    <RefreshCcw size={16} strokeWidth={2.2} />
+                    Reintentar
+                  </button>
+                ) : undefined
+              }
+              description={detailError}
+              title="Detalle no disponible"
+            />
+          ) : selectedClient ? (
+            <ClientDetailPanel
+              client={selectedClient}
+              downloadingDocumentId={downloadingDocumentId}
+              onDownloadDocument={downloadIdentityDocument}
+            />
+          ) : (
+            <EmptyState
+              description="Selecciona un cliente para revisar datos comerciales y documentos."
+              icon={Users}
+              title="Sin cliente seleccionado"
+            />
+          )}
         </SectionPanel>
       </section>
 
@@ -1207,6 +1313,117 @@ export function ClientsWorkspace() {
   );
 }
 
+function ClientDetailPanel({
+  client,
+  downloadingDocumentId,
+  onDownloadDocument,
+}: {
+  client: OrganizationClient | OrganizationClientDetail;
+  downloadingDocumentId: string | null;
+  onDownloadDocument: (documentId: string) => void;
+}) {
+  const identityDocuments = getIdentityDocuments(client);
+
+  return (
+    <div className="client-detail">
+      <div className="detail-hero">
+        <span>
+          <strong>{client.displayName}</strong>
+          <small>{client.companyName ?? client.email ?? client.phone ?? 'Sin contacto principal'}</small>
+        </span>
+        <StatusBadge tone={statusTone[client.status]}>
+          {statusLabel(client.status)}
+        </StatusBadge>
+      </div>
+
+      <div className="detail-grid">
+        <DetailField label="Tipo" value={client.type === 'COMPANY' ? 'Empresa' : 'Persona'} />
+        <DetailField label="Temperatura" value={temperatureLabel(client.temperature)} />
+        <DetailField label="Owner" value={assignedUserLabel(client)} />
+        <DetailField label="Contacto" value={preferredContactLabel(client.preferredContactMethod)} />
+        <DetailField label="Telefono" value={client.phone ?? client.whatsapp ?? 'Pendiente'} />
+        <DetailField label="Email" value={client.email ?? 'Pendiente'} />
+        <DetailField label="Identificacion" value={client.legalId ?? 'Pendiente'} />
+        <DetailField label="Ubicacion" value={[client.city, client.zone].filter(Boolean).join(' / ') || 'Pendiente'} />
+        <DetailField label="Interes" value={interestLabel(client.interestType)} />
+        <DetailField label="Presupuesto" value={formatBudget(client)} />
+        <DetailField label="Tiempo" value={timelineLabel(client.timeline)} />
+        <DetailField label="Seguimiento" value={formatDate(client.nextFollowUpAt)} />
+      </div>
+
+      <div className="detail-tags">
+        {client.roles.map((role) => (
+          <StatusBadge key={role} tone="primary">
+            {roleLabel(role)}
+          </StatusBadge>
+        ))}
+        {client.tags.map((tag) => (
+          <StatusBadge key={tag} tone="neutral">
+            {tag}
+          </StatusBadge>
+        ))}
+      </div>
+
+      <div className="document-list">
+        <div className="document-list-header">
+          <strong>Documentos</strong>
+          {client.identityDocumentValidated ? (
+            <span className="identity-seal">
+              <BadgeCheck size={13} strokeWidth={2.4} />
+              Validado por documento
+            </span>
+          ) : null}
+        </div>
+
+        {identityDocuments.length > 0 ? (
+          identityDocuments.map((document) => (
+            <div className="document-row" key={document.id}>
+              <span>
+                <strong>{identityDocumentLabel(document.type)}</strong>
+                <small>
+                  {document.documentNumber ?? 'Sin numero'} · {formatFileSize(document.fileSize)}
+                </small>
+                <small>{document.fileName}</small>
+              </span>
+              <button
+                className="icon-button"
+                disabled={downloadingDocumentId === document.id}
+                onClick={() => onDownloadDocument(document.id)}
+                title="Descargar documento"
+                type="button"
+              >
+                {downloadingDocumentId === document.id ? (
+                  <Loader2 size={16} strokeWidth={2.2} />
+                ) : (
+                  <Download size={16} strokeWidth={2.2} />
+                )}
+              </button>
+            </div>
+          ))
+        ) : (
+          <p className="detail-empty">No hay documento de identidad guardado.</p>
+        )}
+      </div>
+
+      {client.notes ? (
+        <div className="detail-notes">
+          <strong>Notas</strong>
+          <p>{client.notes}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DetailField({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="detail-field">
+      <strong>{label}</strong>
+      <small>{value}</small>
+    </span>
+  );
+}
+
 function activeMemberships(user: AuthUser | null): AuthMembership[] {
   return (
     user?.memberships.filter(
@@ -1417,7 +1634,77 @@ function interestLabel(value: OrganizationClient['interestType']) {
     REFER: 'Referido',
   };
 
-  return value ? labels[value] : 'Interes abierto';
+  return value ? labels[value] ?? value : 'Interes abierto';
+}
+
+function temperatureLabel(value: OrganizationClient['temperature']) {
+  const labels: Record<OrganizationClient['temperature'], string> = {
+    COLD: 'Frio',
+    HOT: 'Alta prioridad',
+    WARM: 'Tibio',
+  };
+
+  return labels[value];
+}
+
+function timelineLabel(value: OrganizationClient['timeline']) {
+  const labels: Record<string, string> = {
+    EXPLORING: 'Explorando',
+    IMMEDIATE: 'Inmediato',
+    ONE_TO_THREE_MONTHS: '1 a 3 meses',
+    SIX_PLUS_MONTHS: '6+ meses',
+    THREE_TO_SIX_MONTHS: '3 a 6 meses',
+  };
+
+  return value ? labels[value] ?? value : 'Pendiente';
+}
+
+function preferredContactLabel(value: OrganizationClient['preferredContactMethod']) {
+  const labels: Record<string, string> = {
+    EMAIL: 'Email',
+    IN_PERSON: 'Presencial',
+    PHONE: 'Telefono',
+    SMS: 'SMS',
+    WHATSAPP: 'WhatsApp',
+  };
+
+  return value ? labels[value] ?? value : 'Pendiente';
+}
+
+function assignedUserLabel(client: OrganizationClient | OrganizationClientDetail) {
+  if (!client.assignedUser) {
+    return 'Sin owner';
+  }
+
+  return `${client.assignedUser.firstName} ${
+    client.assignedUser.lastName ?? ''
+  }`.trim();
+}
+
+function getIdentityDocuments(
+  client: OrganizationClient | OrganizationClientDetail,
+): ClientIdentityDocumentDetail[] {
+  return 'identityDocuments' in client ? client.identityDocuments : [];
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return 'Pendiente';
+  }
+
+  return new Intl.DateTimeFormat('es-PA', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(value));
+}
+
+function formatFileSize(value: number) {
+  if (value < 1024 * 1024) {
+    return `${Math.max(1, Math.round(value / 1024))} KB`;
+  }
+
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatBudget(client: OrganizationClient) {

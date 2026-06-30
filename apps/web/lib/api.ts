@@ -109,6 +109,24 @@ export type ClientIdentityDocumentSummary = {
   validatedAt: string;
 };
 
+export type ClientIdentityDocumentDetail = ClientIdentityDocumentSummary & {
+  issuingCountry: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  birthDate: string | null;
+  expirationDate: string | null;
+  mimeType: string;
+  fileSize: number;
+  ocrText: string | null;
+  extractedData: Record<string, unknown> | null;
+  createdByUser: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string | null;
+  } | null;
+};
+
 export type OrganizationClient = {
   id: string;
   organizationId: string;
@@ -163,6 +181,13 @@ export type OrganizationClient = {
   updatedAt: string;
 };
 
+export type OrganizationClientDetail = Omit<
+  OrganizationClient,
+  'identityDocuments'
+> & {
+  identityDocuments: ClientIdentityDocumentDetail[];
+};
+
 export type ClientsResponse = {
   organization: {
     id: string;
@@ -170,6 +195,10 @@ export type ClientsResponse = {
     slug: string;
   };
   clients: OrganizationClient[];
+};
+
+export type ClientDetailResponse = {
+  client: OrganizationClientDetail;
 };
 
 export type CreateClientPayload = {
@@ -255,4 +284,23 @@ export async function apiFetch<T>(
   }
 
   return response.json() as Promise<T>;
+}
+
+export async function downloadApiFile(path: string) {
+  const response = await fetch(`${API_URL}/api${path}`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const message = await response.text().catch(() => 'Request failed.');
+    throw new Error(message || 'Request failed.');
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('Content-Disposition');
+  const fileName =
+    disposition?.match(/filename="(?<fileName>[^"]+)"/)?.groups?.fileName ??
+    'documento';
+
+  return { blob, fileName };
 }

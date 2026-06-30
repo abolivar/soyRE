@@ -1711,6 +1711,123 @@ button:hover,
   margin-top: 5px;
 }
 
+.table-action {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--ink);
+  min-height: 34px;
+  padding: 0 10px;
+}
+
+.table-action.active {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary-strong);
+}
+
+.client-detail {
+  display: grid;
+  gap: 14px;
+}
+
+.detail-hero {
+  align-items: start;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding-bottom: 14px;
+}
+
+.detail-hero span,
+.detail-field,
+.document-row span,
+.detail-notes {
+  display: grid;
+  gap: 4px;
+}
+
+.detail-hero strong {
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 850;
+}
+
+.detail-hero small,
+.detail-field small,
+.document-row small,
+.detail-empty,
+.detail-notes p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detail-field {
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.detail-field strong,
+.document-list-header strong,
+.document-row strong,
+.detail-notes strong {
+  color: var(--ink-strong);
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.document-list {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  overflow: hidden;
+}
+
+.document-list-header,
+.document-row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.document-list-header {
+  background: var(--surface-muted);
+}
+
+.document-row {
+  border-top: 1px solid var(--line);
+}
+
+.detail-empty {
+  border-top: 1px solid var(--line);
+  padding: 12px;
+}
+
+.detail-notes {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
 .form-hint {
   align-self: end;
   color: var(--muted);
@@ -1862,6 +1979,7 @@ button:hover,
   .landing-access,
   .landing-capability-grid,
   .landing-scope,
+  .detail-grid,
   .field-grid,
   .user-form,
   .form-grid.two,
