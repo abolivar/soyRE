@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import {
   Client,
+  ClientIdentityDocumentType,
   ClientStatus,
   ClientTemperature,
   ClientType,
@@ -17,7 +18,10 @@ import {
 } from '@soyre/database';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { PrismaService } from '../database/prisma.service.js';
-import { CreateClientDto } from './dto/create-client.dto.js';
+import {
+  CreateClientDto,
+  CreateClientIdentityDocumentDto,
+} from './dto/create-client.dto.js';
 import { ListClientsQueryDto } from './dto/list-clients-query.dto.js';
 
 const CLIENT_WRITE_ROLES = new Set<MembershipRole>([
@@ -28,6 +32,43 @@ const CLIENT_WRITE_ROLES = new Set<MembershipRole>([
   MembershipRole.OPERATIONS,
 ]);
 
+const IDENTITY_DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
+const IDENTITY_DOCUMENT_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+
+const CLIENT_SERIALIZE_INCLUDE = {
+  assignedUser: {
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+    },
+  },
+  identityDocuments: {
+    orderBy: { createdAt: 'desc' },
+    take: 1,
+    select: {
+      id: true,
+      type: true,
+      documentNumber: true,
+      fileName: true,
+      createdAt: true,
+    },
+  },
+} satisfies Prisma.ClientInclude;
+
+type SerializableIdentityDocument = {
+  id: string;
+  type: ClientIdentityDocumentType;
+  documentNumber: string | null;
+  fileName: string;
+  createdAt: Date;
+};
+
 type SerializableClient = Client & {
   assignedUser: {
     id: string;
@@ -35,6 +76,23 @@ type SerializableClient = Client & {
     firstName: string;
     lastName: string | null;
   } | null;
+  identityDocuments: SerializableIdentityDocument[];
+};
+
+type PreparedIdentityDocument = {
+  type: ClientIdentityDocumentType;
+  documentNumber: string | null;
+  issuingCountry: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  birthDate: Date | null;
+  expirationDate: Date | null;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  content: Buffer;
+  ocrText: string | null;
+  extractedData?: Prisma.InputJsonValue;
 };
 
 @Injectable()
@@ -99,10 +157,21 @@ export class ClientsService {
     const type = dto.type ?? ClientType.PERSON;
     const displayName = this.resolveDisplayName(dto, type);
     const email = normalizeEmail(dto.email);
+    const phone = cleanText(dto.phone);
+    const whatsapp = cleanText(dto.whatsapp);
+    const identityDocument = dto.identityDocument
+      ? this.prepareIdentityDocument(dto.identityDocument)
+      : null;
     const roles = normalizeEnumArray(dto.roles);
 
     if (roles.length === 0) {
       throw new BadRequestException('At least one commercial role is required.');
+    }
+
+    if (!email && !phone && !whatsapp) {
+      throw new BadRequestException(
+        'At least one contact method is required for the client.',
+      );
     }
 
     if (
@@ -168,11 +237,11 @@ export class ClientsService {
             lastName: cleanText(dto.lastName),
             companyName: cleanText(dto.companyName),
             displayName,
-            legalId: cleanText(dto.legalId),
+            legalId: cleanText(dto.legalId) ?? identityDocument?.documentNumber,
             email,
-            phone: cleanText(dto.phone),
+            phone,
             alternatePhone: cleanText(dto.alternatePhone),
-            whatsapp: cleanText(dto.whatsapp),
+            whatsapp,
             preferredContactMethod: dto.preferredContactMethod,
             country: cleanText(dto.country),
             city: cleanText(dto.city),
@@ -199,17 +268,37 @@ export class ClientsService {
             marketingConsent: dto.marketingConsent ?? false,
             dataConsent: dto.dataConsent ?? false,
           },
-          include: {
-            assignedUser: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
+          include: CLIENT_SERIALIZE_INCLUDE,
+        });
+
+        if (identityDocument) {
+          const document = await tx.clientIdentityDocument.create({
+            data: {
+              ...identityDocument,
+              organizationId: membership.organizationId,
+              clientId: client.id,
+              createdByUserId: auth.id,
+            },
+          });
+
+          await tx.auditLog.create({
+            data: {
+              organizationId: membership.organizationId,
+              actorUserId: auth.id,
+              action: 'clients.identity_document.create',
+              targetType: 'client',
+              targetId: client.id,
+              metadata: {
+                documentId: document.id,
+                documentNumber: document.documentNumber,
+                fileName: document.fileName,
+                fileSize: document.fileSize,
+                type: document.type,
+                kyc: false,
               },
             },
-          },
-        });
+          });
+        }
 
         await tx.auditLog.create({
           data: {
@@ -223,11 +312,15 @@ export class ClientsService {
               roles: client.roles,
               status: client.status,
               assignedUserId: client.assignedUserId,
+              identityDocumentType: identityDocument?.type ?? null,
             },
           },
         });
 
-        return client;
+        return tx.client.findUniqueOrThrow({
+          where: { id: client.id },
+          include: CLIENT_SERIALIZE_INCLUDE,
+        });
       },
     );
 
@@ -294,6 +387,8 @@ export class ClientsService {
   }
 
   private serializeClient(client: SerializableClient) {
+    const identityDocument = client.identityDocuments[0] ?? null;
+
     return {
       id: client.id,
       organizationId: client.organizationId,
@@ -344,9 +439,68 @@ export class ClientsService {
       tags: client.tags,
       marketingConsent: client.marketingConsent,
       dataConsent: client.dataConsent,
+      identityDocument: identityDocument
+        ? {
+            id: identityDocument.id,
+            type: identityDocument.type,
+            documentNumber: identityDocument.documentNumber,
+            fileName: identityDocument.fileName,
+            validatedAt: identityDocument.createdAt.toISOString(),
+          }
+        : null,
+      identityDocumentValidated: Boolean(identityDocument),
       createdAt: client.createdAt.toISOString(),
       updatedAt: client.updatedAt.toISOString(),
     };
+  }
+
+  private prepareIdentityDocument(dto: CreateClientIdentityDocumentDto) {
+    const fileName = cleanText(dto.fileName);
+    const mimeType = cleanText(dto.mimeType)?.toLowerCase();
+
+    if (!fileName) {
+      throw new BadRequestException('Identity document file name is required.');
+    }
+
+    if (!mimeType || !IDENTITY_DOCUMENT_MIME_TYPES.has(mimeType)) {
+      throw new BadRequestException(
+        'Identity document must be a JPEG, PNG, or WebP image.',
+      );
+    }
+
+    const fileBase64 = stripDataUrl(dto.fileBase64).replace(/\s/g, '');
+
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(fileBase64)) {
+      throw new BadRequestException('Identity document file is not valid base64.');
+    }
+
+    const content = Buffer.from(fileBase64, 'base64');
+
+    if (content.length === 0 || content.length > IDENTITY_DOCUMENT_MAX_BYTES) {
+      throw new BadRequestException(
+        'Identity document file must be between 1 byte and 5 MB.',
+      );
+    }
+
+    if (content.length !== dto.fileSize) {
+      throw new BadRequestException('Identity document file size does not match.');
+    }
+
+    return {
+      type: dto.type,
+      documentNumber: cleanText(dto.documentNumber),
+      issuingCountry: cleanText(dto.issuingCountry),
+      firstName: cleanText(dto.firstName),
+      lastName: cleanText(dto.lastName),
+      birthDate: toDate(dto.birthDate),
+      expirationDate: toDate(dto.expirationDate),
+      fileName,
+      mimeType,
+      fileSize: content.length,
+      content,
+      ocrText: cleanText(dto.ocrText),
+      extractedData: toJson(dto.extractedData),
+    } satisfies PreparedIdentityDocument;
   }
 }
 
@@ -378,4 +532,16 @@ function normalizeStringArray(values?: readonly string[]) {
 
 function toDate(value?: string) {
   return value ? new Date(value) : null;
+}
+
+function stripDataUrl(value: string) {
+  return value.replace(/^data:[^;]+;base64,/, '');
+}
+
+function toJson(value?: Record<string, unknown>) {
+  if (!value) {
+    return undefined;
+  }
+
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }

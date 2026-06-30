@@ -1,7 +1,9 @@
 'use client';
 
 import {
+  BadgeCheck,
   FileText,
+  IdCard,
   Keyboard,
   Loader2,
   Plus,
@@ -15,6 +17,7 @@ import {
   apiFetch,
   AuthMembership,
   AuthUser,
+  ClientIdentityDocumentType,
   ClientRole,
   ClientStatus,
   ClientsResponse,
@@ -27,6 +30,10 @@ import {
   parsePassportMrz,
   PassportMrzData,
 } from '../lib/passport-mrz';
+import {
+  NationalIdOcrData,
+  parseNationalIdOcr,
+} from '../lib/national-id-ocr';
 import {
   DataTable,
   EmptyState,
@@ -45,9 +52,11 @@ type ClientFilters = {
   role: string;
 };
 
-type ClientCreateMode = 'manual' | 'passport';
+type ClientCreateMode = 'manual' | 'passport' | 'national_id';
 
-type PassportOcrStatus = 'idle' | 'reading' | 'ready' | 'error';
+type IdentityOcrStatus = 'idle' | 'reading' | 'ready' | 'error';
+
+type IdentityDocumentPayload = NonNullable<CreateClientPayload['identityDocument']>;
 
 const clientWriteRoles = new Set<MembershipRole>([
   'OWNER',
@@ -87,7 +96,7 @@ const statusTone: Record<ClientStatus, 'primary' | 'success' | 'warning' | 'neut
 
 export function ClientsWorkspace() {
   const formRef = useRef<HTMLFormElement>(null);
-  const passportReadIdRef = useRef(0);
+  const documentReadIdRef = useRef(0);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [activeOrganizationId, setActiveOrganizationId] = useState<string | null>(
     null,
@@ -104,12 +113,17 @@ export function ClientsWorkspace() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [createMode, setCreateMode] = useState<ClientCreateMode>('manual');
+  const [identityDocumentPayload, setIdentityDocumentPayload] =
+    useState<IdentityDocumentPayload | null>(null);
   const [passportData, setPassportData] = useState<PassportMrzData | null>(null);
+  const [nationalIdData, setNationalIdData] = useState<NationalIdOcrData | null>(
+    null,
+  );
   const [passportError, setPassportError] = useState<string | null>(null);
   const [passportFileName, setPassportFileName] = useState<string | null>(null);
   const [passportMrz, setPassportMrz] = useState('');
   const [passportStatus, setPassportStatus] =
-    useState<PassportOcrStatus>('idle');
+    useState<IdentityOcrStatus>('idle');
 
   useEffect(() => {
     apiFetch<{ user: AuthUser }>('/auth/me')
@@ -220,8 +234,19 @@ export function ClientsWorkspace() {
     const form = new FormData(event.currentTarget);
 
     try {
+      if (passportStatus === 'reading') {
+        throw new Error('Espera a que termine la lectura del documento.');
+      }
+
+      if (createMode !== 'manual' && !identityDocumentPayload) {
+        throw new Error('Carga el documento de identidad antes de crear el cliente.');
+      }
+
       const payload = {
         ...buildClientPayload(form),
+        ...(identityDocumentPayload
+          ? { identityDocument: identityDocumentPayload }
+          : {}),
         organizationId: activeOrganizationId,
       };
       const response = await apiFetch<{ client: OrganizationClient }>('/clients', {
@@ -231,7 +256,7 @@ export function ClientsWorkspace() {
       setClients((current) => [response.client, ...current]);
       setIsDrawerOpen(false);
       event.currentTarget.reset();
-      resetPassportIntake();
+      resetIdentityDocumentIntake();
     } catch (caught) {
       setFormError(
         caught instanceof Error ? caught.message : 'No se pudo crear el cliente.',
@@ -243,43 +268,74 @@ export function ClientsWorkspace() {
 
   function openCreateClientDrawer() {
     setFormError(null);
-    resetPassportIntake();
+    resetIdentityDocumentIntake();
     setIsDrawerOpen(true);
   }
 
   function closeCreateClientDrawer() {
     setIsDrawerOpen(false);
     setFormError(null);
-    resetPassportIntake();
+    resetIdentityDocumentIntake();
   }
 
-  function resetPassportIntake() {
-    passportReadIdRef.current += 1;
-    setCreateMode('manual');
+  function selectCreateMode(mode: ClientCreateMode) {
+    documentReadIdRef.current += 1;
+    setCreateMode(mode);
+    setIdentityDocumentPayload(null);
     setPassportData(null);
+    setNationalIdData(null);
     setPassportError(null);
     setPassportFileName(null);
     setPassportMrz('');
     setPassportStatus('idle');
   }
 
-  async function processPassportImage(event: ChangeEvent<HTMLInputElement>) {
+  function resetIdentityDocumentIntake() {
+    documentReadIdRef.current += 1;
+    setCreateMode('manual');
+    setIdentityDocumentPayload(null);
+    setPassportData(null);
+    setNationalIdData(null);
+    setPassportError(null);
+    setPassportFileName(null);
+    setPassportMrz('');
+    setPassportStatus('idle');
+  }
+
+  async function processIdentityDocumentImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     const input = event.currentTarget;
-    const readId = passportReadIdRef.current + 1;
+    const readId = documentReadIdRef.current + 1;
 
     if (!file) {
       return;
     }
 
-    passportReadIdRef.current = readId;
-    setCreateMode('passport');
+    if (!isSupportedIdentityFile(file)) {
+      setPassportStatus('error');
+      setPassportError('El documento debe ser una imagen JPEG, PNG o WebP.');
+      input.value = '';
+      return;
+    }
+
+    const documentType = createModeToDocumentType(createMode);
+
+    if (!documentType) {
+      input.value = '';
+      return;
+    }
+
+    documentReadIdRef.current = readId;
     setPassportData(null);
+    setNationalIdData(null);
     setPassportError(null);
     setPassportFileName(file.name);
     setPassportStatus('reading');
 
     try {
+      const basePayload = await fileToIdentityDocumentPayload(file, documentType);
+      setIdentityDocumentPayload(basePayload);
+
       const { createWorker } = await import('tesseract.js');
       const worker = await createWorker('eng');
 
@@ -287,25 +343,50 @@ export function ClientsWorkspace() {
         const {
           data: { text },
         } = await worker.recognize(file, { rotateAuto: true });
-        const detectedMrz = extractPassportMrz(text);
 
-        if (!detectedMrz) {
-          throw new Error(
-            'No se detecto la MRZ del pasaporte. Puedes pegarla o corregirla manualmente.',
-          );
-        }
-
-        if (passportReadIdRef.current !== readId) {
+        if (documentReadIdRef.current !== readId) {
           return;
         }
 
-        setPassportMrz(detectedMrz);
-        applyPassportMrz(detectedMrz);
+        if (documentType === 'PASSPORT') {
+          const detectedMrz = extractPassportMrz(text);
+
+          if (!detectedMrz) {
+            setIdentityDocumentPayload({
+              ...basePayload,
+              ocrText: text,
+            });
+            throw new Error(
+              'No se detecto la MRZ del pasaporte. Puedes pegarla o corregirla manualmente.',
+            );
+          }
+
+          setPassportMrz(detectedMrz);
+          applyPassportMrz(detectedMrz, {
+            ...basePayload,
+            ocrText: text,
+          });
+        } else {
+          const parsed = parseNationalIdOcr(text);
+          setNationalIdData(parsed);
+          setPassportStatus('ready');
+          setIdentityDocumentPayload({
+            ...basePayload,
+            documentNumber: parsed.documentNumber ?? undefined,
+            firstName: parsed.firstName ?? undefined,
+            lastName: parsed.lastName ?? undefined,
+            ocrText: parsed.rawText,
+            extractedData: {
+              parser: 'generic-national-id-ocr',
+            },
+          });
+          fillFormFromNationalId(parsed);
+        }
       } finally {
         await worker.terminate();
       }
     } catch (caught) {
-      if (passportReadIdRef.current !== readId) {
+      if (documentReadIdRef.current !== readId) {
         return;
       }
 
@@ -320,12 +401,32 @@ export function ClientsWorkspace() {
     }
   }
 
-  function applyPassportMrz(nextMrz = passportMrz) {
+  function applyPassportMrz(
+    nextMrz = passportMrz,
+    basePayload = identityDocumentPayload,
+  ) {
     try {
       const parsed = parsePassportMrz(nextMrz);
       setPassportData(parsed);
       setPassportError(null);
       setPassportStatus('ready');
+      if (basePayload) {
+        setIdentityDocumentPayload({
+          ...basePayload,
+          type: 'PASSPORT',
+          documentNumber: parsed.documentNumber,
+          issuingCountry: parsed.issuingCountry,
+          firstName: parsed.firstName,
+          lastName: parsed.lastName,
+          birthDate: parsed.birthDate ?? undefined,
+          expirationDate: parsed.expirationDate ?? undefined,
+          extractedData: {
+            mrz: parsed.mrz,
+            parser: 'td3-mrz',
+            sex: parsed.sex,
+          },
+        });
+      }
       fillFormFromPassport(parsed);
     } catch (caught) {
       setPassportData(null);
@@ -352,6 +453,21 @@ export function ClientsWorkspace() {
     setFormValue(form, 'country', data.nationality || data.issuingCountry);
     setFormValue(form, 'source', 'Pasaporte');
     setFormValue(form, 'notes', passportNotes(data, form));
+  }
+
+  function fillFormFromNationalId(data: NationalIdOcrData) {
+    const form = formRef.current;
+
+    if (!form) {
+      return;
+    }
+
+    setFormValue(form, 'type', 'PERSON');
+    setFormValue(form, 'legalId', data.documentNumber);
+    setFormValue(form, 'firstName', data.firstName);
+    setFormValue(form, 'lastName', data.lastName);
+    setFormValue(form, 'source', 'Cedula');
+    setFormValue(form, 'notes', nationalIdNotes(data, form));
   }
 
   return (
@@ -481,7 +597,7 @@ export function ClientsWorkspace() {
                   canCreateClients ? (
                     <button
                       className="button primary"
-                      onClick={() => setIsDrawerOpen(true)}
+                      onClick={openCreateClientDrawer}
                       type="button"
                     >
                       <UserRoundPlus size={17} strokeWidth={2.2} />
@@ -507,6 +623,12 @@ export function ClientsWorkspace() {
                     <span className="meta-row">
                       {client.email ?? client.phone ?? 'Sin contacto principal'}
                     </span>
+                    {client.identityDocumentValidated ? (
+                      <span className="identity-seal">
+                        <BadgeCheck size={13} strokeWidth={2.4} />
+                        Validado por documento
+                      </span>
+                    ) : null}
                   </span>
                 ),
                 roles: (
@@ -602,7 +724,7 @@ export function ClientsWorkspace() {
             </button>
             <button
               className="button primary"
-              disabled={isSubmitting}
+              disabled={isSubmitting || passportStatus === 'reading'}
               form="client-create-form"
               type="submit"
             >
@@ -623,12 +745,12 @@ export function ClientsWorkspace() {
           <section className="form-section">
             <div>
               <h3>Metodo de alta</h3>
-              <p>Selecciona entrada manual o precarga desde la MRZ del pasaporte.</p>
+              <p>Selecciona entrada manual o precarga desde documento de identidad.</p>
             </div>
             <div className="intake-mode-toggle" aria-label="Metodo de alta">
               <button
                 className={createMode === 'manual' ? 'mode-button active' : 'mode-button'}
-                onClick={() => setCreateMode('manual')}
+                onClick={() => selectCreateMode('manual')}
                 type="button"
               >
                 <Keyboard size={18} strokeWidth={2.2} />
@@ -638,83 +760,142 @@ export function ClientsWorkspace() {
                 className={
                   createMode === 'passport' ? 'mode-button active' : 'mode-button'
                 }
-                onClick={() => setCreateMode('passport')}
+                onClick={() => selectCreateMode('passport')}
                 type="button"
               >
                 <FileText size={18} strokeWidth={2.2} />
                 Pasaporte
               </button>
+              <button
+                className={
+                  createMode === 'national_id' ? 'mode-button active' : 'mode-button'
+                }
+                onClick={() => selectCreateMode('national_id')}
+                type="button"
+              >
+                <IdCard size={18} strokeWidth={2.2} />
+                Cedula
+              </button>
             </div>
           </section>
 
-          {createMode === 'passport' ? (
+          {createMode !== 'manual' ? (
             <section className="form-section">
               <div>
-                <h3>Lectura de pasaporte</h3>
-                <p>La imagen se procesa localmente para detectar la MRZ y precargar datos.</p>
+                <h3>
+                  {createMode === 'passport'
+                    ? 'Lectura de pasaporte'
+                    : 'Lectura de cedula'}
+                </h3>
+                <p>La imagen se procesa localmente, se guarda con el alta y no implica KYC.</p>
               </div>
               <label className="passport-upload">
                 <Upload size={18} strokeWidth={2.2} />
                 <span>
                   <strong>Seleccionar imagen</strong>
-                  <small>{passportFileName ?? 'JPG o PNG del pasaporte'}</small>
+                  <small>{passportFileName ?? 'JPG, PNG o WebP del documento'}</small>
                 </span>
                 <input
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   disabled={passportStatus === 'reading'}
-                  onChange={processPassportImage}
+                  onChange={processIdentityDocumentImage}
                   type="file"
                 />
               </label>
 
-              <label>
-                MRZ detectada
-                <textarea
-                  className="mrz-textarea"
-                  onChange={(event) => setPassportMrz(event.target.value)}
-                  placeholder="P<PANAPELLIDO<<NOMBRES..."
-                  value={passportMrz}
-                />
-              </label>
+              {createMode === 'passport' ? (
+                <>
+                  <label>
+                    MRZ detectada
+                    <textarea
+                      className="mrz-textarea"
+                      onChange={(event) => setPassportMrz(event.target.value)}
+                      placeholder="P<PANAPELLIDO<<NOMBRES..."
+                      value={passportMrz}
+                    />
+                  </label>
 
-              <div className="passport-actions">
-                <button
-                  className="button secondary"
-                  disabled={passportStatus === 'reading' || !passportMrz.trim()}
-                  onClick={() => applyPassportMrz()}
-                  type="button"
-                >
+                  <div className="passport-actions">
+                    <button
+                      className="button secondary"
+                      disabled={passportStatus === 'reading' || !passportMrz.trim()}
+                      onClick={() => applyPassportMrz()}
+                      type="button"
+                    >
+                      {passportStatus === 'reading' ? (
+                        <Loader2 size={16} strokeWidth={2.2} />
+                      ) : (
+                        <FileText size={16} strokeWidth={2.2} />
+                      )}
+                      Aplicar datos
+                    </button>
+                    {passportStatus === 'reading' ? (
+                      <span className="passport-status">Leyendo documento...</span>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <div className="passport-actions">
                   {passportStatus === 'reading' ? (
-                    <Loader2 size={16} strokeWidth={2.2} />
-                  ) : (
-                    <FileText size={16} strokeWidth={2.2} />
-                  )}
-                  Aplicar datos
-                </button>
-                {passportStatus === 'reading' ? (
-                  <span className="passport-status">Leyendo pasaporte...</span>
-                ) : null}
-              </div>
+                    <>
+                      <Loader2 size={16} strokeWidth={2.2} />
+                      <span className="passport-status">Leyendo documento...</span>
+                    </>
+                  ) : identityDocumentPayload ? (
+                    <span className="passport-status">
+                      Documento listo para guardar con el cliente.
+                    </span>
+                  ) : null}
+                </div>
+              )}
 
               {passportError ? <p className="form-error">{passportError}</p> : null}
 
-              {passportData ? (
+              {identityDocumentPayload ? (
                 <div className="passport-result" aria-live="polite">
                   <span>
-                    <strong>Nombre</strong>
+                    <strong>Archivo</strong>
+                    {identityDocumentPayload.fileName}
+                  </span>
+                  <span>
+                    <strong>Tipo</strong>
+                    {identityDocumentLabel(identityDocumentPayload.type)}
+                  </span>
+                  <span>
+                    <strong>Documento</strong>
+                    {identityDocumentPayload.documentNumber ?? 'Pendiente'}
+                  </span>
+                  <span>
+                    <strong>Estado</strong>
+                    Guardado al crear
+                  </span>
+                </div>
+              ) : null}
+
+              {passportData ? (
+                <div className="passport-result compact" aria-live="polite">
+                  <span>
+                    <strong>Nombre MRZ</strong>
                     {passportData.firstName} {passportData.lastName}
-                  </span>
-                  <span>
-                    <strong>Pasaporte</strong>
-                    {passportData.documentNumber}
-                  </span>
-                  <span>
-                    <strong>Nacionalidad</strong>
-                    {passportData.nationality}
                   </span>
                   <span>
                     <strong>Expira</strong>
                     {passportData.expirationDate ?? 'Sin fecha'}
+                  </span>
+                </div>
+              ) : null}
+
+              {nationalIdData ? (
+                <div className="passport-result compact" aria-live="polite">
+                  <span>
+                    <strong>Nombre OCR</strong>
+                    {[nationalIdData.firstName, nationalIdData.lastName]
+                      .filter(Boolean)
+                      .join(' ') || 'Pendiente'}
+                  </span>
+                  <span>
+                    <strong>Cedula</strong>
+                    {nationalIdData.documentNumber ?? 'Pendiente'}
                   </span>
                 </div>
               ) : null}
@@ -723,8 +904,8 @@ export function ClientsWorkspace() {
 
           <section className="form-section">
             <div>
-              <h3>Identidad</h3>
-              <p>Persona natural, empresa o contacto relacionado.</p>
+              <h3>Identificacion basica</h3>
+              <p>Datos minimos para reconocer al cliente en la organizacion.</p>
             </div>
             <div className="form-grid two">
               <label>
@@ -735,13 +916,8 @@ export function ClientsWorkspace() {
                 </select>
               </label>
               <label>
-                Estado
-                <select defaultValue="NEW" name="status">
-                  <option value="NEW">Nuevo</option>
-                  <option value="ACTIVE">Activo</option>
-                  <option value="NURTURING">Nutricion</option>
-                  <option value="INACTIVE">Inactivo</option>
-                </select>
+                Cedula, pasaporte o RUC
+                <input name="legalId" placeholder="8-000-000" />
               </label>
             </div>
             <div className="form-grid two">
@@ -759,37 +935,14 @@ export function ClientsWorkspace() {
                 Empresa
                 <input name="companyName" placeholder="Grupo Terra" />
               </label>
-              <label>
-                Cedula o RUC
-                <input name="legalId" placeholder="8-000-000" />
-              </label>
+              <span className="form-hint">Persona requiere nombre; empresa requiere razon social.</span>
             </div>
           </section>
 
           <section className="form-section">
             <div>
-              <h3>Roles comerciales</h3>
-              <p>Un cliente puede ocupar varios roles dentro del ciclo inmobiliario.</p>
-            </div>
-            <div className="option-grid">
-              {roleOptions.map((role) => (
-                <label className="check-card" key={role.value}>
-                  <input
-                    defaultChecked={role.value === 'LEAD'}
-                    name="roles"
-                    type="checkbox"
-                    value={role.value}
-                  />
-                  <span>{role.label}</span>
-                </label>
-              ))}
-            </div>
-          </section>
-
-          <section className="form-section">
-            <div>
-              <h3>Contacto</h3>
-              <p>Canales y preferencia para contactar sin duplicar datos.</p>
+              <h3>Contacto principal</h3>
+              <p>Email, telefono o WhatsApp son requeridos para activar seguimiento.</p>
             </div>
             <div className="form-grid two">
               <label>
@@ -807,7 +960,7 @@ export function ClientsWorkspace() {
                 </select>
               </label>
             </div>
-            <div className="form-grid three">
+            <div className="form-grid two">
               <label>
                 Telefono
                 <input name="phone" placeholder="+507 6000-0000" />
@@ -816,179 +969,229 @@ export function ClientsWorkspace() {
                 WhatsApp
                 <input name="whatsapp" placeholder="+507 6000-0000" />
               </label>
+            </div>
+          </section>
+
+          <section className="form-section">
+            <div>
+              <h3>Roles comerciales</h3>
+              <p>Selecciona al menos un rol dentro del ciclo inmobiliario.</p>
+            </div>
+            <div className="option-grid">
+              {roleOptions.map((role) => (
+                <label className="check-card" key={role.value}>
+                  <input
+                    defaultChecked={role.value === 'LEAD'}
+                    name="roles"
+                    type="checkbox"
+                    value={role.value}
+                  />
+                  <span>{role.label}</span>
+                </label>
+              ))}
+            </div>
+          </section>
+
+          <details className="form-collapsible">
+            <summary>Datos operativos</summary>
+            <div className="form-section">
+              <div>
+                <h3>Estado y asignacion</h3>
+                <p>Clasificacion inicial para operacion interna.</p>
+              </div>
+              <div className="form-grid three">
+                <label>
+                  Estado
+                  <select defaultValue="NEW" name="status">
+                    <option value="NEW">Nuevo</option>
+                    <option value="ACTIVE">Activo</option>
+                    <option value="NURTURING">Nutricion</option>
+                    <option value="INACTIVE">Inactivo</option>
+                  </select>
+                </label>
+                <label>
+                  Temperatura
+                  <select defaultValue="WARM" name="temperature">
+                    <option value="COLD">Frio</option>
+                    <option value="WARM">Tibio</option>
+                    <option value="HOT">Alta prioridad</option>
+                  </select>
+                </label>
               <label>
                 Alterno
                 <input name="alternatePhone" placeholder="+507 6000-0001" />
               </label>
+              </div>
             </div>
-          </section>
+          </details>
 
-          <section className="form-section">
-            <div>
-              <h3>Ubicacion y origen</h3>
-              <p>Contexto de mercado y fuente de captacion.</p>
-            </div>
-            <div className="form-grid three">
-              <label>
-                Pais
-                <input defaultValue="Panama" name="country" />
-              </label>
-              <label>
-                Ciudad
-                <input name="city" placeholder="Panama" />
-              </label>
-              <label>
-                Zona actual
-                <input name="zone" placeholder="Costa del Este" />
-              </label>
-            </div>
-            <div className="form-grid two">
-              <label>
-                Direccion
-                <input name="address" placeholder="Calle, edificio o referencia" />
-              </label>
-              <label>
-                Fuente
-                <input name="source" placeholder="Referido, portal, evento" />
-              </label>
-            </div>
-          </section>
-
-          <section className="form-section">
-            <div>
-              <h3>Necesidad inmobiliaria</h3>
-              <p>Preferencias para conectar clientes con propiedades y procesos.</p>
-            </div>
-            <div className="form-grid three">
-              <label>
-                Interes
-                <select defaultValue="BUY" name="interestType">
-                  <option value="BUY">Compra</option>
-                  <option value="RENT">Alquiler</option>
-                  <option value="SELL">Venta</option>
-                  <option value="LEASE">Dar en alquiler</option>
-                  <option value="INVEST">Inversion</option>
-                  <option value="MANAGE">Administracion</option>
-                  <option value="REFER">Referir</option>
-                </select>
-              </label>
-              <label>
-                Tiempo de decision
-                <select defaultValue="EXPLORING" name="timeline">
-                  <option value="IMMEDIATE">Inmediato</option>
-                  <option value="ONE_TO_THREE_MONTHS">1 a 3 meses</option>
-                  <option value="THREE_TO_SIX_MONTHS">3 a 6 meses</option>
-                  <option value="SIX_PLUS_MONTHS">6+ meses</option>
-                  <option value="EXPLORING">Explorando</option>
-                </select>
-              </label>
-              <label>
-                Financiamiento
-                <select defaultValue="UNKNOWN" name="financingStatus">
-                  <option value="CASH">Contado</option>
-                  <option value="PRE_APPROVED">Preaprobado</option>
-                  <option value="NEEDS_FINANCING">Necesita financiamiento</option>
-                  <option value="UNKNOWN">Por definir</option>
-                </select>
-              </label>
-            </div>
-            <div className="form-grid three">
-              <label>
-                Presupuesto min.
-                <input min="0" name="budgetMin" placeholder="250000" type="number" />
-              </label>
-              <label>
-                Presupuesto max.
-                <input min="0" name="budgetMax" placeholder="450000" type="number" />
-              </label>
-              <label>
-                Moneda
-                <input defaultValue="USD" name="currency" />
-              </label>
-            </div>
-            <div className="option-grid">
-              {propertyTypeOptions.map((type) => (
-                <label className="check-card" key={type}>
-                  <input name="propertyTypes" type="checkbox" value={type} />
-                  <span>{type}</span>
+          <details className="form-collapsible">
+            <summary>Ubicacion y origen</summary>
+            <div className="form-section">
+              <div>
+                <h3>Contexto de captacion</h3>
+                <p>Mercado, zona y fuente para segmentacion.</p>
+              </div>
+              <div className="form-grid three">
+                <label>
+                  Pais
+                  <input defaultValue="Panama" name="country" />
                 </label>
-              ))}
+                <label>
+                  Ciudad
+                  <input name="city" placeholder="Panama" />
+                </label>
+                <label>
+                  Zona actual
+                  <input name="zone" placeholder="Costa del Este" />
+                </label>
+              </div>
+              <div className="form-grid two">
+                <label>
+                  Direccion
+                  <input name="address" placeholder="Calle, edificio o referencia" />
+                </label>
+                <label>
+                  Fuente
+                  <input name="source" placeholder="Referido, portal, evento" />
+                </label>
+              </div>
             </div>
-            <label>
-              Zonas preferidas
-              <input
-                name="preferredZones"
-                placeholder="Costa del Este, Santa Maria, San Francisco"
-              />
-            </label>
-            <div className="form-grid three">
-              <label>
-                Recamaras min.
-                <input min="0" name="bedroomsMin" type="number" />
-              </label>
-              <label>
-                Banos min.
-                <input min="0" name="bathroomsMin" type="number" />
-              </label>
-              <label>
-                Parkings min.
-                <input min="0" name="parkingMin" type="number" />
-              </label>
-            </div>
-            <div className="form-grid two">
-              <label>
-                Area min.
-                <input min="0" name="areaMin" placeholder="80" type="number" />
-              </label>
-              <label>
-                Area max.
-                <input min="0" name="areaMax" placeholder="180" type="number" />
-              </label>
-            </div>
-          </section>
+          </details>
 
-          <section className="form-section">
-            <div>
-              <h3>Seguimiento</h3>
-              <p>Estado operativo, temperatura y proxima accion.</p>
-            </div>
-            <div className="form-grid three">
+          <details className="form-collapsible">
+            <summary>Necesidad inmobiliaria</summary>
+            <div className="form-section">
+              <div>
+                <h3>Preferencias comerciales</h3>
+                <p>Informacion para conectar clientes con propiedades y procesos.</p>
+              </div>
+              <div className="form-grid three">
+                <label>
+                  Interes
+                  <select defaultValue="BUY" name="interestType">
+                    <option value="BUY">Compra</option>
+                    <option value="RENT">Alquiler</option>
+                    <option value="SELL">Venta</option>
+                    <option value="LEASE">Dar en alquiler</option>
+                    <option value="INVEST">Inversion</option>
+                    <option value="MANAGE">Administracion</option>
+                    <option value="REFER">Referir</option>
+                  </select>
+                </label>
+                <label>
+                  Tiempo de decision
+                  <select defaultValue="EXPLORING" name="timeline">
+                    <option value="IMMEDIATE">Inmediato</option>
+                    <option value="ONE_TO_THREE_MONTHS">1 a 3 meses</option>
+                    <option value="THREE_TO_SIX_MONTHS">3 a 6 meses</option>
+                    <option value="SIX_PLUS_MONTHS">6+ meses</option>
+                    <option value="EXPLORING">Explorando</option>
+                  </select>
+                </label>
+                <label>
+                  Financiamiento
+                  <select defaultValue="UNKNOWN" name="financingStatus">
+                    <option value="CASH">Contado</option>
+                    <option value="PRE_APPROVED">Preaprobado</option>
+                    <option value="NEEDS_FINANCING">Necesita financiamiento</option>
+                    <option value="UNKNOWN">Por definir</option>
+                  </select>
+                </label>
+              </div>
+              <div className="form-grid three">
+                <label>
+                  Presupuesto min.
+                  <input min="0" name="budgetMin" placeholder="250000" type="number" />
+                </label>
+                <label>
+                  Presupuesto max.
+                  <input min="0" name="budgetMax" placeholder="450000" type="number" />
+                </label>
+                <label>
+                  Moneda
+                  <input defaultValue="USD" name="currency" />
+                </label>
+              </div>
+              <div className="option-grid">
+                {propertyTypeOptions.map((type) => (
+                  <label className="check-card" key={type}>
+                    <input name="propertyTypes" type="checkbox" value={type} />
+                    <span>{type}</span>
+                  </label>
+                ))}
+              </div>
               <label>
-                Temperatura
-                <select defaultValue="WARM" name="temperature">
-                  <option value="COLD">Frio</option>
-                  <option value="WARM">Tibio</option>
-                  <option value="HOT">Alta prioridad</option>
-                </select>
+                Zonas preferidas
+                <input
+                  name="preferredZones"
+                  placeholder="Costa del Este, Santa Maria, San Francisco"
+                />
+              </label>
+              <div className="form-grid three">
+                <label>
+                  Recamaras min.
+                  <input min="0" name="bedroomsMin" type="number" />
+                </label>
+                <label>
+                  Banos min.
+                  <input min="0" name="bathroomsMin" type="number" />
+                </label>
+                <label>
+                  Parkings min.
+                  <input min="0" name="parkingMin" type="number" />
+                </label>
+              </div>
+              <div className="form-grid two">
+                <label>
+                  Area min.
+                  <input min="0" name="areaMin" placeholder="80" type="number" />
+                </label>
+                <label>
+                  Area max.
+                  <input min="0" name="areaMax" placeholder="180" type="number" />
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <details className="form-collapsible">
+            <summary>Seguimiento y permisos</summary>
+            <div className="form-section">
+              <div>
+                <h3>Proxima accion</h3>
+                <p>Notas, tags y consentimientos para continuidad operativa.</p>
+              </div>
+              <div className="form-grid two">
+                <label>
+                  Ultimo contacto
+                  <input name="lastContactAt" type="date" />
+                </label>
+                <label>
+                  Proximo seguimiento
+                  <input name="nextFollowUpAt" type="date" />
+                </label>
+              </div>
+              <label>
+                Tags
+                <input name="tags" placeholder="VIP, inversion, referido" />
               </label>
               <label>
-                Ultimo contacto
-                <input name="lastContactAt" type="date" />
+                Notas
+                <textarea name="notes" placeholder="Necesidad, objeciones, preferencias y proxima accion." />
               </label>
-              <label>
-                Proximo seguimiento
-                <input name="nextFollowUpAt" type="date" />
-              </label>
+              <div className="consent-list">
+                <label className="inline-check">
+                  <input name="marketingConsent" type="checkbox" />
+                  Acepta comunicaciones comerciales
+                </label>
+                <label className="inline-check">
+                  <input name="dataConsent" type="checkbox" />
+                  Autoriza tratamiento de datos
+                </label>
+              </div>
             </div>
-            <label>
-              Tags
-              <input name="tags" placeholder="VIP, inversion, referido" />
-            </label>
-            <label>
-              Notas
-              <textarea name="notes" placeholder="Necesidad, objeciones, preferencias y proxima accion." />
-            </label>
-            <div className="consent-list">
-              <label className="inline-check">
-                <input name="marketingConsent" type="checkbox" />
-                Acepta comunicaciones comerciales
-              </label>
-              <label className="inline-check">
-                <input name="dataConsent" type="checkbox" />
-                Autoriza tratamiento de datos
-              </label>
-            </div>
-          </section>
+          </details>
 
           {formError ? <p className="form-error">{formError}</p> : null}
         </form>
@@ -1082,6 +1285,53 @@ function csvValue(form: FormData, key: string) {
   );
 }
 
+function createModeToDocumentType(
+  mode: ClientCreateMode,
+): ClientIdentityDocumentType | null {
+  if (mode === 'passport') {
+    return 'PASSPORT';
+  }
+
+  if (mode === 'national_id') {
+    return 'NATIONAL_ID';
+  }
+
+  return null;
+}
+
+function isSupportedIdentityFile(file: File) {
+  return ['image/jpeg', 'image/png', 'image/webp'].includes(file.type);
+}
+
+async function fileToIdentityDocumentPayload(
+  file: File,
+  type: ClientIdentityDocumentType,
+): Promise<IdentityDocumentPayload> {
+  return {
+    type,
+    fileName: file.name,
+    mimeType: file.type,
+    fileSize: file.size,
+    fileBase64: await fileToDataUrl(file),
+  };
+}
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error('No se pudo preparar el archivo.'));
+    });
+    reader.addEventListener('error', () => reject(reader.error));
+    reader.readAsDataURL(file);
+  });
+}
+
 function setFormValue(form: HTMLFormElement, name: string, value: string | null) {
   if (!value) {
     return;
@@ -1114,6 +1364,23 @@ function passportNotes(data: PassportMrzData, form: HTMLFormElement) {
     .join('\n');
 
   return [existingNotes, detectedNotes].filter(Boolean).join('\n\n');
+}
+
+function nationalIdNotes(data: NationalIdOcrData, form: HTMLFormElement) {
+  const existingNotes = stringValue(new FormData(form), 'notes');
+  const detectedNotes = [
+    data.documentNumber ? `Cedula detectada: ${data.documentNumber}` : null,
+    data.firstName ? `Nombre OCR: ${data.firstName}` : null,
+    data.lastName ? `Apellido OCR: ${data.lastName}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return [existingNotes, detectedNotes].filter(Boolean).join('\n\n');
+}
+
+function identityDocumentLabel(type: ClientIdentityDocumentType) {
+  return type === 'PASSPORT' ? 'Pasaporte' : 'Cedula';
 }
 
 function roleLabel(role: ClientRole) {

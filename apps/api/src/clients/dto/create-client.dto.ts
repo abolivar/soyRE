@@ -1,4 +1,5 @@
 import {
+  ClientIdentityDocumentType,
   ClientInterestType,
   ClientRole,
   ClientStatus,
@@ -16,6 +17,7 @@ import {
   IsEnum,
   IsISO8601,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -23,7 +25,68 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class CreateClientIdentityDocumentDto {
+  @IsEnum(ClientIdentityDocumentType)
+  type!: ClientIdentityDocumentType;
+
+  @IsString()
+  @MaxLength(180)
+  fileName!: string;
+
+  @IsString()
+  @MaxLength(80)
+  mimeType!: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(5242880)
+  fileSize!: number;
+
+  @IsString()
+  @MaxLength(7000000)
+  fileBase64!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  documentNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  issuingCountry?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  lastName?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  birthDate?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  expirationDate?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(8000)
+  ocrText?: string;
+
+  @IsOptional()
+  @IsObject()
+  extractedData?: Record<string, unknown>;
+}
 
 export class CreateClientDto {
   @IsOptional()
@@ -222,4 +285,9 @@ export class CreateClientDto {
   @IsOptional()
   @IsBoolean()
   dataConsent?: boolean;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateClientIdentityDocumentDto)
+  identityDocument?: CreateClientIdentityDocumentDto;
 }

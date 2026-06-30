@@ -99,6 +99,16 @@ export type FinancingStatus =
   | 'NEEDS_FINANCING'
   | 'UNKNOWN';
 
+export type ClientIdentityDocumentType = 'PASSPORT' | 'NATIONAL_ID';
+
+export type ClientIdentityDocumentSummary = {
+  id: string;
+  type: ClientIdentityDocumentType;
+  documentNumber: string | null;
+  fileName: string;
+  validatedAt: string;
+};
+
 export type OrganizationClient = {
   id: string;
   organizationId: string;
@@ -147,6 +157,8 @@ export type OrganizationClient = {
   tags: string[];
   marketingConsent: boolean;
   dataConsent: boolean;
+  identityDocument: ClientIdentityDocumentSummary | null;
+  identityDocumentValidated: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -200,6 +212,21 @@ export type CreateClientPayload = {
   tags?: string[];
   marketingConsent?: boolean;
   dataConsent?: boolean;
+  identityDocument?: {
+    type: ClientIdentityDocumentType;
+    fileName: string;
+    mimeType: string;
+    fileSize: number;
+    fileBase64: string;
+    documentNumber?: string;
+    issuingCountry?: string;
+    firstName?: string;
+    lastName?: string;
+    birthDate?: string;
+    expirationDate?: string;
+    ocrText?: string;
+    extractedData?: Record<string, unknown>;
+  };
 };
 
 export async function apiFetch<T>(

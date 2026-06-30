@@ -1236,7 +1236,7 @@ button:hover,
   border-radius: 8px;
   display: grid;
   gap: 6px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 6px;
 }
 
@@ -1312,6 +1312,10 @@ button:hover,
   padding: 12px;
 }
 
+.passport-result.compact {
+  background: transparent;
+}
+
 .passport-result span {
   color: var(--muted);
   display: grid;
@@ -1323,6 +1327,62 @@ button:hover,
   color: var(--ink-strong);
   font-size: 0.78rem;
   text-transform: uppercase;
+}
+
+.identity-seal {
+  align-items: center;
+  color: var(--primary-strong);
+  display: inline-flex;
+  font-size: 0.76rem;
+  font-weight: 850;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.form-hint {
+  align-self: end;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.form-collapsible {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.form-collapsible summary {
+  align-items: center;
+  background: var(--surface-muted);
+  color: var(--ink-strong);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.9rem;
+  font-weight: 850;
+  justify-content: space-between;
+  list-style: none;
+  min-height: 48px;
+  padding: 0 14px;
+}
+
+.form-collapsible summary::-webkit-details-marker {
+  display: none;
+}
+
+.form-collapsible summary::after {
+  color: var(--muted);
+  content: "+";
+  font-size: 1.1rem;
+}
+
+.form-collapsible[open] summary::after {
+  content: "-";
+}
+
+.form-collapsible .form-section {
+  border-top: 1px solid var(--line);
+  padding: 14px;
 }
 
 .check-card {
@@ -1479,6 +1539,7 @@ button:hover,
   .metric-grid,
   .module-grid,
   .app-nav,
+  .intake-mode-toggle,
   .option-grid,
   .passport-result,
   .summary-strip {
