@@ -340,6 +340,13 @@ export function ClientsWorkspace() {
       const worker = await createWorker('eng');
 
       try {
+        if (documentType === 'PASSPORT') {
+          await worker.setParameters({
+            preserve_interword_spaces: '1',
+            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
+          });
+        }
+
         const {
           data: { text },
         } = await worker.recognize(file, { rotateAuto: true });
