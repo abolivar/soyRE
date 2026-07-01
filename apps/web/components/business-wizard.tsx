@@ -51,7 +51,7 @@ import {
   PageHeader,
   SectionPanel,
   StatusBadge,
-} from './ui';
+} from '@soyre/ui';
 
 type WizardStepId =
   | 'mode'
