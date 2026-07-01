@@ -111,32 +111,6 @@ label {
   gap: 8px;
 }
 
-input,
-select,
-textarea {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--ink);
-  min-height: 42px;
-  outline: none;
-  padding: 0 12px;
-  width: 100%;
-}
-
-textarea {
-  min-height: 112px;
-  padding: 12px;
-  resize: vertical;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(26, 158, 143, 0.14);
-}
-
 /* Note: All button/badge/card/etc. primitive class styles live in
  * @soyre/ui/styles (packages/ui/src/styles/components.css) and are
  * loaded by apps/web/app/layout.tsx before this file. */
@@ -1246,6 +1220,44 @@ textarea:focus {
 .business-inline-actions > label,
 .business-inline-actions > select {
   flex: 1 1 280px;
+}
+
+.business-inline-actions > select,
+.special-line-row > input:not([type="checkbox"]),
+.special-line-row > select,
+.special-line-row > textarea,
+.commission-rule-row > input:not([type="checkbox"]),
+.commission-rule-row > select,
+.commission-rule-row > textarea {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  min-height: 42px;
+  outline: none;
+  padding: 0 12px;
+  width: 100%;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.special-line-row > textarea,
+.commission-rule-row > textarea {
+  min-height: 112px;
+  padding: 12px;
+  resize: vertical;
+}
+
+.business-inline-actions > select:focus-visible,
+.special-line-row > input:not([type="checkbox"]):focus-visible,
+.special-line-row > select:focus-visible,
+.special-line-row > textarea:focus-visible,
+.commission-rule-row > input:not([type="checkbox"]):focus-visible,
+.commission-rule-row > select:focus-visible,
+.commission-rule-row > textarea:focus-visible {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(26, 158, 143, 0.14);
 }
 
 .business-list {

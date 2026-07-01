@@ -1,7 +1,9 @@
 import { KeyRound, ShieldCheck } from 'lucide-react';
 import {
+  Input,
   PageHeader,
   SectionPanel,
+  Select,
   StatusBadge,
 } from '@soyre/ui';
 
@@ -20,26 +22,29 @@ export default function SettingsPage() {
           description="Valores operativos que usaremos en todo el workspace."
         >
           <div className="compact-list">
-            <label>
-              Nombre publico
-              <input defaultValue="SoyPMS Demo Realty" />
-            </label>
-            <label>
-              Zona horaria
-              <select defaultValue="America/Panama">
-                <option value="America/Panama">America/Panama</option>
-                <option value="America/Bogota">America/Bogota</option>
-                <option value="America/Mexico_City">America/Mexico_City</option>
-              </select>
-            </label>
-            <label>
-              Moneda principal
-              <select defaultValue="USD">
-                <option value="USD">USD</option>
-                <option value="PAB">PAB</option>
-                <option value="COP">COP</option>
-              </select>
-            </label>
+            <Input
+              id="settings-public-name"
+              label="Nombre publico"
+              defaultValue="SoyPMS Demo Realty"
+            />
+            <Select
+              id="settings-timezone"
+              label="Zona horaria"
+              defaultValue="America/Panama"
+            >
+              <option value="America/Panama">America/Panama</option>
+              <option value="America/Bogota">America/Bogota</option>
+              <option value="America/Mexico_City">America/Mexico_City</option>
+            </Select>
+            <Select
+              id="settings-currency"
+              label="Moneda principal"
+              defaultValue="USD"
+            >
+              <option value="USD">USD</option>
+              <option value="PAB">PAB</option>
+              <option value="COP">COP</option>
+            </Select>
           </div>
         </SectionPanel>
 

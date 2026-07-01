@@ -3,18 +3,29 @@ import type { ReactNode, SelectHTMLAttributes } from 'react';
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   id: string;
   label: string;
+  labelHidden?: boolean;
   children: ReactNode;
   hint?: ReactNode;
   error?: string;
 }
 
-export function Select({ id, label, hint, error, children, ...rest }: SelectProps) {
+export function Select({
+  id,
+  label,
+  labelHidden = false,
+  hint,
+  error,
+  children,
+  ...rest
+}: SelectProps) {
   const hintId = hint || error ? `${id}-hint` : undefined;
   const isInvalid = Boolean(error);
 
   return (
     <label className="input-field" htmlFor={id}>
-      <span className="input-field-label">{label}</span>
+      <span className={`input-field-label${labelHidden ? ' is-hidden' : ''}`}>
+        {label}
+      </span>
       <select
         {...rest}
         aria-describedby={hintId}

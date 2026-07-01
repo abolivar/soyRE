@@ -6,6 +6,7 @@ import {
   FilterBar,
   PageHeader,
   SearchInput,
+  Select,
   StatusBadge,
 } from '@soyre/ui';
 
@@ -52,12 +53,17 @@ export default function DocumentsPage() {
 
       <FilterBar>
         <SearchInput placeholder="Buscar documento o expediente" />
-        <select aria-label="Estado documental" defaultValue="all">
+        <Select
+          id="documents-filter-status"
+          label="Estado documental"
+          labelHidden
+          defaultValue="all"
+        >
           <option value="all">Todos los estados</option>
           <option value="signed">Firmados</option>
           <option value="review">Por revisar</option>
           <option value="missing">Faltantes</option>
-        </select>
+        </Select>
       </FilterBar>
 
       <section className="dashboard-grid">

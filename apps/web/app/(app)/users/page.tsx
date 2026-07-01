@@ -8,6 +8,7 @@ import {
   PageHeader,
   SearchInput,
   SectionPanel,
+  Select,
   StatusBadge,
 } from '@soyre/ui';
 
@@ -27,19 +28,29 @@ export default function UsersPage() {
 
       <FilterBar>
         <SearchInput placeholder="Buscar usuario o email" />
-        <select aria-label="Estado de acceso" defaultValue="all">
+        <Select
+          id="users-filter-status"
+          label="Estado de acceso"
+          labelHidden
+          defaultValue="all"
+        >
           <option value="all">Todos los estados</option>
           <option value="active">Activos</option>
           <option value="pending">Pendientes</option>
           <option value="suspended">Suspendidos</option>
-        </select>
-        <select aria-label="Rol" defaultValue="all">
+        </Select>
+        <Select
+          id="users-filter-role"
+          label="Rol"
+          labelHidden
+          defaultValue="all"
+        >
           <option value="all">Todos los roles</option>
           <option value="owner">Owner</option>
           <option value="admin">Admin</option>
           <option value="broker">Broker</option>
           <option value="operations">Operations</option>
-        </select>
+        </Select>
       </FilterBar>
 
       <section className="dashboard-grid">

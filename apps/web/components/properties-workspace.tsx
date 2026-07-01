@@ -38,7 +38,9 @@ import {
   FormDrawer,
   LoadingState,
   PageHeader,
+  SearchInput,
   SectionPanel,
+  Select,
   StatusBadge,
   type Tone,
 } from '@soyre/ui';
@@ -428,8 +430,10 @@ export function PropertiesWorkspace() {
       <form onSubmit={applyFilters}>
         <FilterBar>
           {organizations.length > 1 ? (
-            <select
-              aria-label="Organizacion"
+            <Select
+              id="properties-filter-organization"
+              label="Organizacion"
+              labelHidden
               onChange={(event) => setActiveOrganizationId(event.target.value)}
               value={activeOrganizationId ?? ''}
             >
@@ -441,27 +445,32 @@ export function PropertiesWorkspace() {
                   {membership.organizationName}
                 </option>
               ))}
-            </select>
+            </Select>
           ) : null}
-          <label className="search-input">
-            <Building2 size={17} strokeWidth={2.2} />
-            <input
-              aria-label="Buscar propiedad"
-              defaultValue={filters.search}
-              name="search"
-              placeholder="Buscar propiedad, codigo, zona u owner"
-            />
-          </label>
-          <select
-            aria-label="Modalidad"
+          <SearchInput
+            aria-label="Buscar propiedad"
+            defaultValue={filters.search}
+            name="search"
+            placeholder="Buscar propiedad, codigo, zona u owner"
+          />
+          <Select
+            id="properties-filter-operation"
+            label="Modalidad"
+            labelHidden
             defaultValue={filters.operation}
             name="operation"
           >
             <option value="">Todas las modalidades</option>
             <option value="SALE">Venta</option>
             <option value="RENT">Alquiler</option>
-          </select>
-          <select aria-label="Estado" defaultValue={filters.status} name="status">
+          </Select>
+          <Select
+            id="properties-filter-status"
+            label="Estado"
+            labelHidden
+            defaultValue={filters.status}
+            name="status"
+          >
             <option value="">Todos los estados</option>
             <option value="DRAFT">Borrador</option>
             <option value="ACTIVE">Activa</option>
@@ -470,7 +479,7 @@ export function PropertiesWorkspace() {
             <option value="UNDER_CONTRACT">En contrato</option>
             <option value="CLOSED">Cerrada</option>
             <option value="WITHDRAWN">Retirada</option>
-          </select>
+          </Select>
           <Button variant="secondary" type="submit">
             Aplicar
           </Button>

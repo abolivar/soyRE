@@ -8,7 +8,6 @@ import {
   Phone,
   Plus,
   RefreshCcw,
-  Search,
 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
@@ -31,7 +30,9 @@ import {
   FormDrawer,
   LoadingState,
   PageHeader,
+  SearchInput,
   SectionPanel,
+  Select,
   StatusBadge,
   type Tone,
 } from '@soyre/ui';
@@ -311,8 +312,10 @@ export function AgentsWorkspace() {
       <form onSubmit={applyFilters}>
         <FilterBar>
           {organizations.length > 1 ? (
-            <select
-              aria-label="Organizacion"
+            <Select
+              id="agents-filter-organization"
+              label="Organizacion"
+              labelHidden
               onChange={(event) => setActiveOrganizationId(event.target.value)}
               value={activeOrganizationId ?? ''}
             >
@@ -324,19 +327,18 @@ export function AgentsWorkspace() {
                   {membership.organizationName}
                 </option>
               ))}
-            </select>
+            </Select>
           ) : null}
-          <label className="search-input">
-            <Search size={17} strokeWidth={2.2} />
-            <input
-              aria-label="Buscar agente"
-              defaultValue={filters.search}
-              name="search"
-              placeholder="Buscar agente, empresa, email o telefono"
-            />
-          </label>
-          <select
-            aria-label="Categoria"
+          <SearchInput
+            aria-label="Buscar agente"
+            defaultValue={filters.search}
+            name="search"
+            placeholder="Buscar agente, empresa, email o telefono"
+          />
+          <Select
+            id="agents-filter-category"
+            label="Categoria"
+            labelHidden
             defaultValue={filters.category}
             name="category"
           >
@@ -346,7 +348,7 @@ export function AgentsWorkspace() {
                 {category.label}
               </option>
             ))}
-          </select>
+          </Select>
           <Button variant="secondary" type="submit">
             Aplicar
           </Button>

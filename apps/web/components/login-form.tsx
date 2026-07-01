@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
+import { Button, Input } from '@soyre/ui';
 import { apiFetch } from '../lib/api';
 import type { AuthUser } from '../lib/api';
 
@@ -50,24 +51,27 @@ export function LoginForm({
       className={['stack', className].filter(Boolean).join(' ')}
       onSubmit={handleSubmit}
     >
-      <label>
-        Email
-        <input autoComplete="email" name="email" required type="email" />
-      </label>
-      <label>
-        Contrasena
-        <input
-          autoComplete="current-password"
-          minLength={10}
-          name="password"
-          required
-          type="password"
-        />
-      </label>
+      <Input
+        id="login-email"
+        label="Email"
+        autoComplete="email"
+        name="email"
+        required
+        type="email"
+      />
+      <Input
+        id="login-password"
+        label="Contrasena"
+        autoComplete="current-password"
+        minLength={10}
+        name="password"
+        required
+        type="password"
+      />
       {error ? <p className="form-error">{error}</p> : null}
-      <button disabled={isSubmitting} type="submit">
+      <Button disabled={isSubmitting} loading={isSubmitting} type="submit">
         {isSubmitting ? loadingLabel : submitLabel}
-      </button>
+      </Button>
     </form>
   );
 }

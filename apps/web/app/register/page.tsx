@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
+import { Button, Input } from '@soyre/ui';
 import { BrandLogo } from '../../components/brand-logo';
 import { apiFetch, AuthUser } from '../../lib/api';
 
@@ -54,37 +55,47 @@ export default function RegisterPage() {
 
         <form className="stack" onSubmit={handleSubmit}>
           <div className="field-grid">
-            <label>
-              Organizacion
-              <input name="organizationName" required />
-            </label>
-            <label>
-              Slug
-              <input name="organizationSlug" pattern="[a-z0-9]+(-[a-z0-9]+)*" />
-            </label>
+            <Input
+              id="register-organization-name"
+              label="Organizacion"
+              name="organizationName"
+              required
+            />
+            <Input
+              id="register-organization-slug"
+              label="Slug"
+              name="organizationSlug"
+              pattern="[a-z0-9]+(-[a-z0-9]+)*"
+            />
           </div>
           <div className="field-grid">
-            <label>
-              Nombre
-              <input name="firstName" required />
-            </label>
-            <label>
-              Apellido
-              <input name="lastName" />
-            </label>
+            <Input
+              id="register-first-name"
+              label="Nombre"
+              name="firstName"
+              required
+            />
+            <Input id="register-last-name" label="Apellido" name="lastName" />
           </div>
-          <label>
-            Email
-            <input name="email" required type="email" />
-          </label>
-          <label>
-            Contrasena
-            <input minLength={10} name="password" required type="password" />
-          </label>
+          <Input
+            id="register-email"
+            label="Email"
+            name="email"
+            required
+            type="email"
+          />
+          <Input
+            id="register-password"
+            label="Contrasena"
+            minLength={10}
+            name="password"
+            required
+            type="password"
+          />
           {error ? <p className="form-error">{error}</p> : null}
-          <button disabled={isSubmitting} type="submit">
+          <Button disabled={isSubmitting} loading={isSubmitting} type="submit">
             {isSubmitting ? 'Creando...' : 'Crear'}
-          </button>
+          </Button>
         </form>
 
         <p className="muted-row">

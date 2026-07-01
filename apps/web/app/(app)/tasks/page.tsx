@@ -6,6 +6,7 @@ import {
   PageHeader,
   SearchInput,
   SectionPanel,
+  Select,
   StatusBadge,
 } from '@soyre/ui';
 
@@ -55,12 +56,17 @@ export default function TasksPage() {
 
       <FilterBar>
         <SearchInput placeholder="Buscar tarea o contexto" />
-        <select aria-label="Prioridad" defaultValue="all">
+        <Select
+          id="tasks-filter-priority"
+          label="Prioridad"
+          labelHidden
+          defaultValue="all"
+        >
           <option value="all">Todas las prioridades</option>
           <option value="critical">Criticas</option>
           <option value="today">Hoy</option>
           <option value="week">Esta semana</option>
-        </select>
+        </Select>
       </FilterBar>
 
       <section className="dashboard-grid">

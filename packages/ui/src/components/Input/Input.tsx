@@ -3,17 +3,27 @@ import type { InputHTMLAttributes, ReactNode } from 'react';
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   id: string;
   label: string;
+  labelHidden?: boolean;
   hint?: ReactNode;
   error?: string;
 }
 
-export function Input({ id, label, hint, error, ...rest }: InputProps) {
+export function Input({
+  id,
+  label,
+  labelHidden = false,
+  hint,
+  error,
+  ...rest
+}: InputProps) {
   const hintId = hint || error ? `${id}-hint` : undefined;
   const isInvalid = Boolean(error);
 
   return (
     <label className="input-field" htmlFor={id}>
-      <span className="input-field-label">{label}</span>
+      <span className={`input-field-label${labelHidden ? ' is-hidden' : ''}`}>
+        {label}
+      </span>
       <input
         {...rest}
         aria-describedby={hintId}

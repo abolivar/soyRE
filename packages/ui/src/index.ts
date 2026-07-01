@@ -43,6 +43,7 @@ export { MetricCard } from './components/MetricCard';
 export { StatusBadge } from './components/StatusBadge';
 export { SectionPanel } from './components/SectionPanel';
 export { SearchInput } from './components/SearchInput';
+export type { SearchInputProps } from './components/SearchInput';
 export { FilterBar } from './components/FilterBar';
 export { DataTable } from './components/DataTable';
 export type { DataTableColumn, DataTableRow } from './components/DataTable';

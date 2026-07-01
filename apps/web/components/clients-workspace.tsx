@@ -49,7 +49,9 @@ import {
   FormDrawer,
   LoadingState,
   PageHeader,
+  SearchInput,
   SectionPanel,
+  Select,
   StatusBadge,
 } from '@soyre/ui';
 
@@ -643,8 +645,10 @@ export function ClientsWorkspace() {
       <form onSubmit={applyFilters}>
         <FilterBar>
           {organizations.length > 1 ? (
-            <select
-              aria-label="Organizacion"
+            <Select
+              id="clients-filter-organization"
+              label="Organizacion"
+              labelHidden
               onChange={(event) => setActiveOrganizationId(event.target.value)}
               value={activeOrganizationId ?? ''}
             >
@@ -656,32 +660,41 @@ export function ClientsWorkspace() {
                   {membership.organizationName}
                 </option>
               ))}
-            </select>
+            </Select>
           ) : null}
-          <label className="search-input">
-            <Users size={17} strokeWidth={2.2} />
-            <input
-              aria-label="Buscar cliente"
-              defaultValue={filters.search}
-              name="search"
-              placeholder="Buscar cliente, email, telefono o empresa"
-            />
-          </label>
-          <select aria-label="Estado" defaultValue={filters.status} name="status">
+          <SearchInput
+            aria-label="Buscar cliente"
+            defaultValue={filters.search}
+            name="search"
+            placeholder="Buscar cliente, email, telefono o empresa"
+          />
+          <Select
+            id="clients-filter-status"
+            label="Estado"
+            labelHidden
+            defaultValue={filters.status}
+            name="status"
+          >
             <option value="">Todos los estados</option>
             <option value="NEW">Nuevos</option>
             <option value="ACTIVE">Activos</option>
             <option value="NURTURING">Nutricion</option>
             <option value="INACTIVE">Inactivos</option>
-          </select>
-          <select aria-label="Rol comercial" defaultValue={filters.role} name="role">
+          </Select>
+          <Select
+            id="clients-filter-role"
+            label="Rol comercial"
+            labelHidden
+            defaultValue={filters.role}
+            name="role"
+          >
             <option value="">Todos los roles</option>
             {roleOptions.map((role) => (
               <option key={role.value} value={role.value}>
                 {role.label}
               </option>
             ))}
-          </select>
+          </Select>
           <Button variant="secondary" type="submit">
             Aplicar
           </Button>
