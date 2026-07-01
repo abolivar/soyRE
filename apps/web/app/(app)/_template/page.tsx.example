@@ -1,0 +1,93 @@
+import { BriefcaseBusiness, Plus, RefreshCcw } from 'lucide-react';
+import {
+  Button,
+  DataTable,
+  EmptyState,
+  ErrorState,
+  FilterBar,
+  LoadingState,
+  PageHeader,
+  SearchInput,
+  SectionPanel,
+  Select,
+  StatusBadge,
+} from '@soyre/ui';
+
+type ViewState = 'loading' | 'error' | 'empty' | 'data';
+
+const viewState: ViewState = 'data';
+
+const rows = [
+  {
+    id: 'example-1',
+    name: 'Registro ejemplo',
+    status: 'Activo',
+  },
+];
+
+export default function ModuleTemplatePage() {
+  return (
+    <>
+      <PageHeader
+        eyebrow="Modulo"
+        title="Nombre del modulo"
+        description="Describe el objetivo operativo de la pantalla en una frase concreta."
+        actions={<Button icon={Plus}>Nueva accion</Button>}
+      />
+
+      <FilterBar>
+        <SearchInput placeholder="Buscar registro" />
+        <Select
+          id="template-filter-status"
+          label="Estado"
+          labelHidden
+          defaultValue="all"
+        >
+          <option value="all">Todos los estados</option>
+          <option value="active">Activos</option>
+          <option value="inactive">Inactivos</option>
+        </Select>
+      </FilterBar>
+
+      <SectionPanel
+        title="Trabajo principal"
+        description="Usa paneles para agrupar decisiones o informacion operativa."
+      >
+        {viewState === 'loading' ? (
+          <LoadingState title="Cargando registros" />
+        ) : viewState === 'error' ? (
+          <ErrorState
+            title="No se pudo cargar"
+            description="Reintenta la consulta o revisa los filtros aplicados."
+            action={
+              <Button variant="secondary" icon={RefreshCcw}>
+                Reintentar
+              </Button>
+            }
+          />
+        ) : viewState === 'empty' ? (
+          <EmptyState
+            icon={BriefcaseBusiness}
+            title="Sin registros"
+            description="Crea el primer registro para activar esta vista."
+            action={<Button icon={Plus}>Crear registro</Button>}
+          />
+        ) : (
+          <DataTable
+            columns={[
+              { key: 'name', label: 'Nombre' },
+              { key: 'status', label: 'Estado' },
+            ]}
+            rows={rows.map((row) => ({
+              id: row.id,
+              cells: {
+                name: <strong className="entity-title">{row.name}</strong>,
+                status: <StatusBadge tone="success">{row.status}</StatusBadge>,
+              },
+            }))}
+          />
+        )}
+      </SectionPanel>
+    </>
+  );
+}

@@ -109,6 +109,10 @@ No hacer:
   - Atomos: `Button`, `Badge`, `Input`, `Select`, `Textarea`, `Card`.
   - Compuestos: `MetricCard`, `StatusBadge`, `DataTable`, `FilterBar`, `SearchInput`, `PageHeader`, `SectionPanel`, `EmptyState`, `LoadingState`, `ErrorState`, `ActivityTimeline`, `ConfirmDialog`, `FormDrawer`, `Tabs`.
   - Dominio: `PropertyCard` (per `design.md §7.5`).
+- Botones de accion deben usar `Button` desde `@soyre/ui`; enlaces con apariencia de boton deben usar `Button asChild` envolviendo `Link`.
+- Formularios visibles deben preferir `Input`, `Select`, `Textarea` y `SearchInput` desde `@soyre/ui`. Si un formulario largo conserva controles nativos por compatibilidad, esos controles deben estar dentro de contenedores acotados del design system (`SectionPanel`, `FormDrawer`, `FilterBar` o clases especificas del modulo), nunca depender de estilos globales universales de `input/select/textarea`.
+- Toda pantalla nueva de la app autenticada debe partir de `apps/web/app/(app)/_template/page.tsx.example` o justificar por que no aplica.
+- Antes de cerrar cambios de UI, ejecutar `pnpm check:design-system` o `pnpm lint`; el check debe quedar sin imports a `./ui`, sin `className="button ..."` en `apps/web` y sin hex hardcodeado en atributos de styling TSX.
 - No introducir librerias de componentes de terceros (shadcn/ui, Radix, MUI, etc.) como base sin nuevo ADR que supersede o enmiende ADR-0005.
 - No usar hex literals en componentes; siempre tokens via `var(--token-name)`.
 

@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "lint": "turbo lint",
+    "lint": "pnpm check:design-system && turbo lint",
+    "check:design-system": "node scripts/check-design-system.mjs",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "test:e2e": "pnpm --filter @soyre/web test:e2e",

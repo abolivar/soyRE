@@ -20,7 +20,10 @@ export default [
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['packages/*/prisma.config.ts'],
+          allowDefaultProject: [
+            'packages/*/prisma.config.ts',
+            'packages/shared/src/*.test.ts',
+          ],
         },
         tsconfigRootDir: import.meta.dirname,
       },
