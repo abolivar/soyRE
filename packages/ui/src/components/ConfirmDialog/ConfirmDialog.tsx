@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
 import type { Tone } from '../../types';
+import { Button } from '../Button';
 
 export function ConfirmDialog({
   open,
@@ -40,12 +41,12 @@ export function ConfirmDialog({
           <p id="confirm-dialog-description">{description}</p>
         </div>
         <div className="dialog-actions">
-          <button className="button secondary" onClick={onCancel} type="button">
+          <Button variant="secondary" onClick={onCancel}>
             {cancelLabel}
-          </button>
-          <button className="button danger" onClick={onConfirm} type="button">
+          </Button>
+          <Button variant="danger" onClick={onConfirm}>
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </section>
     </div>

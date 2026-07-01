@@ -1,5 +1,6 @@
 import { FileText, Plus } from 'lucide-react';
 import {
+  Button,
   DataTable,
   EmptyState,
   FilterBar,
@@ -43,10 +44,9 @@ export default function DocumentsPage() {
         title="Documentos"
         description="Control documental por propiedad, cliente y oportunidad, preparado para flujos legales y auditoria."
         actions={
-          <button className="button primary" type="button">
-            <Plus size={17} strokeWidth={2.2} />
+          <Button icon={Plus}>
             Cargar documento
-          </button>
+          </Button>
         }
       />
 

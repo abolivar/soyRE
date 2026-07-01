@@ -41,6 +41,7 @@ import {
   parseNationalIdOcr,
 } from '../lib/national-id-ocr';
 import {
+  Button,
   DataTable,
   EmptyState,
   ErrorState,
@@ -610,15 +611,13 @@ export function ClientsWorkspace() {
             : 'Personas, empresas y propietarios conectados a una necesidad inmobiliaria concreta.'
         }
         actions={
-          <button
-            className="button primary"
+          <Button
             disabled={!canCreateClients}
+            icon={Plus}
             onClick={openCreateClientDrawer}
-            type="button"
           >
-            <Plus size={17} strokeWidth={2.2} />
             Nuevo cliente
-          </button>
+          </Button>
         }
       />
 
@@ -683,9 +682,9 @@ export function ClientsWorkspace() {
               </option>
             ))}
           </select>
-          <button className="button secondary" type="submit">
+          <Button variant="secondary" type="submit">
             Aplicar
-          </button>
+          </Button>
         </FilterBar>
       </form>
 
@@ -698,14 +697,13 @@ export function ClientsWorkspace() {
         ) : error ? (
           <ErrorState
             action={
-              <button
-                className="button secondary"
+              <Button
+                variant="secondary"
+                icon={RefreshCcw}
                 onClick={() => refreshClients()}
-                type="button"
               >
-                <RefreshCcw size={16} strokeWidth={2.2} />
                 Reintentar
-              </button>
+              </Button>
             }
             description={error}
             title="No se pudo cargar clientes"
@@ -725,14 +723,9 @@ export function ClientsWorkspace() {
               <EmptyState
                 action={
                   canCreateClients ? (
-                    <button
-                      className="button primary"
-                      onClick={openCreateClientDrawer}
-                      type="button"
-                    >
-                      <UserRoundPlus size={17} strokeWidth={2.2} />
+                    <Button icon={UserRoundPlus} onClick={openCreateClientDrawer}>
                       Crear primer cliente
-                    </button>
+                    </Button>
                   ) : undefined
                 }
                 description={
@@ -826,14 +819,13 @@ export function ClientsWorkspace() {
             <ErrorState
               action={
                 selectedClientId ? (
-                  <button
-                    className="button secondary"
+                  <Button
+                    variant="secondary"
+                    icon={RefreshCcw}
                     onClick={() => refreshClientDetail(selectedClientId)}
-                    type="button"
                   >
-                    <RefreshCcw size={16} strokeWidth={2.2} />
                     Reintentar
-                  </button>
+                  </Button>
                 ) : undefined
               }
               description={detailError}
@@ -859,22 +851,21 @@ export function ClientsWorkspace() {
         description="Registra identidad, contacto, roles y necesidad inmobiliaria para iniciar seguimiento operativo."
         footer={
           <>
-            <button
-              className="button secondary"
+            <Button
+              variant="secondary"
               disabled={isSubmitting}
               onClick={closeCreateClientDrawer}
-              type="button"
             >
               Cancelar
-            </button>
-            <button
-              className="button primary"
+            </Button>
+            <Button
               disabled={isSubmitting || passportStatus === 'reading'}
               form="client-create-form"
+              loading={isSubmitting}
               type="submit"
             >
-              {isSubmitting ? 'Guardando...' : 'Crear cliente'}
-            </button>
+              Crear cliente
+            </Button>
           </>
         }
         onClose={closeCreateClientDrawer}
@@ -975,19 +966,15 @@ export function ClientsWorkspace() {
                   </label>
 
                   <div className="passport-actions">
-                    <button
-                      className="button secondary"
+                    <Button
+                      variant="secondary"
                       disabled={passportStatus === 'reading' || !passportMrz.trim()}
+                      icon={FileText}
+                      loading={passportStatus === 'reading'}
                       onClick={() => applyPassportMrz()}
-                      type="button"
                     >
-                      {passportStatus === 'reading' ? (
-                        <Loader2 size={16} strokeWidth={2.2} />
-                      ) : (
-                        <FileText size={16} strokeWidth={2.2} />
-                      )}
                       Aplicar datos
-                    </button>
+                    </Button>
                     {passportStatus === 'reading' ? (
                       <span className="passport-status">Leyendo documento...</span>
                     ) : null}

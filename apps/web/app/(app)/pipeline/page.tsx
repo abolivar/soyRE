@@ -1,6 +1,6 @@
 import { ArrowUpRight, ListChecks, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { PageHeader, StatusBadge } from '@soyre/ui';
+import { Button, PageHeader, StatusBadge } from '@soyre/ui';
 
 const columns = [
   {
@@ -67,10 +67,9 @@ export default function PipelinePage() {
         title="Funnel"
         description="Pipeline visual para mover operaciones segun etapa, valor, siguiente accion y responsable."
         actions={
-          <button className="button primary" type="button">
-            <Plus size={17} strokeWidth={2.2} />
+          <Button icon={Plus}>
             Nueva oportunidad
-          </button>
+          </Button>
         }
       />
 
@@ -90,10 +89,12 @@ export default function PipelinePage() {
                 <span className="meta-row">{item.client}</span>
                 <div className="split-row">
                   <StatusBadge tone={column.tone}>{item.value}</StatusBadge>
-                  <Link className="button ghost" href="/tasks">
-                    <ArrowUpRight size={16} strokeWidth={2.2} />
-                    SLA
-                  </Link>
+                  <Button asChild variant="ghost">
+                    <Link href="/tasks">
+                      <ArrowUpRight size={16} strokeWidth={2.2} />
+                      SLA
+                    </Link>
+                  </Button>
                 </div>
                 <span className="meta-row">{item.next}</span>
               </article>

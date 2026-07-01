@@ -4,7 +4,6 @@ import {
   BriefcaseBusiness,
   Eye,
   Handshake,
-  Loader2,
   Mail,
   Phone,
   Plus,
@@ -24,6 +23,7 @@ import {
   RealEstateAgentsResponse,
 } from '../lib/api';
 import {
+  Button,
   DataTable,
   EmptyState,
   ErrorState,
@@ -272,15 +272,13 @@ export function AgentsWorkspace() {
     <>
       <PageHeader
         actions={
-          <button
-            className="button primary"
+          <Button
             disabled={!canCreateAgents}
+            icon={Plus}
             onClick={openCreateAgentDrawer}
-            type="button"
           >
-            <Plus size={17} strokeWidth={2.2} />
             Nuevo agente
-          </button>
+          </Button>
         }
         description={
           activeMembership
@@ -349,9 +347,9 @@ export function AgentsWorkspace() {
               </option>
             ))}
           </select>
-          <button className="button secondary" type="submit">
+          <Button variant="secondary" type="submit">
             Aplicar
-          </button>
+          </Button>
         </FilterBar>
       </form>
 
@@ -364,14 +362,13 @@ export function AgentsWorkspace() {
         ) : error ? (
           <ErrorState
             action={
-              <button
-                className="button secondary"
+              <Button
+                variant="secondary"
+                icon={RefreshCcw}
                 onClick={() => refreshAgents()}
-                type="button"
               >
-                <RefreshCcw size={16} strokeWidth={2.2} />
                 Reintentar
-              </button>
+              </Button>
             }
             description={error}
             title="No se pudo cargar agentes"
@@ -390,14 +387,9 @@ export function AgentsWorkspace() {
               <EmptyState
                 action={
                   canCreateAgents ? (
-                    <button
-                      className="button primary"
-                      onClick={openCreateAgentDrawer}
-                      type="button"
-                    >
-                      <Handshake size={17} strokeWidth={2.2} />
+                    <Button icon={Handshake} onClick={openCreateAgentDrawer}>
                       Crear primer agente
-                    </button>
+                    </Button>
                   ) : undefined
                 }
                 description={
@@ -458,14 +450,13 @@ export function AgentsWorkspace() {
             <ErrorState
               action={
                 selectedAgentId ? (
-                  <button
-                    className="button secondary"
+                  <Button
+                    variant="secondary"
+                    icon={RefreshCcw}
                     onClick={() => refreshAgentDetail(selectedAgentId)}
-                    type="button"
                   >
-                    <RefreshCcw size={16} strokeWidth={2.2} />
                     Reintentar
-                  </button>
+                  </Button>
                 ) : undefined
               }
               description={detailError}
@@ -487,29 +478,21 @@ export function AgentsWorkspace() {
         description="Crea un registro simple de agente para la organizacion activa."
         footer={
           <>
-            <button
-              className="button secondary"
+            <Button
+              variant="secondary"
               disabled={isSubmitting}
               onClick={closeCreateAgentDrawer}
-              type="button"
             >
               Cancelar
-            </button>
-            <button
-              className="button primary"
+            </Button>
+            <Button
               disabled={isSubmitting}
               form="agent-create-form"
+              loading={isSubmitting}
               type="submit"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 size={16} strokeWidth={2.2} />
-                  Guardando...
-                </>
-              ) : (
-                'Crear agente'
-              )}
-            </button>
+              Crear agente
+            </Button>
           </>
         }
         onClose={closeCreateAgentDrawer}

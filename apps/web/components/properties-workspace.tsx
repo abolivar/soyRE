@@ -5,7 +5,6 @@ import {
   CalendarDays,
   Eye,
   Home,
-  Loader2,
   MapPin,
   Plus,
   RefreshCcw,
@@ -30,6 +29,7 @@ import {
   UsersResponse,
 } from '../lib/api';
 import {
+  Button,
   ConfirmDialog,
   DataTable,
   EmptyState,
@@ -389,15 +389,13 @@ export function PropertiesWorkspace() {
     <>
       <PageHeader
         actions={
-          <button
-            className="button primary"
+          <Button
             disabled={!canCreateProperties}
+            icon={Plus}
             onClick={openCreatePropertyDrawer}
-            type="button"
           >
-            <Plus size={17} strokeWidth={2.2} />
             Nueva propiedad
-          </button>
+          </Button>
         }
         description={
           activeMembership
@@ -473,9 +471,9 @@ export function PropertiesWorkspace() {
             <option value="CLOSED">Cerrada</option>
             <option value="WITHDRAWN">Retirada</option>
           </select>
-          <button className="button secondary" type="submit">
+          <Button variant="secondary" type="submit">
             Aplicar
-          </button>
+          </Button>
         </FilterBar>
       </form>
 
@@ -488,14 +486,13 @@ export function PropertiesWorkspace() {
         ) : error ? (
           <ErrorState
             action={
-              <button
-                className="button secondary"
+              <Button
+                variant="secondary"
+                icon={RefreshCcw}
                 onClick={() => refreshProperties()}
-                type="button"
               >
-                <RefreshCcw size={16} strokeWidth={2.2} />
                 Reintentar
-              </button>
+              </Button>
             }
             description={error}
             title="No se pudo cargar propiedades"
@@ -515,14 +512,9 @@ export function PropertiesWorkspace() {
               <EmptyState
                 action={
                   canCreateProperties ? (
-                    <button
-                      className="button primary"
-                      onClick={openCreatePropertyDrawer}
-                      type="button"
-                    >
-                      <Home size={17} strokeWidth={2.2} />
+                    <Button icon={Home} onClick={openCreatePropertyDrawer}>
                       Crear primera propiedad
-                    </button>
+                    </Button>
                   ) : undefined
                 }
                 description={
@@ -621,14 +613,13 @@ export function PropertiesWorkspace() {
             <ErrorState
               action={
                 selectedPropertyId ? (
-                  <button
-                    className="button secondary"
+                  <Button
+                    variant="secondary"
+                    icon={RefreshCcw}
                     onClick={() => refreshPropertyDetail(selectedPropertyId)}
-                    type="button"
                   >
-                    <RefreshCcw size={16} strokeWidth={2.2} />
                     Reintentar
-                  </button>
+                  </Button>
                 ) : undefined
               }
               description={detailError}
@@ -650,29 +641,21 @@ export function PropertiesWorkspace() {
         description="Crea una ficha inicial conectada a la organizacion activa. Los campos adicionales quedan disponibles sin saturar el alta."
         footer={
           <>
-            <button
-              className="button secondary"
+            <Button
+              variant="secondary"
               disabled={isSubmitting}
               onClick={closeCreatePropertyDrawer}
-              type="button"
             >
               Cancelar
-            </button>
-            <button
-              className="button primary"
+            </Button>
+            <Button
               disabled={isSubmitting}
               form="property-create-form"
+              loading={isSubmitting}
               type="submit"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 size={16} strokeWidth={2.2} />
-                  Guardando...
-                </>
-              ) : (
-                'Crear propiedad'
-              )}
-            </button>
+              Crear propiedad
+            </Button>
           </>
         }
         onClose={closeCreatePropertyDrawer}

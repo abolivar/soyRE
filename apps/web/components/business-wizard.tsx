@@ -46,6 +46,7 @@ import {
   PaymentPlanCalculation,
 } from '../lib/api';
 import {
+  Button,
   ErrorState,
   LoadingState,
   PageHeader,
@@ -1046,22 +1047,20 @@ export function BusinessWizard() {
                 <>Borrador activo</>
               )}
             </span>
-            <button className="button secondary" type="button" onClick={() => void saveDraft()}>
-              <Save size={17} />
+            <Button variant="secondary" onClick={() => void saveDraft()} icon={Save}>
               Guardar
-            </button>
-            <button
-              className="button primary"
+            </Button>
+            <Button
               disabled={isPreviewing}
-              type="button"
+              icon={ClipboardCheck}
+              loading={isPreviewing}
               onClick={() => {
                 setActiveStep('review');
                 void refreshPreview();
               }}
             >
-              {isPreviewing ? <Loader2 size={17} /> : <ClipboardCheck size={17} />}
               Preview
-            </button>
+            </Button>
           </>
         }
       />
@@ -1189,24 +1188,21 @@ export function BusinessWizard() {
           ) : null}
 
           <div className="wizard-navigation">
-            <button
-              className="button secondary"
+            <Button
+              variant="secondary"
               disabled={currentStepIndex === 0}
+              icon={ChevronLeft}
               onClick={() => goToStep(-1)}
-              type="button"
             >
-              <ChevronLeft size={17} />
               Volver
-            </button>
-            <button
-              className="button primary"
+            </Button>
+            <Button
               disabled={currentStepIndex === steps.length - 1}
               onClick={() => goToStep(1)}
-              type="button"
             >
               Continuar
               <ChevronRight size={17} />
-            </button>
+            </Button>
           </div>
         </section>
 
@@ -1491,10 +1487,9 @@ function ClientsStep({
               }
             />
           </label>
-          <button className="button secondary" type="submit">
-            <UserRoundPlus size={17} />
+          <Button variant="secondary" type="submit" icon={UserRoundPlus}>
             Crear y agregar
-          </button>
+          </Button>
         </div>
       </form>
     </SectionPanel>
@@ -1693,14 +1688,13 @@ function FinancialStep({
       title="Monto y base financiera"
       description="Todos los montos se guardan en centavos. El total pagable alimenta el plan de pagos y la base de comision."
       actions={
-        <button
-          className="button secondary"
+        <Button
+          variant="secondary"
+          icon={RefreshCcw}
           onClick={() => onSyncTotals('basePriceCents')}
-          type="button"
         >
-          <RefreshCcw size={17} />
           Usar precio base
-        </button>
+        </Button>
       }
     >
       <div className="business-form-grid">
@@ -1872,10 +1866,9 @@ function PaymentPlanStep({
       </div>
 
       <div className="business-inline-actions">
-        <button className="button secondary" onClick={onAddSpecialLine} type="button">
-          <Plus size={17} />
+        <Button variant="secondary" icon={Plus} onClick={onAddSpecialLine}>
           Pago especial
-        </button>
+        </Button>
       </div>
 
       {data.paymentPlan.specialLines.length > 0 ? (
@@ -2050,34 +2043,31 @@ function CommissionStep({
                 </option>
               ))}
             </select>
-            <button
-              className="button secondary"
+            <Button
+              variant="secondary"
               disabled={!commParticipantId}
+              icon={Plus}
               onClick={() => {
                 onAddCommissionParticipant(commParticipantId, 'CO_AGENT');
                 setCommParticipantId('');
               }}
-              type="button"
             >
-              <Plus size={17} />
               Co-agente
-            </button>
-            <button
-              className="button secondary"
+            </Button>
+            <Button
+              variant="secondary"
               disabled={!commParticipantId}
+              icon={Plus}
               onClick={() => {
                 onAddCommissionParticipant(commParticipantId, 'REFERRER');
                 setCommParticipantId('');
               }}
-              type="button"
             >
-              <Plus size={17} />
               Referido
-            </button>
-            <button className="button secondary" onClick={onAddAdvancedRule} type="button">
-              <HandCoins size={17} />
+            </Button>
+            <Button variant="secondary" icon={HandCoins} onClick={onAddAdvancedRule}>
               Regla base
-            </button>
+            </Button>
           </div>
 
           <div className="business-list">
@@ -2161,15 +2151,14 @@ function CommissionStep({
       <CommissionBreakdown calculation={calculation} currency={data.currency} />
 
       <div className="business-inline-actions">
-        <button
-          className="button ghost"
+        <Button
+          variant="ghost"
           onClick={() =>
             updateData({ mode: data.mode === 'SIMPLE' ? 'ADVANCED' : 'SIMPLE' })
           }
-          type="button"
         >
           Cambiar a modo {data.mode === 'SIMPLE' ? 'avanzado' : 'simple'}
-        </button>
+        </Button>
       </div>
     </SectionPanel>
   );
@@ -2273,15 +2262,15 @@ function ReviewStep({
       title="Revision final"
       description="Dry run antes de crear registros definitivos. Si hay errores bloqueantes, el backend no confirmara."
       actions={
-        <button
-          className="button secondary"
+        <Button
+          variant="secondary"
           disabled={isPreviewing}
+          icon={RefreshCcw}
+          loading={isPreviewing}
           onClick={onRefreshPreview}
-          type="button"
         >
-          {isPreviewing ? <Loader2 size={17} /> : <RefreshCcw size={17} />}
           Actualizar preview
-        </button>
+        </Button>
       }
     >
       <div className="review-grid">
@@ -2338,15 +2327,14 @@ function ReviewStep({
             ? `${blockingErrors.length} errores bloqueantes`
             : 'Listo para confirmar si los datos son correctos'}
         </span>
-        <button
-          className="button primary"
+        <Button
           disabled={!canCommit || blockingErrors.length > 0 || isCommitting}
+          icon={ShieldCheck}
+          loading={isCommitting}
           onClick={onCommit}
-          type="button"
         >
-          {isCommitting ? <Loader2 size={17} /> : <ShieldCheck size={17} />}
           Confirmar y crear negocio
-        </button>
+        </Button>
       </div>
     </SectionPanel>
   );

@@ -1,5 +1,6 @@
 import { Clock, Plus } from 'lucide-react';
 import {
+  Button,
   DataTable,
   FilterBar,
   PageHeader,
@@ -46,10 +47,9 @@ export default function TasksPage() {
         title="Tareas"
         description="Acciones asignadas por oportunidad, propiedad o cliente, con SLA visible para priorizar."
         actions={
-          <button className="button primary" type="button">
-            <Plus size={17} strokeWidth={2.2} />
+          <Button icon={Plus}>
             Nueva tarea
-          </button>
+          </Button>
         }
       />
 

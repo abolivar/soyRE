@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { BrandLogo } from './brand-logo';
-import { SearchInput } from '@soyre/ui';
+import { Button, SearchInput } from '@soyre/ui';
 
 type NavigationItem = {
   href: string;
@@ -84,10 +84,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button className="icon-button" type="button" aria-label="Alertas">
               <Bell size={18} strokeWidth={2.2} />
             </button>
-            <Link className="button ghost" href="/login">
-              <LogOut size={17} strokeWidth={2.2} />
-              Salir
-            </Link>
+            <Button asChild variant="ghost">
+              <Link href="/login">
+                <LogOut size={17} strokeWidth={2.2} />
+                Salir
+              </Link>
+            </Button>
           </div>
         </header>
         <div className="app-content">{children}</div>

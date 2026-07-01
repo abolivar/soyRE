@@ -14,6 +14,7 @@ import {
 } from '../../../lib/demo-data';
 import {
   ActivityTimeline,
+  Button,
   DataTable,
   MetricCard,
   PageHeader,
@@ -36,10 +37,12 @@ export default function DashboardPage() {
         title="Dashboard"
         description="Vista de control para propiedades, relaciones comerciales, oportunidades y tareas del equipo."
         actions={
-          <Link className="button primary" href="/properties">
-            <Building2 size={17} strokeWidth={2.2} />
-            Nueva propiedad
-          </Link>
+          <Button asChild>
+            <Link href="/properties">
+              <Building2 size={17} strokeWidth={2.2} />
+              Nueva propiedad
+            </Link>
+          </Button>
         }
       />
 
@@ -62,10 +65,12 @@ export default function DashboardPage() {
             title="Funnel general"
             description="Oportunidades con monto, etapa y proxima responsabilidad visible."
             actions={
-              <Link className="button secondary" href="/pipeline">
-                Ver funnel
-                <ArrowUpRight size={16} strokeWidth={2.2} />
-              </Link>
+              <Button asChild variant="secondary">
+                <Link href="/pipeline">
+                  Ver funnel
+                  <ArrowUpRight size={16} strokeWidth={2.2} />
+                </Link>
+              </Button>
             }
           >
             <DataTable

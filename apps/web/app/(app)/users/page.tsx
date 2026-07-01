@@ -2,6 +2,7 @@ import { Plus, ShieldCheck, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 import { userRows } from '../../../lib/demo-data';
 import {
+  Button,
   DataTable,
   FilterBar,
   PageHeader,
@@ -18,10 +19,9 @@ export default function UsersPage() {
         title="Usuarios"
         description="Validacion, roles y acceso por organizacion. La conexion real queda sobre el API remoto cuando el backend este disponible."
         actions={
-          <button className="button primary" type="button">
-            <Plus size={17} strokeWidth={2.2} />
+          <Button icon={Plus}>
             Invitar usuario
-          </button>
+          </Button>
         }
       />
 
@@ -70,12 +70,12 @@ export default function UsersPage() {
                 ),
                 actions: (
                   <div className="row-actions">
-                    <button className="button secondary" type="button">
+                    <Button variant="secondary">
                       Validar
-                    </button>
-                    <button className="button ghost" type="button">
+                    </Button>
+                    <Button variant="ghost">
                       Suspender
-                    </button>
+                    </Button>
                   </div>
                 ),
               },
@@ -87,9 +87,9 @@ export default function UsersPage() {
           title="Reglas activas"
           description="Politicas base para mantener controlado el acceso al workspace."
           actions={
-            <Link className="button secondary" href="/settings">
-              Ajustes
-            </Link>
+            <Button asChild variant="secondary">
+              <Link href="/settings">Ajustes</Link>
+            </Button>
           }
         >
           <div className="role-list">
