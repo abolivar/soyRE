@@ -20,8 +20,7 @@ export function Button({
   type = 'button',
   ...rest
 }: ButtonProps) {
-  const variantClass = variant === 'primary' ? null : variant;
-  const classes = ['button', variantClass, className].filter(Boolean).join(' ');
+  const classes = ['button', variant, className].filter(Boolean).join(' ');
   const isDisabled = disabled || loading;
 
   return (
