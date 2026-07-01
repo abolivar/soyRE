@@ -44,6 +44,18 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this.prismaClient.clientIdentityDocument;
   }
 
+  get document() {
+    return this.prismaClient.document;
+  }
+
+  get listing() {
+    return this.prismaClient.listing;
+  }
+
+  get mandate() {
+    return this.prismaClient.mandate;
+  }
+
   get membership() {
     return this.prismaClient.membership;
   }
@@ -80,12 +92,24 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this.prismaClient.realEstateAgent;
   }
 
+  get offer() {
+    return this.prismaClient.offer;
+  }
+
   get scheduledAction() {
     return this.prismaClient.scheduledAction;
   }
 
+  get showing() {
+    return this.prismaClient.showing;
+  }
+
   get user() {
     return this.prismaClient.user;
+  }
+
+  get workflowStage() {
+    return this.prismaClient.workflowStage;
   }
 
   async onModuleInit() {

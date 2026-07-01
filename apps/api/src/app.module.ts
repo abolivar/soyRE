@@ -6,6 +6,7 @@ import { ClientsModule } from './clients/clients.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthController } from './health.controller.js';
+import { OperationsModule } from './operations/operations.module.js';
 import { PropertiesModule } from './properties/properties.module.js';
 import { TasksModule } from './tasks/tasks.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -21,6 +22,7 @@ import { UsersModule } from './users/users.module.js';
     BusinessesModule,
     DashboardModule,
     TasksModule,
+    OperationsModule,
   ],
   controllers: [HealthController],
 })

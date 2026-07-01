@@ -131,20 +131,16 @@ export type ClientRole =
   | 'REFERRER'
   | 'RELATED_CONTACT';
 
-export type ClientStatus = 'NEW' | 'ACTIVE' | 'NURTURING' | 'INACTIVE' | 'ARCHIVED';
+export type ClientStatus =
+  'NEW' | 'ACTIVE' | 'NURTURING' | 'INACTIVE' | 'ARCHIVED';
 
 export type ClientTemperature = 'COLD' | 'WARM' | 'HOT';
 
-export type ContactMethod = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'SMS' | 'IN_PERSON';
+export type ContactMethod =
+  'EMAIL' | 'PHONE' | 'WHATSAPP' | 'SMS' | 'IN_PERSON';
 
 export type ClientInterestType =
-  | 'BUY'
-  | 'RENT'
-  | 'SELL'
-  | 'LEASE'
-  | 'INVEST'
-  | 'MANAGE'
-  | 'REFER';
+  'BUY' | 'RENT' | 'SELL' | 'LEASE' | 'INVEST' | 'MANAGE' | 'REFER';
 
 export type ClientTimeline =
   | 'IMMEDIATE'
@@ -154,10 +150,7 @@ export type ClientTimeline =
   | 'EXPLORING';
 
 export type FinancingStatus =
-  | 'CASH'
-  | 'PRE_APPROVED'
-  | 'NEEDS_FINANCING'
-  | 'UNKNOWN';
+  'CASH' | 'PRE_APPROVED' | 'NEEDS_FINANCING' | 'UNKNOWN';
 
 export type ClientIdentityDocumentType = 'PASSPORT' | 'NATIONAL_ID';
 
@@ -639,12 +632,7 @@ export type ApiOrganization = {
 };
 
 export type PaymentScheduleLineStatus =
-  | 'PENDING'
-  | 'INVOICED'
-  | 'PARTIALLY_PAID'
-  | 'PAID'
-  | 'OVERDUE'
-  | 'CANCELLED';
+  'PENDING' | 'INVOICED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 
 export type ScheduledActionType =
   | 'PAYMENT_DUE'
@@ -657,10 +645,7 @@ export type ScheduledActionType =
   | 'CUSTOM';
 
 export type ScheduledActionStatus =
-  | 'PENDING'
-  | 'COMPLETED'
-  | 'CANCELLED'
-  | 'FAILED';
+  'PENDING' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
 
 export type DashboardSummaryResponse = {
   organization: ApiOrganization;
@@ -797,6 +782,275 @@ export type TaskListResponse = {
 
 export type TaskDetailResponse = {
   task: TaskListItem;
+};
+
+export type DocumentEntityType =
+  | 'CLIENT'
+  | 'PROPERTY'
+  | 'BUSINESS'
+  | 'CONTRACT'
+  | 'MANDATE'
+  | 'LISTING'
+  | 'OFFER'
+  | 'SHOWING'
+  | 'OTHER';
+
+export type DocumentStatus =
+  | 'REQUIRED'
+  | 'UPLOADED'
+  | 'IN_REVIEW'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'ARCHIVED';
+
+export type MandateStatus =
+  | 'DRAFT'
+  | 'PENDING_DOCUMENTS'
+  | 'ACTIVE'
+  | 'EXPIRED'
+  | 'CANCELLED'
+  | 'ARCHIVED';
+
+export type MandateType = 'SALE' | 'RENT' | 'BOTH';
+
+export type ListingStatus =
+  'DRAFT' | 'READY' | 'APPROVED' | 'PUBLISHED' | 'PAUSED' | 'ARCHIVED';
+
+export type ShowingStatus =
+  'REQUESTED' | 'CONFIRMED' | 'COMPLETED' | 'NO_SHOW' | 'CANCELLED';
+
+export type OfferStatus =
+  | 'DRAFT'
+  | 'SENT'
+  | 'COUNTERED'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'WITHDRAWN';
+
+export type WorkflowStageScope =
+  'PROPERTY' | 'MANDATE' | 'LISTING' | 'SHOWING' | 'OFFER' | 'BUSINESS';
+
+export type OperationalUserSummary = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string | null;
+};
+
+export type OperationalClientSummary = {
+  id: string;
+  displayName: string;
+  email: string | null;
+  phone: string | null;
+};
+
+export type OperationalPropertySummary = {
+  id: string;
+  title: string;
+  internalCode: string | null;
+  status: PropertyStatus;
+  city: string;
+  zone: string;
+};
+
+export type OperationalBusinessSummary = {
+  id: string;
+  code: string | null;
+  title: string | null;
+  status: BusinessStatus;
+};
+
+export type OperationalDocument = {
+  id: string;
+  organizationId: string;
+  entityType: DocumentEntityType;
+  clientId: string | null;
+  propertyId: string | null;
+  businessId: string | null;
+  businessContractId: string | null;
+  name: string;
+  documentType: string;
+  status: DocumentStatus;
+  fileName: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  storagePath: string | null;
+  requiredBy: string | null;
+  expiresAt: string | null;
+  reviewedAt: string | null;
+  uploadedByUserId: string | null;
+  reviewedByUserId: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown> | null;
+  client: OperationalClientSummary | null;
+  property: OperationalPropertySummary | null;
+  business: OperationalBusinessSummary | null;
+  businessContract: {
+    id: string;
+    contractNumber: string | null;
+    status: string;
+  } | null;
+  uploadedByUser: OperationalUserSummary | null;
+  reviewedByUser: OperationalUserSummary | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DocumentsResponse = {
+  organization: ApiOrganization;
+  documents: OperationalDocument[];
+};
+
+export type OperationalMandate = {
+  id: string;
+  organizationId: string;
+  propertyId: string;
+  ownerClientId: string | null;
+  assignedUserId: string | null;
+  type: MandateType;
+  status: MandateStatus;
+  exclusive: boolean;
+  authorizedPriceCents: string | null;
+  currency: string;
+  commissionBps: number | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  signedAt: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown> | null;
+  property: OperationalPropertySummary & { ownerClientId: string | null };
+  ownerClient: OperationalClientSummary | null;
+  assignedUser: OperationalUserSummary | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MandatesResponse = {
+  organization: ApiOrganization;
+  mandates: OperationalMandate[];
+};
+
+export type OperationalListing = {
+  id: string;
+  organizationId: string;
+  propertyId: string;
+  mandateId: string | null;
+  status: ListingStatus;
+  title: string;
+  publicCopy: string | null;
+  channels: string[];
+  readiness: Record<string, unknown> | null;
+  approvedAt: string | null;
+  publishedAt: string | null;
+  pausedAt: string | null;
+  archivedAt: string | null;
+  notes: string | null;
+  property: OperationalPropertySummary & {
+    currency: string;
+    salePrice: number | null;
+    rentPrice: number | null;
+  };
+  mandate: {
+    id: string;
+    status: MandateStatus;
+    type: MandateType;
+    endsAt: string | null;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ListingsResponse = {
+  organization: ApiOrganization;
+  listings: OperationalListing[];
+};
+
+export type OperationalShowing = {
+  id: string;
+  organizationId: string;
+  propertyId: string;
+  clientId: string | null;
+  businessId: string | null;
+  assignedUserId: string | null;
+  realEstateAgentId: string | null;
+  status: ShowingStatus;
+  scheduledFor: string;
+  completedAt: string | null;
+  outcome: string | null;
+  feedback: string | null;
+  nextActionAt: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown> | null;
+  property: OperationalPropertySummary;
+  client: OperationalClientSummary | null;
+  business: OperationalBusinessSummary | null;
+  assignedUser: OperationalUserSummary | null;
+  realEstateAgent: {
+    id: string;
+    displayName: string;
+    category: RealEstateAgentCategory;
+    email: string | null;
+    phone: string | null;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ShowingsResponse = {
+  organization: ApiOrganization;
+  showings: OperationalShowing[];
+};
+
+export type OperationalOffer = {
+  id: string;
+  organizationId: string;
+  propertyId: string | null;
+  clientId: string;
+  businessId: string | null;
+  assignedUserId: string | null;
+  operationType: BusinessOperationType;
+  status: OfferStatus;
+  amountCents: string;
+  currency: string;
+  terms: string | null;
+  expiresAt: string | null;
+  sentAt: string | null;
+  acceptedAt: string | null;
+  rejectedAt: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown> | null;
+  property: OperationalPropertySummary | null;
+  client: OperationalClientSummary;
+  business: OperationalBusinessSummary | null;
+  assignedUser: OperationalUserSummary | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OffersResponse = {
+  organization: ApiOrganization;
+  offers: OperationalOffer[];
+};
+
+export type WorkflowStage = {
+  id: string;
+  organizationId: string;
+  scope: WorkflowStageScope;
+  name: string;
+  position: number;
+  tone: string;
+  isActive: boolean;
+  appliesTo: string[];
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WorkflowStagesResponse = {
+  organization: ApiOrganization;
+  workflowStages: WorkflowStage[];
 };
 
 export async function apiFetch<T>(

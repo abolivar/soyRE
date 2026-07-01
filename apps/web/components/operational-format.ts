@@ -3,11 +3,18 @@ import type {
   AuthUser,
   BusinessOperationType,
   BusinessStatus,
+  DocumentEntityType,
+  DocumentStatus,
+  ListingStatus,
+  MandateStatus,
+  MandateType,
   MembershipStatus,
+  OfferStatus,
   OrganizationStatus,
   PaymentScheduleLineStatus,
   ScheduledActionStatus,
   ScheduledActionType,
+  ShowingStatus,
 } from '../lib/api';
 import type { Tone } from '@soyre/ui';
 
@@ -28,14 +35,18 @@ export function isActiveMembershipStatus(
   return status === 'ACTIVE' && organizationStatus === 'ACTIVE';
 }
 
-export function formatMoneyCents(value: string | null | undefined, currency = 'USD') {
+export function formatMoneyCents(
+  value: string | null | undefined,
+  currency = 'USD',
+) {
   const rawValue = value && /^-?\d+$/.test(value) ? value : '0';
   const negative = rawValue.startsWith('-');
   const absolute = negative ? rawValue.slice(1) : rawValue;
   const padded = absolute.padStart(3, '0');
   const whole = padded.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const decimals = padded.slice(-2);
-  const symbol = currency === 'USD' || currency === 'PAB' ? '$' : `${currency} `;
+  const symbol =
+    currency === 'USD' || currency === 'PAB' ? '$' : `${currency} `;
 
   return `${negative ? '-' : ''}${symbol}${whole}.${decimals}`;
 }
@@ -259,5 +270,163 @@ export function paymentStatusTone(status: PaymentScheduleLineStatus): Tone {
       OVERDUE: 'danger',
       CANCELLED: 'danger',
     } satisfies Record<PaymentScheduleLineStatus, Tone>
+  )[status];
+}
+
+export function documentEntityLabel(entityType: DocumentEntityType) {
+  return (
+    {
+      BUSINESS: 'Negocio',
+      CLIENT: 'Cliente',
+      CONTRACT: 'Contrato',
+      LISTING: 'Listing',
+      MANDATE: 'Mandato',
+      OFFER: 'Oferta',
+      OTHER: 'Otro',
+      PROPERTY: 'Propiedad',
+      SHOWING: 'Visita',
+    } satisfies Record<DocumentEntityType, string>
+  )[entityType];
+}
+
+export function documentStatusLabel(status: DocumentStatus) {
+  return (
+    {
+      APPROVED: 'Aprobado',
+      ARCHIVED: 'Archivado',
+      EXPIRED: 'Vencido',
+      IN_REVIEW: 'Revision',
+      REJECTED: 'Rechazado',
+      REQUIRED: 'Requerido',
+      UPLOADED: 'Cargado',
+    } satisfies Record<DocumentStatus, string>
+  )[status];
+}
+
+export function documentStatusTone(status: DocumentStatus): Tone {
+  return (
+    {
+      APPROVED: 'success',
+      ARCHIVED: 'neutral',
+      EXPIRED: 'danger',
+      IN_REVIEW: 'warning',
+      REJECTED: 'danger',
+      REQUIRED: 'warning',
+      UPLOADED: 'primary',
+    } satisfies Record<DocumentStatus, Tone>
+  )[status];
+}
+
+export function mandateStatusLabel(status: MandateStatus) {
+  return (
+    {
+      ACTIVE: 'Activo',
+      ARCHIVED: 'Archivado',
+      CANCELLED: 'Cancelado',
+      DRAFT: 'Borrador',
+      EXPIRED: 'Vencido',
+      PENDING_DOCUMENTS: 'Docs pendientes',
+    } satisfies Record<MandateStatus, string>
+  )[status];
+}
+
+export function mandateStatusTone(status: MandateStatus): Tone {
+  return (
+    {
+      ACTIVE: 'success',
+      ARCHIVED: 'neutral',
+      CANCELLED: 'danger',
+      DRAFT: 'neutral',
+      EXPIRED: 'danger',
+      PENDING_DOCUMENTS: 'warning',
+    } satisfies Record<MandateStatus, Tone>
+  )[status];
+}
+
+export function mandateTypeLabel(type: MandateType) {
+  return (
+    {
+      BOTH: 'Venta y alquiler',
+      RENT: 'Alquiler',
+      SALE: 'Venta',
+    } satisfies Record<MandateType, string>
+  )[type];
+}
+
+export function listingStatusLabel(status: ListingStatus) {
+  return (
+    {
+      APPROVED: 'Aprobado',
+      ARCHIVED: 'Archivado',
+      DRAFT: 'Borrador',
+      PAUSED: 'Pausado',
+      PUBLISHED: 'Publicado',
+      READY: 'Listo',
+    } satisfies Record<ListingStatus, string>
+  )[status];
+}
+
+export function listingStatusTone(status: ListingStatus): Tone {
+  return (
+    {
+      APPROVED: 'primary',
+      ARCHIVED: 'neutral',
+      DRAFT: 'neutral',
+      PAUSED: 'warning',
+      PUBLISHED: 'success',
+      READY: 'featured',
+    } satisfies Record<ListingStatus, Tone>
+  )[status];
+}
+
+export function showingStatusLabel(status: ShowingStatus) {
+  return (
+    {
+      CANCELLED: 'Cancelada',
+      COMPLETED: 'Completada',
+      CONFIRMED: 'Confirmada',
+      NO_SHOW: 'No asistio',
+      REQUESTED: 'Solicitada',
+    } satisfies Record<ShowingStatus, string>
+  )[status];
+}
+
+export function showingStatusTone(status: ShowingStatus): Tone {
+  return (
+    {
+      CANCELLED: 'danger',
+      COMPLETED: 'success',
+      CONFIRMED: 'primary',
+      NO_SHOW: 'warning',
+      REQUESTED: 'neutral',
+    } satisfies Record<ShowingStatus, Tone>
+  )[status];
+}
+
+export function offerStatusLabel(status: OfferStatus) {
+  return (
+    {
+      ACCEPTED: 'Aceptada',
+      COUNTERED: 'Contraoferta',
+      DRAFT: 'Borrador',
+      EXPIRED: 'Vencida',
+      REJECTED: 'Rechazada',
+      SENT: 'Enviada',
+      WITHDRAWN: 'Retirada',
+    } satisfies Record<OfferStatus, string>
+  )[status];
+}
+
+export function offerStatusTone(status: OfferStatus): Tone {
+  return (
+    {
+      ACCEPTED: 'success',
+      COUNTERED: 'warning',
+      DRAFT: 'neutral',
+      EXPIRED: 'danger',
+      REJECTED: 'danger',
+      SENT: 'primary',
+      WITHDRAWN: 'neutral',
+    } satisfies Record<OfferStatus, Tone>
   )[status];
 }

@@ -21,11 +21,19 @@ import {
   AuthUser,
   BusinessesResponse,
   BusinessListItem,
-  ClientsResponse,
   DashboardSummaryResponse,
-  OrganizationClient,
+  DocumentsResponse,
+  ListingsResponse,
+  MandatesResponse,
+  OffersResponse,
+  OperationalDocument,
+  OperationalListing,
+  OperationalMandate,
+  OperationalOffer,
+  OperationalShowing,
   OrganizationProperty,
   PropertiesResponse,
+  ShowingsResponse,
   TaskListItem,
   TaskListResponse,
 } from '../lib/api';
@@ -33,15 +41,24 @@ import {
   activeMemberships,
   businessStatusLabel,
   businessStatusTone,
+  documentEntityLabel,
+  documentStatusLabel,
+  documentStatusTone,
   formatDate,
   formatDateTime,
   formatMoneyCents,
+  listingStatusLabel,
+  listingStatusTone,
+  mandateStatusLabel,
+  mandateStatusTone,
+  mandateTypeLabel,
+  offerStatusLabel,
+  offerStatusTone,
   operationLabel,
   paymentStatusLabel,
   paymentStatusTone,
-  scheduledActionLabel,
-  scheduledActionTone,
-  scheduledStatusLabel,
+  showingStatusLabel,
+  showingStatusTone,
 } from './operational-format';
 import {
   Button,
@@ -105,114 +122,146 @@ type Metric = {
 
 type WorkspaceData = {
   businesses: BusinessListItem[];
-  clients: OrganizationClient[];
+  documents: OperationalDocument[];
+  listings: OperationalListing[];
+  mandates: OperationalMandate[];
+  offers: OperationalOffer[];
   properties: OrganizationProperty[];
+  showings: OperationalShowing[];
   summary: DashboardSummaryResponse | null;
   tasks: TaskListItem[];
 };
 
 const areaConfig: Record<AreaKey, AreaConfig> = {
   audit: {
-    description: 'Registro de actividad sensible y eventos operativos del sistema.',
-    emptyDescription: 'La actividad aparecera cuando el equipo cree o actualice registros.',
+    description:
+      'Registro de actividad sensible y eventos operativos del sistema.',
+    emptyDescription:
+      'La actividad aparecera cuando el equipo cree o actualice registros.',
     emptyTitle: 'Sin actividad registrada',
     eyebrow: 'Sistema',
     icon: ScrollText,
-    sideDescription: 'La auditoria se alimenta desde el API y debe crecer con cada accion critica.',
+    sideDescription:
+      'La auditoria se alimenta desde el API y debe crecer con cada accion critica.',
     sideTitle: 'Criterios de auditoria',
     title: 'Auditoria',
   },
   commissions: {
-    description: 'Vista financiera para comisiones devengadas, pagaderas y pendientes.',
-    emptyDescription: 'Las comisiones apareceran al confirmar negocios con planes de comision.',
+    description:
+      'Vista financiera para comisiones devengadas, pagaderas y pendientes.',
+    emptyDescription:
+      'Las comisiones apareceran al confirmar negocios con planes de comision.',
     emptyTitle: 'Sin comisiones visibles',
     eyebrow: 'Finanzas',
     icon: TrendingUp,
-    sideDescription: 'Los montos finales deben venir de allocations calculadas, no de estimaciones manuales.',
+    sideDescription:
+      'Los montos finales deben venir de allocations calculadas, no de estimaciones manuales.',
     sideTitle: 'Regla financiera',
     title: 'Comisiones',
   },
   documents: {
-    description: 'Expedientes por cliente, propiedad y negocio con revision documental.',
-    emptyDescription: 'Sube documentos desde clientes o crea acciones documentales desde un negocio.',
+    description:
+      'Expedientes por cliente, propiedad y negocio con revision documental.',
+    emptyDescription:
+      'Sube documentos desde clientes o crea acciones documentales desde un negocio.',
     emptyTitle: 'Sin documentos operativos',
     eyebrow: 'Expedientes',
     icon: FileText,
     primaryHref: '/clients',
     primaryLabel: 'Ir a clientes',
-    sideDescription: 'La siguiente fase separa documentos generales de identidad y define retencion.',
+    sideDescription:
+      'La siguiente fase separa documentos generales de identidad y define retencion.',
     sideTitle: 'Alcance documental',
     title: 'Documentos',
   },
   listings: {
-    description: 'Preparacion comercial interna para publicar propiedades listas.',
-    emptyDescription: 'Crea propiedades activas para empezar la preparacion comercial.',
+    description:
+      'Preparacion comercial interna para publicar propiedades listas.',
+    emptyDescription:
+      'Crea propiedades activas para empezar la preparacion comercial.',
     emptyTitle: 'Sin listings preparados',
     eyebrow: 'Publicacion',
     icon: Megaphone,
     primaryHref: '/properties',
     primaryLabel: 'Ir a propiedades',
-    sideDescription: 'No se publican portales externos en este bloque; queda preparado el control interno.',
+    sideDescription:
+      'No se publican portales externos en este bloque; queda preparado el control interno.',
     sideTitle: 'Canales',
     title: 'Listings',
   },
   mandates: {
-    description: 'Autorizaciones comerciales, exclusividad, vigencia y comision pactada.',
-    emptyDescription: 'Crea propiedades con propietario para preparar mandatos comerciales.',
+    description:
+      'Autorizaciones comerciales, exclusividad, vigencia y comision pactada.',
+    emptyDescription:
+      'Crea propiedades con propietario para preparar mandatos comerciales.',
     emptyTitle: 'Sin mandatos derivados',
     eyebrow: 'Autorizaciones',
     icon: Handshake,
     primaryHref: '/properties',
     primaryLabel: 'Ir a propiedades',
-    sideDescription: 'El modelo persistente se implementa en el bloque de mandatos.',
+    sideDescription:
+      'El modelo persistente se implementa en el bloque de mandatos.',
     sideTitle: 'Base contractual',
     title: 'Mandatos',
   },
   offers: {
-    description: 'Ofertas, contraofertas y negociaciones antes de crear o confirmar negocio.',
-    emptyDescription: 'Las ofertas se conectaran a clientes, propiedades y negocios.',
+    description:
+      'Ofertas, contraofertas y negociaciones antes de crear o confirmar negocio.',
+    emptyDescription:
+      'Las ofertas se conectaran a clientes, propiedades y negocios.',
     emptyTitle: 'Sin ofertas en negociacion',
     eyebrow: 'Negociacion',
     icon: ClipboardCheck,
     primaryHref: '/businesses/new',
     primaryLabel: 'Nuevo negocio',
-    sideDescription: 'Una oferta aceptada debe crear o enlazar un negocio transaccional.',
+    sideDescription:
+      'Una oferta aceptada debe crear o enlazar un negocio transaccional.',
     sideTitle: 'Handoff a negocio',
     title: 'Ofertas',
   },
   receivables: {
-    description: 'Cobros programados, vencidos y proximos derivados de planes de pago.',
-    emptyDescription: 'Los cobros apareceran cuando los negocios tengan planes de pago confirmados.',
+    description:
+      'Cobros programados, vencidos y proximos derivados de planes de pago.',
+    emptyDescription:
+      'Los cobros apareceran cuando los negocios tengan planes de pago confirmados.',
     emptyTitle: 'Sin cobros programados',
     eyebrow: 'Finanzas',
     icon: DollarSign,
-    sideDescription: 'Los cobros reales se derivan del payment plan, no de tareas manuales sueltas.',
+    sideDescription:
+      'Los cobros reales se derivan del payment plan, no de tareas manuales sueltas.',
     sideTitle: 'Regla de cobranza',
     title: 'Cobranza',
   },
   reports: {
-    description: 'Lecturas operativas para ventas, cobranza, comisiones y actividad.',
-    emptyDescription: 'Los reportes apareceran a medida que existan negocios y actividad.',
+    description:
+      'Lecturas operativas para ventas, cobranza, comisiones y actividad.',
+    emptyDescription:
+      'Los reportes apareceran a medida que existan negocios y actividad.',
     emptyTitle: 'Sin reportes calculables',
     eyebrow: 'Inteligencia operativa',
     icon: BarChart3,
-    sideDescription: 'Los reportes se alimentan de relaciones existentes, no de snapshots manuales.',
+    sideDescription:
+      'Los reportes se alimentan de relaciones existentes, no de snapshots manuales.',
     sideTitle: 'Fuente de verdad',
     title: 'Reportes',
   },
   settlements: {
     description: 'Liquidacion y pago de comisiones aprobadas.',
-    emptyDescription: 'Las liquidaciones apareceran cuando haya comisiones aprobadas para pago.',
+    emptyDescription:
+      'Las liquidaciones apareceran cuando haya comisiones aprobadas para pago.',
     emptyTitle: 'Sin liquidaciones pendientes',
     eyebrow: 'Finanzas',
     icon: Landmark,
-    sideDescription: 'Pagar una comision debe dejar auditoria y estado financiero trazable.',
+    sideDescription:
+      'Pagar una comision debe dejar auditoria y estado financiero trazable.',
     sideTitle: 'Control de pago',
     title: 'Liquidaciones',
   },
   showings: {
-    description: 'Agenda de visitas, participantes, resultado y siguiente accion.',
-    emptyDescription: 'Las visitas se conectaran a propiedades, clientes y agentes.',
+    description:
+      'Agenda de visitas, participantes, resultado y siguiente accion.',
+    emptyDescription:
+      'Las visitas se conectaran a propiedades, clientes y agentes.',
     emptyTitle: 'Sin visitas registradas',
     eyebrow: 'Agenda comercial',
     icon: CalendarDays,
@@ -227,13 +276,17 @@ const areaConfig: Record<AreaKey, AreaConfig> = {
 export function AreaWorkspace({ area }: { area: AreaKey }) {
   const config = areaConfig[area];
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [activeOrganizationId, setActiveOrganizationId] = useState<string | null>(
-    null,
-  );
+  const [activeOrganizationId, setActiveOrganizationId] = useState<
+    string | null
+  >(null);
   const [data, setData] = useState<WorkspaceData>({
     businesses: [],
-    clients: [],
+    documents: [],
+    listings: [],
+    mandates: [],
+    offers: [],
     properties: [],
+    showings: [],
     summary: null,
     tasks: [],
   });
@@ -249,7 +302,9 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
         setUser(response.user);
 
         if (!firstMembership) {
-          setError('No tienes una organizacion activa para consultar esta area.');
+          setError(
+            'No tienes una organizacion activa para consultar esta area.',
+          );
           setIsLoading(false);
           return;
         }
@@ -257,7 +312,9 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
         setActiveOrganizationId(firstMembership.organizationId);
       })
       .catch((caught) => {
-        setError(caught instanceof Error ? caught.message : 'Sesion no disponible.');
+        setError(
+          caught instanceof Error ? caught.message : 'Sesion no disponible.',
+        );
         setIsLoading(false);
       });
   }, []);
@@ -268,7 +325,9 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
     }
 
     refreshArea(activeOrganizationId).catch((caught) => {
-      setError(caught instanceof Error ? caught.message : 'Area no disponible.');
+      setError(
+        caught instanceof Error ? caught.message : 'Area no disponible.',
+      );
       setIsLoading(false);
     });
   }, [activeOrganizationId]);
@@ -305,8 +364,12 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
     if (!organizationId) {
       setData({
         businesses: [],
-        clients: [],
+        documents: [],
+        listings: [],
+        mandates: [],
+        offers: [],
         properties: [],
+        showings: [],
         summary: null,
         tasks: [],
       });
@@ -317,18 +380,38 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
     setIsLoading(true);
     setError(null);
     const query = new URLSearchParams({ organizationId });
-    const [summary, businesses, properties, clients, tasks] = await Promise.all([
-      apiFetch<DashboardSummaryResponse>(`/dashboard/summary?${query.toString()}`),
+    const [
+      summary,
+      businesses,
+      properties,
+      tasks,
+      documents,
+      mandates,
+      listings,
+      showings,
+      offers,
+    ] = await Promise.all([
+      apiFetch<DashboardSummaryResponse>(
+        `/dashboard/summary?${query.toString()}`,
+      ),
       apiFetch<BusinessesResponse>(`/businesses?${query.toString()}`),
       apiFetch<PropertiesResponse>(`/properties?${query.toString()}`),
-      apiFetch<ClientsResponse>(`/clients?${query.toString()}`),
       apiFetch<TaskListResponse>(`/tasks?${query.toString()}`),
+      apiFetch<DocumentsResponse>(`/documents?${query.toString()}`),
+      apiFetch<MandatesResponse>(`/mandates?${query.toString()}`),
+      apiFetch<ListingsResponse>(`/listings?${query.toString()}`),
+      apiFetch<ShowingsResponse>(`/showings?${query.toString()}`),
+      apiFetch<OffersResponse>(`/offers?${query.toString()}`),
     ]);
 
     setData({
       businesses: businesses.businesses,
-      clients: clients.clients,
+      documents: documents.documents,
+      listings: listings.listings,
+      mandates: mandates.mandates,
+      offers: offers.offers,
       properties: properties.properties,
+      showings: showings.showings,
       summary,
       tasks: tasks.tasks,
     });
@@ -352,7 +435,11 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
                 <Link href={config.primaryHref}>{config.primaryLabel}</Link>
               </Button>
             ) : null}
-            <Button icon={RefreshCcw} onClick={() => refreshArea()} variant="secondary">
+            <Button
+              icon={RefreshCcw}
+              onClick={() => refreshArea()}
+              variant="secondary"
+            >
               Actualizar
             </Button>
           </div>
@@ -406,7 +493,11 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
       ) : error ? (
         <ErrorState
           action={
-            <Button icon={RefreshCcw} onClick={() => refreshArea()} variant="secondary">
+            <Button
+              icon={RefreshCcw}
+              onClick={() => refreshArea()}
+              variant="secondary"
+            >
               Reintentar
             </Button>
           }
@@ -415,7 +506,10 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
         />
       ) : (
         <>
-          <section className="metric-grid" aria-label={`Metricas de ${config.title}`}>
+          <section
+            className="metric-grid"
+            aria-label={`Metricas de ${config.title}`}
+          >
             {metrics.map((metric) => (
               <MetricCard
                 detail={metric.detail}
@@ -456,7 +550,9 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
                       <span className="meta-row">{row.meta}</span>
                     </span>
                   ),
-                  status: <StatusBadge tone={row.tone}>{row.status}</StatusBadge>,
+                  status: (
+                    <StatusBadge tone={row.tone}>{row.status}</StatusBadge>
+                  ),
                 },
               }))}
             />
@@ -520,7 +616,10 @@ function buildRows(area: AreaKey, data: WorkspaceData): AreaRow[] {
       return data.businesses
         .filter((business) => business.permissionHints.canViewCommissions)
         .map((business) => ({
-          amount: formatMoneyCents(business.totalContractAmountCents, business.currency),
+          amount: formatMoneyCents(
+            business.totalContractAmountCents,
+            business.currency,
+          ),
           context: business.primaryAgentName ?? 'Sin agente principal',
           date: formatDate(business.expectedClosingDate),
           id: business.id,
@@ -530,87 +629,69 @@ function buildRows(area: AreaKey, data: WorkspaceData): AreaRow[] {
           tone: businessStatusTone(business.status),
         }));
     case 'documents':
-      return [
-        ...data.clients
-          .filter((client) => client.identityDocument)
-          .map((client) => ({
-            context: client.identityDocument?.documentNumber ?? 'Sin numero',
-            date: formatDateTime(client.updatedAt),
-            id: `identity-${client.id}`,
-            meta: client.displayName,
-            status: 'Validado',
-            title: client.identityDocument?.fileName ?? 'Documento de identidad',
-            tone: 'success' as Tone,
-          })),
-        ...data.tasks
-          .filter((task) => task.eventType === 'DOCUMENT_REQUIRED')
-          .map((task) => ({
-            context: task.business.title,
-            date: formatDateTime(task.scheduledFor),
-            id: task.id,
-            meta: task.business.clientName ?? 'Sin cliente',
-            status: scheduledStatusLabel(task.status),
-            title: scheduledActionLabel(task.eventType),
-            tone: scheduledActionTone(task.eventType, task.status),
-          })),
-      ];
+      return data.documents.map((document) => ({
+        context: documentContext(document),
+        date: formatDateTime(document.updatedAt),
+        id: document.id,
+        meta: `${documentEntityLabel(document.entityType)} / ${document.documentType}`,
+        status: documentStatusLabel(document.status),
+        title: document.fileName ?? document.name,
+        tone: documentStatusTone(document.status),
+      }));
     case 'listings':
-      return data.properties
-        .filter((property) =>
-          ['ACTIVE', 'PUBLISHED', 'RESERVED'].includes(property.status),
-        )
-        .map((property) => ({
-          amount: property.salePrice
-            ? formatMoneyCents(String(property.salePrice * 100), property.currency)
-            : property.rentPrice
-              ? formatMoneyCents(String(property.rentPrice * 100), property.currency)
-              : undefined,
-          context: `${property.city} / ${property.zone}`,
-          date: formatDateTime(property.updatedAt),
-          id: property.id,
-          meta: property.operations.join(' + ') || 'Sin modalidad',
-          status: property.status,
-          title: property.title,
-          tone: property.status === 'PUBLISHED' ? 'success' : 'primary',
-        }));
+      return data.listings.map((listing) => ({
+        amount: propertyAskingAmount(listing.property),
+        context: `${listing.property.city} / ${listing.property.zone}`,
+        date: formatDateTime(
+          listing.publishedAt ?? listing.approvedAt ?? listing.updatedAt,
+        ),
+        id: listing.id,
+        meta:
+          listing.channels.length > 0
+            ? listing.channels.join(' + ')
+            : listing.mandate
+              ? mandateTypeLabel(listing.mandate.type)
+              : 'Sin canal',
+        status: listingStatusLabel(listing.status),
+        title: listing.title,
+        tone: listingStatusTone(listing.status),
+      }));
     case 'mandates':
-      return data.properties
-        .filter((property) => property.ownerClient)
-        .map((property) => ({
-          amount: property.salePrice
-            ? formatMoneyCents(String(property.salePrice * 100), property.currency)
-            : property.rentPrice
-              ? formatMoneyCents(String(property.rentPrice * 100), property.currency)
-              : undefined,
-          context: property.ownerClient?.displayName ?? 'Sin propietario',
-          date: formatDateTime(property.updatedAt),
-          id: property.id,
-          meta: `${property.city} / ${property.zone}`,
-          status: property.status,
-          title: property.title,
-          tone: property.status === 'ACTIVE' ? 'success' : 'neutral',
-        }));
+      return data.mandates.map((mandate) => ({
+        amount: formatMoneyCents(
+          mandate.authorizedPriceCents,
+          mandate.currency,
+        ),
+        context: mandate.ownerClient?.displayName ?? 'Sin propietario',
+        date: formatDate(
+          mandate.endsAt ?? mandate.startsAt ?? mandate.updatedAt,
+        ),
+        id: mandate.id,
+        meta: `${mandateTypeLabel(mandate.type)} / ${mandate.property.city}`,
+        status: mandateStatusLabel(mandate.status),
+        title: mandate.property.title,
+        tone: mandateStatusTone(mandate.status),
+      }));
     case 'offers':
-      return data.businesses
-        .filter((business) =>
-          ['DRAFT', 'PENDING_REVIEW', 'APPROVED'].includes(business.status),
-        )
-        .map((business) => ({
-          amount: formatMoneyCents(business.totalContractAmountCents, business.currency),
-          context: business.clientName ?? 'Sin cliente',
-          date: formatDate(business.expectedClosingDate),
-          id: business.id,
-          meta: business.propertyTitle ?? 'Sin inmueble',
-          status: businessStatusLabel(business.status),
-          title: business.title,
-          tone: businessStatusTone(business.status),
-        }));
+      return data.offers.map((offer) => ({
+        amount: formatMoneyCents(offer.amountCents, offer.currency),
+        context: offer.client.displayName,
+        date: formatDate(offer.expiresAt ?? offer.updatedAt),
+        id: offer.id,
+        meta: offer.property?.title ?? offer.business?.title ?? 'Sin inmueble',
+        status: offerStatusLabel(offer.status),
+        title: `${operationLabel(offer.operationType)} propuesta`,
+        tone: offerStatusTone(offer.status),
+      }));
     case 'receivables':
       return data.businesses
         .filter((business) => business.nextPayment)
         .map((business) => ({
           amount: business.nextPayment
-            ? formatMoneyCents(business.nextPayment.amountCents, business.currency)
+            ? formatMoneyCents(
+                business.nextPayment.amountCents,
+                business.currency,
+              )
             : undefined,
           context: business.clientName ?? 'Sin cliente',
           date: formatDate(business.nextPayment?.dueDate),
@@ -633,7 +714,10 @@ function buildRows(area: AreaKey, data: WorkspaceData): AreaRow[] {
           ['ACTIVE', 'CLOSED', 'PENDING_SIGNATURE'].includes(business.status),
         )
         .map((business) => ({
-          amount: formatMoneyCents(business.totalContractAmountCents, business.currency),
+          amount: formatMoneyCents(
+            business.totalContractAmountCents,
+            business.currency,
+          ),
           context: business.primaryAgentName ?? 'Sin agente principal',
           date: formatDate(business.expectedClosingDate),
           id: business.id,
@@ -643,17 +727,18 @@ function buildRows(area: AreaKey, data: WorkspaceData): AreaRow[] {
           tone: businessStatusTone(business.status),
         }));
     case 'showings':
-      return data.tasks
-        .filter((task) => task.eventType === 'CUSTOM')
-        .map((task) => ({
-          context: task.business.propertyTitle ?? task.business.title,
-          date: formatDateTime(task.scheduledFor),
-          id: task.id,
-          meta: task.business.clientName ?? 'Sin cliente',
-          status: scheduledStatusLabel(task.status),
-          title: scheduledActionLabel(task.eventType),
-          tone: scheduledActionTone(task.eventType, task.status),
-        }));
+      return data.showings.map((showing) => ({
+        context: showing.property.title,
+        date: formatDateTime(showing.scheduledFor),
+        id: showing.id,
+        meta:
+          showing.client?.displayName ??
+          showing.realEstateAgent?.displayName ??
+          'Sin participante',
+        status: showingStatusLabel(showing.status),
+        title: showing.outcome ?? 'Visita programada',
+        tone: showingStatusTone(showing.status),
+      }));
   }
 }
 
@@ -685,7 +770,9 @@ function buildMetrics(
         icon: CalendarDays,
         label: '7 dias',
         tone: 'warning',
-        value: formatMoneyCents(summary.metrics.nextSevenDaysReceivables.amountCents),
+        value: formatMoneyCents(
+          summary.metrics.nextSevenDaysReceivables.amountCents,
+        ),
       },
       {
         detail: 'Comisiones pendientes.',
@@ -758,7 +845,9 @@ function buildReportRows(data: WorkspaceData): AreaRow[] {
       tone: summary.metrics.overdueReceivables.count > 0 ? 'danger' : 'success',
     },
     {
-      amount: formatMoneyCents(summary.metrics.nextSevenDaysReceivables.amountCents),
+      amount: formatMoneyCents(
+        summary.metrics.nextSevenDaysReceivables.amountCents,
+      ),
       context: 'Cobranza',
       date: '7 dias',
       id: 'report-next-seven',
@@ -778,4 +867,35 @@ function buildReportRows(data: WorkspaceData): AreaRow[] {
       tone: 'featured',
     },
   ];
+}
+
+function documentContext(document: OperationalDocument) {
+  return (
+    document.client?.displayName ??
+    document.property?.title ??
+    document.business?.title ??
+    document.business?.code ??
+    document.businessContract?.contractNumber ??
+    'Sin relacion'
+  );
+}
+
+function propertyAskingAmount(
+  property: OperationalListing['property'],
+): string | undefined {
+  if (property.salePrice !== null) {
+    return formatMoneyCents(
+      String(property.salePrice * 100),
+      property.currency,
+    );
+  }
+
+  if (property.rentPrice !== null) {
+    return formatMoneyCents(
+      String(property.rentPrice * 100),
+      property.currency,
+    );
+  }
+
+  return undefined;
 }

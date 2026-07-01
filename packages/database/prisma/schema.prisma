@@ -415,6 +415,79 @@ enum ScheduledActionStatus {
   FAILED
 }
 
+enum DocumentEntityType {
+  CLIENT
+  PROPERTY
+  BUSINESS
+  CONTRACT
+  MANDATE
+  LISTING
+  OFFER
+  SHOWING
+  OTHER
+}
+
+enum DocumentStatus {
+  REQUIRED
+  UPLOADED
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+  ARCHIVED
+}
+
+enum MandateStatus {
+  DRAFT
+  PENDING_DOCUMENTS
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  ARCHIVED
+}
+
+enum MandateType {
+  SALE
+  RENT
+  BOTH
+}
+
+enum ListingStatus {
+  DRAFT
+  READY
+  APPROVED
+  PUBLISHED
+  PAUSED
+  ARCHIVED
+}
+
+enum ShowingStatus {
+  REQUESTED
+  CONFIRMED
+  COMPLETED
+  NO_SHOW
+  CANCELLED
+}
+
+enum OfferStatus {
+  DRAFT
+  SENT
+  COUNTERED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  WITHDRAWN
+}
+
+enum WorkflowStageScope {
+  PROPERTY
+  MANDATE
+  LISTING
+  SHOWING
+  OFFER
+  BUSINESS
+}
+
 model Organization {
   id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                    String
@@ -431,6 +504,12 @@ model Organization {
   businesses              Business[]
   businessParticipants    BusinessParticipant[]
   contractTypes           ContractType[]
+  documents               Document[]
+  mandates                Mandate[]
+  listings                Listing[]
+  showings                Showing[]
+  offers                  Offer[]
+  workflowStages          WorkflowStage[]
 
   @@map("organizations")
 }
@@ -463,6 +542,11 @@ model User {
   updatedCommissionPlans         CommissionPlan[]         @relation("UpdatedCommissionPlans")
   createdCalculationSnapshots    CalculationSnapshot[]    @relation("CreatedCalculationSnapshots")
   assignedScheduledActions       ScheduledAction[]        @relation("AssignedScheduledActions")
+  uploadedDocuments              Document[]               @relation("UploadedDocuments")
+  reviewedDocuments              Document[]               @relation("ReviewedDocuments")
+  assignedMandates               Mandate[]                @relation("AssignedMandates")
+  assignedShowings               Showing[]                @relation("AssignedShowings")
+  assignedOffers                 Offer[]                  @relation("AssignedOffers")
 
   @@map("users")
 }
@@ -553,6 +637,10 @@ model Client {
   ownedProperties         Property[]               @relation("PropertyOwnerClient")
   primaryBusinesses       Business[]               @relation("BusinessPrimaryClient")
   businessParticipants    BusinessParticipant[]    @relation("BusinessParticipantClients")
+  documents               Document[]
+  ownedMandates           Mandate[]                @relation("MandateOwnerClient")
+  showings                Showing[]
+  offers                  Offer[]
 
   @@unique([organizationId, email])
   @@index([organizationId, status])
@@ -633,6 +721,11 @@ model Property {
   assignedUser      User?               @relation("AssignedProperties", fields: [assignedUserId], references: [id], onDelete: SetNull)
   ownerClient       Client?             @relation("PropertyOwnerClient", fields: [ownerClientId], references: [id], onDelete: SetNull)
   businesses        Business[]
+  documents         Document[]
+  mandates          Mandate[]
+  listings          Listing[]
+  showings          Showing[]
+  offers            Offer[]
 
   @@unique([organizationId, internalCode])
   @@index([organizationId, status])
@@ -660,6 +753,7 @@ model RealEstateAgent {
   updatedAt      DateTime                @updatedAt @map("updated_at")
   organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   businessParticipants BusinessParticipant[]
+  showings       Showing[]
 
   @@unique([organizationId, email])
   @@index([organizationId, category])
@@ -716,6 +810,9 @@ model Business {
   commissionAllocations     CommissionAllocation[]
   calculationSnapshots      CalculationSnapshot[]
   scheduledActions          ScheduledAction[]
+  documents                 Document[]
+  showings                  Showing[]
+  offers                    Offer[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, idempotencyKey])
@@ -810,6 +907,7 @@ model BusinessContract {
   createdByUser       User?                  @relation("CreatedBusinessContracts", fields: [createdByUserId], references: [id], onDelete: SetNull)
   updatedByUser       User?                  @relation("UpdatedBusinessContracts", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   clauses             BusinessContractClause[]
+  documents           Document[]
 
   @@index([businessId, status])
   @@index([contractTypeId])
@@ -1018,4 +1116,191 @@ model ScheduledAction {
   @@index([scheduledFor, status])
   @@index([assignedToUserId, status])
   @@map("scheduled_actions")
+}
+
+model Document {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String             @map("organization_id") @db.Uuid
+  entityType         DocumentEntityType @map("entity_type")
+  clientId           String?            @map("client_id") @db.Uuid
+  propertyId         String?            @map("property_id") @db.Uuid
+  businessId         String?            @map("business_id") @db.Uuid
+  businessContractId String?            @map("business_contract_id") @db.Uuid
+  name               String
+  documentType       String             @map("document_type")
+  status             DocumentStatus     @default(REQUIRED)
+  fileName           String?            @map("file_name")
+  mimeType           String?            @map("mime_type")
+  fileSize           Int?               @map("file_size")
+  storagePath        String?            @map("storage_path")
+  requiredBy         DateTime?          @map("required_by") @db.Date
+  expiresAt          DateTime?          @map("expires_at") @db.Date
+  reviewedAt         DateTime?          @map("reviewed_at")
+  uploadedByUserId   String?            @map("uploaded_by_user_id") @db.Uuid
+  reviewedByUserId   String?            @map("reviewed_by_user_id") @db.Uuid
+  notes              String?
+  metadata           Json?
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  client             Client?            @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  property           Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  business           Business?          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessContract   BusinessContract?  @relation(fields: [businessContractId], references: [id], onDelete: Cascade)
+  uploadedByUser     User?              @relation("UploadedDocuments", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  reviewedByUser     User?              @relation("ReviewedDocuments", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([organizationId, entityType])
+  @@index([clientId])
+  @@index([propertyId])
+  @@index([businessId])
+  @@index([businessContractId])
+  @@map("documents")
+}
+
+model Mandate {
+  id                       String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId           String        @map("organization_id") @db.Uuid
+  propertyId               String        @map("property_id") @db.Uuid
+  ownerClientId            String?       @map("owner_client_id") @db.Uuid
+  assignedUserId           String?       @map("assigned_user_id") @db.Uuid
+  type                     MandateType
+  status                   MandateStatus @default(DRAFT)
+  exclusive                Boolean       @default(false)
+  authorizedPriceCents     BigInt?       @map("authorized_price_cents")
+  currency                 String        @default("USD")
+  commissionBps            Int?          @map("commission_bps")
+  startsAt                 DateTime?     @map("starts_at") @db.Date
+  endsAt                   DateTime?     @map("ends_at") @db.Date
+  signedAt                 DateTime?     @map("signed_at") @db.Date
+  notes                    String?
+  metadata                 Json?
+  createdAt                DateTime      @default(now()) @map("created_at")
+  updatedAt                DateTime      @updatedAt @map("updated_at")
+  organization             Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  property                 Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  ownerClient              Client?       @relation("MandateOwnerClient", fields: [ownerClientId], references: [id], onDelete: SetNull)
+  assignedUser             User?         @relation("AssignedMandates", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  listings                 Listing[]
+
+  @@index([organizationId, status])
+  @@index([propertyId, status])
+  @@index([ownerClientId])
+  @@index([assignedUserId])
+  @@map("mandates")
+}
+
+model Listing {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  propertyId     String        @map("property_id") @db.Uuid
+  mandateId      String?       @map("mandate_id") @db.Uuid
+  status         ListingStatus @default(DRAFT)
+  title          String
+  publicCopy     String?       @map("public_copy")
+  channels       String[]      @default([])
+  readiness      Json?
+  approvedAt     DateTime?     @map("approved_at")
+  publishedAt    DateTime?     @map("published_at")
+  pausedAt       DateTime?     @map("paused_at")
+  archivedAt     DateTime?     @map("archived_at")
+  notes          String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  property       Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  mandate        Mandate?      @relation(fields: [mandateId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([propertyId, status])
+  @@index([mandateId])
+  @@map("listings")
+}
+
+model Showing {
+  id                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId    String                 @map("organization_id") @db.Uuid
+  propertyId        String                 @map("property_id") @db.Uuid
+  clientId          String?                @map("client_id") @db.Uuid
+  businessId        String?                @map("business_id") @db.Uuid
+  assignedUserId    String?                @map("assigned_user_id") @db.Uuid
+  realEstateAgentId String?                @map("real_estate_agent_id") @db.Uuid
+  status            ShowingStatus          @default(REQUESTED)
+  scheduledFor      DateTime               @map("scheduled_for")
+  completedAt       DateTime?              @map("completed_at")
+  outcome           String?
+  feedback          String?
+  nextActionAt      DateTime?              @map("next_action_at")
+  notes             String?
+  metadata          Json?
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
+  organization      Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  property          Property               @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  client            Client?                @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  business          Business?              @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  assignedUser      User?                  @relation("AssignedShowings", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  realEstateAgent   RealEstateAgent?       @relation(fields: [realEstateAgentId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([propertyId, scheduledFor])
+  @@index([clientId])
+  @@index([businessId])
+  @@index([assignedUserId])
+  @@index([realEstateAgentId])
+  @@map("showings")
+}
+
+model Offer {
+  id             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  propertyId     String?               @map("property_id") @db.Uuid
+  clientId       String                @map("client_id") @db.Uuid
+  businessId     String?               @map("business_id") @db.Uuid
+  assignedUserId String?               @map("assigned_user_id") @db.Uuid
+  operationType  BusinessOperationType @map("operation_type")
+  status         OfferStatus           @default(DRAFT)
+  amountCents    BigInt                @map("amount_cents")
+  currency       String                @default("USD")
+  terms          String?
+  expiresAt      DateTime?             @map("expires_at")
+  sentAt         DateTime?             @map("sent_at")
+  acceptedAt     DateTime?             @map("accepted_at")
+  rejectedAt     DateTime?             @map("rejected_at")
+  notes          String?
+  metadata       Json?
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  property       Property?             @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  client         Client                @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  business       Business?             @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  assignedUser   User?                 @relation("AssignedOffers", fields: [assignedUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([propertyId, status])
+  @@index([clientId])
+  @@index([businessId])
+  @@index([assignedUserId])
+  @@map("offers")
+}
+
+model WorkflowStage {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  scope          WorkflowStageScope
+  name           String
+  position       Int
+  tone           String             @default("neutral")
+  isActive       Boolean            @default(true) @map("is_active")
+  appliesTo      String[]           @default([]) @map("applies_to")
+  metadata       Json?
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, scope, name])
+  @@index([organizationId, scope, isActive])
+  @@map("workflow_stages")
 }
