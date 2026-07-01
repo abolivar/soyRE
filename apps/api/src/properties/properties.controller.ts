@@ -7,11 +7,9 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import {
   CreatePropertyDto,
   WithdrawPropertyDto,
@@ -20,7 +18,6 @@ import { ListPropertiesQueryDto } from './dto/list-properties-query.dto.js';
 import { PropertiesService } from './properties.service.js';
 
 @Controller('properties')
-@UseGuards(JwtAuthGuard)
 export class PropertiesController {
   constructor(
     @Inject(PropertiesService)

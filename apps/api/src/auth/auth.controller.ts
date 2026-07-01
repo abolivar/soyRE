@@ -6,7 +6,6 @@ import {
   Inject,
   Post,
   Res,
-  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { CurrentUser } from './current-user.decorator.js';
@@ -15,13 +14,14 @@ import { AUTH_COOKIE_NAME } from './auth.constants.js';
 import type { AuthenticatedUser } from './auth.types.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
-import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { Public } from './public.decorator.js';
 
 @Controller('auth')
 export class AuthController {
   constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
   @Post('register')
+  @Public()
   async register(
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) response: Response,
@@ -33,6 +33,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Public()
   @HttpCode(200)
   async login(
     @Body() dto: LoginDto,
@@ -45,6 +46,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @Public()
   @HttpCode(200)
   logout(@Res({ passthrough: true }) response: Response) {
     response.clearCookie(AUTH_COOKIE_NAME, {
@@ -57,7 +59,6 @@ export class AuthController {
   }
 
   @Get('me')
-  @UseGuards(JwtAuthGuard)
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.serializeUser(user);
   }

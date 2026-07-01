@@ -1,20 +1,19 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
-  MembershipRole,
   MembershipStatus,
-  OrganizationStatus,
   Prisma,
   Property,
   PropertyOperation,
   PropertyStatus,
 } from '@soyre/database';
+import { READ_ROLES, WRITE_ROLES } from '../auth/authorization.constants.js';
+import { OrganizationAccessService } from '../auth/organization-access.service.js';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { PrismaService } from '../database/prisma.service.js';
 import {
@@ -22,25 +21,6 @@ import {
   WithdrawPropertyDto,
 } from './dto/create-property.dto.js';
 import { ListPropertiesQueryDto } from './dto/list-properties-query.dto.js';
-
-const PROPERTY_READ_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-  MembershipRole.BROKER,
-  MembershipRole.AGENT,
-  MembershipRole.OPERATIONS,
-  MembershipRole.FINANCE,
-  MembershipRole.EXTERNAL_AGENT,
-  MembershipRole.READONLY,
-]);
-
-const PROPERTY_WRITE_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-  MembershipRole.BROKER,
-  MembershipRole.AGENT,
-  MembershipRole.OPERATIONS,
-]);
 
 const PROPERTY_INCLUDE = {
   assignedUser: {
@@ -80,7 +60,11 @@ type SerializableProperty = Property & {
 
 @Injectable()
 export class PropertiesService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(OrganizationAccessService)
+    private readonly organizationAccess: OrganizationAccessService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+  ) {}
 
   async list(auth: AuthenticatedUser, query: ListPropertiesQueryDto) {
     const membership = this.resolveReadableMembership(auth, query.organizationId);
@@ -118,11 +102,7 @@ export class PropertiesService {
     });
 
     return {
-      organization: {
-        id: membership.organizationId,
-        name: membership.organizationName,
-        slug: membership.organizationSlug,
-      },
+      organization: this.organizationAccess.serializeOrganization(membership),
       properties: properties.map((property: SerializableProperty) =>
         this.serializeProperty(property),
       ),
@@ -330,47 +310,20 @@ export class PropertiesService {
     auth: AuthenticatedUser,
     organizationId?: string,
   ) {
-    const membership = this.resolveMembership(auth, organizationId);
-
-    if (!PROPERTY_READ_ROLES.has(membership.role)) {
-      throw new ForbiddenException('Property read permission is required.');
-    }
-
-    return membership;
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Property read',
+      roles: READ_ROLES,
+    });
   }
 
   private resolveWritableMembership(
     auth: AuthenticatedUser,
     organizationId?: string,
   ) {
-    const membership = this.resolveReadableMembership(auth, organizationId);
-
-    if (!PROPERTY_WRITE_ROLES.has(membership.role)) {
-      throw new ForbiddenException('Property write permission is required.');
-    }
-
-    return membership;
-  }
-
-  private resolveMembership(auth: AuthenticatedUser, organizationId?: string) {
-    const membership = organizationId
-      ? auth.memberships.find(
-          (item) =>
-            item.organizationId === organizationId &&
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        )
-      : auth.memberships.find(
-          (item) =>
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        );
-
-    if (!membership) {
-      throw new ForbiddenException('No active membership for this organization.');
-    }
-
-    return membership;
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Property write',
+      roles: WRITE_ROLES,
+    });
   }
 
   private resolvePropertyAccessWhere(
@@ -387,18 +340,10 @@ export class PropertiesService {
       };
     }
 
-    const organizationIds = auth.memberships
-      .filter(
-        (membership) =>
-          membership.status === MembershipStatus.ACTIVE &&
-          membership.organizationStatus === OrganizationStatus.ACTIVE &&
-          PROPERTY_READ_ROLES.has(membership.role),
-      )
-      .map((membership) => membership.organizationId);
-
-    if (organizationIds.length === 0) {
-      throw new ForbiddenException('No active membership for this organization.');
-    }
+    const organizationIds = this.organizationAccess.organizationIds(
+      auth,
+      READ_ROLES,
+    );
 
     return {
       id: propertyId,

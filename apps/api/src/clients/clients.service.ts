@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -12,11 +11,11 @@ import {
   ClientStatus,
   ClientTemperature,
   ClientType,
-  MembershipRole,
   MembershipStatus,
-  OrganizationStatus,
   Prisma,
 } from '@soyre/database';
+import { READ_ROLES, WRITE_ROLES } from '../auth/authorization.constants.js';
+import { OrganizationAccessService } from '../auth/organization-access.service.js';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { PrismaService } from '../database/prisma.service.js';
 import {
@@ -24,14 +23,6 @@ import {
   CreateClientIdentityDocumentDto,
 } from './dto/create-client.dto.js';
 import { ListClientsQueryDto } from './dto/list-clients-query.dto.js';
-
-const CLIENT_WRITE_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-  MembershipRole.BROKER,
-  MembershipRole.AGENT,
-  MembershipRole.OPERATIONS,
-]);
 
 const IDENTITY_DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
 const IDENTITY_DOCUMENT_MIME_TYPES = new Set([
@@ -158,10 +149,14 @@ type PreparedIdentityDocument = {
 
 @Injectable()
 export class ClientsService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(OrganizationAccessService)
+    private readonly organizationAccess: OrganizationAccessService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+  ) {}
 
   async list(auth: AuthenticatedUser, query: ListClientsQueryDto) {
-    const membership = this.resolveMembership(auth, query.organizationId);
+    const membership = this.resolveReadableMembership(auth, query.organizationId);
     const search = query.search?.trim();
     const where: Prisma.ClientWhereInput = {
       organizationId: membership.organizationId,
@@ -193,11 +188,7 @@ export class ClientsService {
     });
 
     return {
-      organization: {
-        id: membership.organizationId,
-        name: membership.organizationName,
-        slug: membership.organizationSlug,
-      },
+      organization: this.organizationAccess.serializeOrganization(membership),
       clients: clients.map((client: SerializableClient) =>
         this.serializeClient(client),
       ),
@@ -464,38 +455,24 @@ export class ClientsService {
     return { client: this.serializeClient(result) };
   }
 
-  private resolveMembership(auth: AuthenticatedUser, organizationId?: string) {
-    const membership = organizationId
-      ? auth.memberships.find(
-          (item) =>
-            item.organizationId === organizationId &&
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        )
-      : auth.memberships.find(
-          (item) =>
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        );
-
-    if (!membership) {
-      throw new ForbiddenException('No active membership for this organization.');
-    }
-
-    return membership;
+  private resolveReadableMembership(
+    auth: AuthenticatedUser,
+    organizationId?: string,
+  ) {
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Client read',
+      roles: READ_ROLES,
+    });
   }
 
   private resolveWritableMembership(
     auth: AuthenticatedUser,
     organizationId?: string,
   ) {
-    const membership = this.resolveMembership(auth, organizationId);
-
-    if (!CLIENT_WRITE_ROLES.has(membership.role)) {
-      throw new ForbiddenException('Client write permission is required.');
-    }
-
-    return membership;
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Client write',
+      roles: WRITE_ROLES,
+    });
   }
 
   private resolveClientAccessWhere(
@@ -504,7 +481,7 @@ export class ClientsService {
     organizationId?: string,
   ): Prisma.ClientWhereInput {
     if (organizationId) {
-      const membership = this.resolveMembership(auth, organizationId);
+      const membership = this.resolveReadableMembership(auth, organizationId);
 
       return {
         id: clientId,
@@ -512,17 +489,10 @@ export class ClientsService {
       };
     }
 
-    const organizationIds = auth.memberships
-      .filter(
-        (membership) =>
-          membership.status === MembershipStatus.ACTIVE &&
-          membership.organizationStatus === OrganizationStatus.ACTIVE,
-      )
-      .map((membership) => membership.organizationId);
-
-    if (organizationIds.length === 0) {
-      throw new ForbiddenException('No active membership for this organization.');
-    }
+    const organizationIds = this.organizationAccess.organizationIds(
+      auth,
+      READ_ROLES,
+    );
 
     return {
       id: clientId,

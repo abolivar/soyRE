@@ -1,44 +1,28 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma, RealEstateAgent } from '@soyre/database';
 import {
-  MembershipRole,
-  MembershipStatus,
-  OrganizationStatus,
-  Prisma,
-  RealEstateAgent,
-} from '@soyre/database';
+  BROKER_OPERATION_ROLES,
+  READ_ROLES,
+} from '../auth/authorization.constants.js';
+import { OrganizationAccessService } from '../auth/organization-access.service.js';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { CreateRealEstateAgentDto } from './dto/create-real-estate-agent.dto.js';
 import { ListRealEstateAgentsQueryDto } from './dto/list-real-estate-agents-query.dto.js';
 
-const AGENT_READ_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-  MembershipRole.BROKER,
-  MembershipRole.AGENT,
-  MembershipRole.OPERATIONS,
-  MembershipRole.FINANCE,
-  MembershipRole.EXTERNAL_AGENT,
-  MembershipRole.READONLY,
-]);
-
-const AGENT_WRITE_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-  MembershipRole.BROKER,
-  MembershipRole.OPERATIONS,
-]);
-
 @Injectable()
 export class AgentsService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(OrganizationAccessService)
+    private readonly organizationAccess: OrganizationAccessService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+  ) {}
 
   async list(auth: AuthenticatedUser, query: ListRealEstateAgentsQueryDto) {
     const membership = this.resolveReadableMembership(auth, query.organizationId);
@@ -69,11 +53,7 @@ export class AgentsService {
     });
 
     return {
-      organization: {
-        id: membership.organizationId,
-        name: membership.organizationName,
-        slug: membership.organizationSlug,
-      },
+      organization: this.organizationAccess.serializeOrganization(membership),
       agents: agents.map((agent: RealEstateAgent) => this.serializeAgent(agent)),
     };
   }
@@ -166,47 +146,20 @@ export class AgentsService {
     auth: AuthenticatedUser,
     organizationId?: string,
   ) {
-    const membership = this.resolveMembership(auth, organizationId);
-
-    if (!AGENT_READ_ROLES.has(membership.role)) {
-      throw new ForbiddenException('Agent read permission is required.');
-    }
-
-    return membership;
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Agent read',
+      roles: READ_ROLES,
+    });
   }
 
   private resolveWritableMembership(
     auth: AuthenticatedUser,
     organizationId?: string,
   ) {
-    const membership = this.resolveReadableMembership(auth, organizationId);
-
-    if (!AGENT_WRITE_ROLES.has(membership.role)) {
-      throw new ForbiddenException('Agent write permission is required.');
-    }
-
-    return membership;
-  }
-
-  private resolveMembership(auth: AuthenticatedUser, organizationId?: string) {
-    const membership = organizationId
-      ? auth.memberships.find(
-          (item) =>
-            item.organizationId === organizationId &&
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        )
-      : auth.memberships.find(
-          (item) =>
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        );
-
-    if (!membership) {
-      throw new ForbiddenException('No active membership for this organization.');
-    }
-
-    return membership;
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Agent write',
+      roles: BROKER_OPERATION_ROLES,
+    });
   }
 
   private resolveAgentAccessWhere(
@@ -223,18 +176,10 @@ export class AgentsService {
       };
     }
 
-    const organizationIds = auth.memberships
-      .filter(
-        (membership) =>
-          membership.status === MembershipStatus.ACTIVE &&
-          membership.organizationStatus === OrganizationStatus.ACTIVE &&
-          AGENT_READ_ROLES.has(membership.role),
-      )
-      .map((membership) => membership.organizationId);
-
-    if (organizationIds.length === 0) {
-      throw new ForbiddenException('No active membership for this organization.');
-    }
+    const organizationIds = this.organizationAccess.organizationIds(
+      auth,
+      READ_ROLES,
+    );
 
     return {
       id: agentId,

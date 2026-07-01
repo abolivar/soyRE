@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -28,7 +27,6 @@ import {
   ContractClauseType,
   MembershipRole,
   MembershipStatus,
-  OrganizationStatus,
   PaymentFrequency,
   PaymentPlanStatus,
   PaymentPlanType,
@@ -51,7 +49,14 @@ import {
   type PaymentPlanPreset,
 } from '@soyre/shared';
 import { createHash } from 'node:crypto';
+import {
+  COMMIT_ROLES,
+  COMMISSION_ROLES,
+  READ_ROLES,
+  WRITE_ROLES,
+} from '../auth/authorization.constants.js';
 import type { AuthenticatedMembership, AuthenticatedUser } from '../auth/auth.types.js';
+import { OrganizationAccessService } from '../auth/organization-access.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import {
   BusinessCalculationRequestDto,
@@ -61,38 +66,10 @@ import {
 } from './dto/business-draft.dto.js';
 import { ListBusinessesQueryDto } from './dto/list-businesses-query.dto.js';
 
-const BUSINESS_READ_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-  MembershipRole.BROKER,
-  MembershipRole.AGENT,
-  MembershipRole.OPERATIONS,
-  MembershipRole.FINANCE,
-  MembershipRole.EXTERNAL_AGENT,
-  MembershipRole.READONLY,
-]);
-
-const BUSINESS_WRITE_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-  MembershipRole.BROKER,
-  MembershipRole.AGENT,
-  MembershipRole.OPERATIONS,
-]);
-
-const BUSINESS_COMMIT_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-  MembershipRole.BROKER,
-  MembershipRole.OPERATIONS,
-]);
-
-const BUSINESS_COMMISSION_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-  MembershipRole.BROKER,
-  MembershipRole.FINANCE,
-]);
+const BUSINESS_READ_ROLES = READ_ROLES;
+const BUSINESS_WRITE_ROLES = WRITE_ROLES;
+const BUSINESS_COMMIT_ROLES = COMMIT_ROLES;
+const BUSINESS_COMMISSION_ROLES = COMMISSION_ROLES;
 
 const BUSINESS_DETAIL_INCLUDE = {
   contractType: true,
@@ -378,7 +355,11 @@ type DraftFee = {
 
 @Injectable()
 export class BusinessesService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(OrganizationAccessService)
+    private readonly organizationAccess: OrganizationAccessService,
+  ) {}
 
   async context(auth: AuthenticatedUser, organizationId?: string) {
     const membership = this.resolveWritableMembership(auth, organizationId);
@@ -789,14 +770,17 @@ export class BusinessesService {
     businessId: string,
     dto: BusinessCommitDto,
   ) {
-    const membership = this.resolveCommitMembership(auth);
+    const organizationIds = this.organizationAccess.organizationIds(
+      auth,
+      BUSINESS_COMMIT_ROLES,
+    );
 
     return this.prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
         const business = await tx.business.findFirst({
           where: {
             id: businessId,
-            organizationId: membership.organizationId,
+            organizationId: { in: organizationIds },
           },
           include: BUSINESS_DETAIL_INCLUDE,
         });
@@ -804,6 +788,11 @@ export class BusinessesService {
         if (!business) {
           throw new NotFoundException('Business draft was not found.');
         }
+
+        const membership = this.resolveCommitMembership(
+          auth,
+          business.organizationId,
+        );
 
         if (dto.idempotencyKey && business.idempotencyKey === dto.idempotencyKey) {
           return { business: this.serializeBusiness(business, membership) };
@@ -2023,79 +2012,34 @@ export class BusinessesService {
     auth: AuthenticatedUser,
     organizationId?: string,
   ) {
-    const membership = this.resolveMembership(auth, organizationId);
-
-    if (!BUSINESS_READ_ROLES.has(membership.role)) {
-      throw new ForbiddenException('Business read permission is required.');
-    }
-
-    return membership;
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Business read',
+      roles: BUSINESS_READ_ROLES,
+    });
   }
 
   private resolveWritableMembership(
     auth: AuthenticatedUser,
     organizationId?: string,
   ) {
-    const membership = this.resolveReadableMembership(auth, organizationId);
-
-    if (!BUSINESS_WRITE_ROLES.has(membership.role)) {
-      throw new ForbiddenException('Business write permission is required.');
-    }
-
-    return membership;
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Business write',
+      roles: BUSINESS_WRITE_ROLES,
+    });
   }
 
-  private resolveCommitMembership(auth: AuthenticatedUser) {
-    const membership = auth.memberships.find(
-      (item) =>
-        item.status === MembershipStatus.ACTIVE &&
-        item.organizationStatus === OrganizationStatus.ACTIVE &&
-        BUSINESS_COMMIT_ROLES.has(item.role),
-    );
-
-    if (!membership) {
-      throw new ForbiddenException('Business commit permission is required.');
-    }
-
-    return membership;
-  }
-
-  private resolveMembership(auth: AuthenticatedUser, organizationId?: string) {
-    const membership = organizationId
-      ? auth.memberships.find(
-          (item) =>
-            item.organizationId === organizationId &&
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        )
-      : auth.memberships.find(
-          (item) =>
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        );
-
-    if (!membership) {
-      throw new ForbiddenException('No active membership for this organization.');
-    }
-
-    return membership;
+  private resolveCommitMembership(
+    auth: AuthenticatedUser,
+    organizationId: string,
+  ) {
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Business commit',
+      roles: BUSINESS_COMMIT_ROLES,
+    });
   }
 
   private readableOrganizationIds(auth: AuthenticatedUser) {
-    const organizationIds = auth.memberships
-      .filter(
-        (membership) =>
-          membership.status === MembershipStatus.ACTIVE &&
-          membership.organizationStatus === OrganizationStatus.ACTIVE &&
-          BUSINESS_READ_ROLES.has(membership.role),
-      )
-      .map((membership) => membership.organizationId);
-
-    if (organizationIds.length === 0) {
-      throw new ForbiddenException('No active membership for this organization.');
-    }
-
-    return organizationIds;
+    return this.organizationAccess.organizationIds(auth, BUSINESS_READ_ROLES);
   }
 
   private async nextBusinessCode(
@@ -2186,11 +2130,7 @@ export class BusinessesService {
   }
 
   private serializeOrganization(membership: AuthenticatedMembership) {
-    return {
-      id: membership.organizationId,
-      name: membership.organizationName,
-      slug: membership.organizationSlug,
-    };
+    return this.organizationAccess.serializeOrganization(membership);
   }
 }
 

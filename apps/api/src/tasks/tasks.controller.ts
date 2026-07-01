@@ -6,17 +6,14 @@ import {
   Param,
   Patch,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { ListTasksQueryDto } from './dto/list-tasks-query.dto.js';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto.js';
 import { TasksService } from './tasks.service.js';
 
 @Controller('tasks')
-@UseGuards(JwtAuthGuard)
 export class TasksController {
   constructor(
     @Inject(TasksService) private readonly tasksService: TasksService,

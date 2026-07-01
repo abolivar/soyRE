@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -9,20 +8,16 @@ import {
 import {
   MembershipRole,
   MembershipStatus,
-  OrganizationStatus,
   Prisma,
   UserStatus,
 } from '@soyre/database';
 import { normalizeEmail } from '../auth/auth.service.js';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
+import { MANAGER_ROLES } from '../auth/authorization.constants.js';
+import { OrganizationAccessService } from '../auth/organization-access.service.js';
 import { PasswordService } from '../auth/password.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
-
-const MANAGER_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-]);
 
 type SerializableMembership = {
   id: string;
@@ -48,6 +43,8 @@ export class UsersService {
     private readonly passwordService: PasswordService,
     @Inject(PrismaService)
     private readonly prisma: PrismaService,
+    @Inject(OrganizationAccessService)
+    private readonly organizationAccess: OrganizationAccessService,
   ) {}
 
   async list(auth: AuthenticatedUser, organizationId?: string) {
@@ -264,37 +261,17 @@ export class UsersService {
   }
 
   private resolveMembership(auth: AuthenticatedUser, organizationId?: string) {
-    const membership = organizationId
-      ? auth.memberships.find(
-          (item) =>
-            item.organizationId === organizationId &&
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        )
-      : auth.memberships.find(
-          (item) =>
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        );
-
-    if (!membership) {
-      throw new ForbiddenException('No active membership for this organization.');
-    }
-
-    return membership;
+    return this.organizationAccess.resolveMembership(auth, organizationId);
   }
 
   private resolveManagerMembership(
     auth: AuthenticatedUser,
     organizationId?: string,
   ) {
-    const membership = this.resolveMembership(auth, organizationId);
-
-    if (!MANAGER_ROLES.has(membership.role)) {
-      throw new ForbiddenException('Owner or admin role is required.');
-    }
-
-    return membership;
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Owner or admin role',
+      roles: MANAGER_ROLES,
+    });
   }
 
   private assertManagerForOrganization(

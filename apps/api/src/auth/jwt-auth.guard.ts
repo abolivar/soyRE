@@ -5,6 +5,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import {
   MembershipStatus,
@@ -20,6 +21,7 @@ import type {
   AuthenticatedUser,
   JwtPayload,
 } from './auth.types.js';
+import { IS_PUBLIC_KEY } from './public.decorator.js';
 
 type MembershipWithOrganization = {
   id: string;
@@ -40,9 +42,19 @@ export class JwtAuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     @Inject(PrismaService)
     private readonly prisma: PrismaService,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext) {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublic) {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = this.extractToken(request);
 

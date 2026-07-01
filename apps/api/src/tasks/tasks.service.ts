@@ -1,39 +1,18 @@
 import {
-  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
-  MembershipRole,
-  MembershipStatus,
-  OrganizationStatus,
   Prisma,
   ScheduledActionStatus,
 } from '@soyre/database';
+import { READ_ROLES, WRITE_ROLES } from '../auth/authorization.constants.js';
+import { OrganizationAccessService } from '../auth/organization-access.service.js';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { ListTasksQueryDto } from './dto/list-tasks-query.dto.js';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto.js';
-
-const TASK_READ_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-  MembershipRole.BROKER,
-  MembershipRole.AGENT,
-  MembershipRole.OPERATIONS,
-  MembershipRole.FINANCE,
-  MembershipRole.EXTERNAL_AGENT,
-  MembershipRole.READONLY,
-]);
-
-const TASK_WRITE_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-  MembershipRole.BROKER,
-  MembershipRole.AGENT,
-  MembershipRole.OPERATIONS,
-]);
 
 const TASK_INCLUDE = {
   assignedToUser: {
@@ -63,7 +42,11 @@ type TaskWithDetails = Prisma.ScheduledActionGetPayload<{
 
 @Injectable()
 export class TasksService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(OrganizationAccessService)
+    private readonly organizationAccess: OrganizationAccessService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+  ) {}
 
   async list(auth: AuthenticatedUser, query: ListTasksQueryDto) {
     const membership = this.resolveReadableMembership(auth, query.organizationId);
@@ -95,11 +78,7 @@ export class TasksService {
     const taskItems = tasks as TaskWithDetails[];
 
     return {
-      organization: {
-        id: membership.organizationId,
-        name: membership.organizationName,
-        slug: membership.organizationSlug,
-      },
+      organization: this.organizationAccess.serializeOrganization(membership),
       tasks: taskItems.map((task: TaskWithDetails) => this.serializeTask(task)),
     };
   }
@@ -163,47 +142,20 @@ export class TasksService {
     auth: AuthenticatedUser,
     organizationId?: string,
   ) {
-    const membership = this.resolveMembership(auth, organizationId);
-
-    if (!TASK_READ_ROLES.has(membership.role)) {
-      throw new ForbiddenException('Task read permission is required.');
-    }
-
-    return membership;
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Task read',
+      roles: READ_ROLES,
+    });
   }
 
   private resolveWritableMembership(
     auth: AuthenticatedUser,
     organizationId?: string,
   ) {
-    const membership = this.resolveReadableMembership(auth, organizationId);
-
-    if (!TASK_WRITE_ROLES.has(membership.role)) {
-      throw new ForbiddenException('Task write permission is required.');
-    }
-
-    return membership;
-  }
-
-  private resolveMembership(auth: AuthenticatedUser, organizationId?: string) {
-    const membership = organizationId
-      ? auth.memberships.find(
-          (item) =>
-            item.organizationId === organizationId &&
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        )
-      : auth.memberships.find(
-          (item) =>
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        );
-
-    if (!membership) {
-      throw new ForbiddenException('No active membership for this organization.');
-    }
-
-    return membership;
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Task write',
+      roles: WRITE_ROLES,
+    });
   }
 
   private serializeTask(

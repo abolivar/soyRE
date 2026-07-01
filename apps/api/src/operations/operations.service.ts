@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Inject,
   Injectable,
 } from '@nestjs/common';
@@ -10,14 +9,14 @@ import {
   DocumentStatus,
   ListingStatus,
   MandateStatus,
-  MembershipRole,
   MembershipStatus,
   OfferStatus,
-  OrganizationStatus,
   Prisma,
   ShowingStatus,
 } from '@soyre/database';
+import { READ_ROLES, WRITE_ROLES } from '../auth/authorization.constants.js';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
+import { OrganizationAccessService } from '../auth/organization-access.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import {
   CreateDocumentDto,
@@ -35,25 +34,6 @@ import {
   ListShowingsQueryDto,
   ListWorkflowStagesQueryDto,
 } from './dto/list-operational-query.dto.js';
-
-const OPERATIONAL_READ_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-  MembershipRole.BROKER,
-  MembershipRole.AGENT,
-  MembershipRole.OPERATIONS,
-  MembershipRole.FINANCE,
-  MembershipRole.EXTERNAL_AGENT,
-  MembershipRole.READONLY,
-]);
-
-const OPERATIONAL_WRITE_ROLES = new Set<MembershipRole>([
-  MembershipRole.OWNER,
-  MembershipRole.ADMIN,
-  MembershipRole.BROKER,
-  MembershipRole.AGENT,
-  MembershipRole.OPERATIONS,
-]);
 
 const DOCUMENT_INCLUDE = {
   business: {
@@ -266,7 +246,11 @@ type OfferWithDetails = Prisma.OfferGetPayload<{
 
 @Injectable()
 export class OperationsService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(OrganizationAccessService)
+    private readonly organizationAccess: OrganizationAccessService,
+  ) {}
 
   async listDocuments(auth: AuthenticatedUser, query: ListDocumentsQueryDto) {
     const membership = this.resolveReadableMembership(
@@ -968,49 +952,20 @@ export class OperationsService {
     auth: AuthenticatedUser,
     organizationId?: string,
   ) {
-    const membership = this.resolveMembership(auth, organizationId);
-
-    if (!OPERATIONAL_READ_ROLES.has(membership.role)) {
-      throw new ForbiddenException('Operational read permission is required.');
-    }
-
-    return membership;
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Operational read',
+      roles: READ_ROLES,
+    });
   }
 
   private resolveWritableMembership(
     auth: AuthenticatedUser,
     organizationId?: string,
   ) {
-    const membership = this.resolveReadableMembership(auth, organizationId);
-
-    if (!OPERATIONAL_WRITE_ROLES.has(membership.role)) {
-      throw new ForbiddenException('Operational write permission is required.');
-    }
-
-    return membership;
-  }
-
-  private resolveMembership(auth: AuthenticatedUser, organizationId?: string) {
-    const membership = organizationId
-      ? auth.memberships.find(
-          (item) =>
-            item.organizationId === organizationId &&
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        )
-      : auth.memberships.find(
-          (item) =>
-            item.status === MembershipStatus.ACTIVE &&
-            item.organizationStatus === OrganizationStatus.ACTIVE,
-        );
-
-    if (!membership) {
-      throw new ForbiddenException(
-        'No active membership for this organization.',
-      );
-    }
-
-    return membership;
+    return this.organizationAccess.resolveMembership(auth, organizationId, {
+      permission: 'Operational write',
+      roles: WRITE_ROLES,
+    });
   }
 
   private async validateDocumentRelations(
@@ -1198,11 +1153,7 @@ export class OperationsService {
     organizationName: string;
     organizationSlug: string;
   }) {
-    return {
-      id: membership.organizationId,
-      name: membership.organizationName,
-      slug: membership.organizationSlug,
-    };
+    return this.organizationAccess.serializeOrganization(membership);
   }
 
   private serializeDocument(document: DocumentWithDetails) {

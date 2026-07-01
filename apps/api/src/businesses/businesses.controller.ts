@@ -7,11 +7,9 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import {
   BusinessCalculationRequestDto,
   BusinessCommitDto,
@@ -22,7 +20,6 @@ import { ListBusinessesQueryDto } from './dto/list-businesses-query.dto.js';
 import { BusinessesService } from './businesses.service.js';
 
 @Controller()
-@UseGuards(JwtAuthGuard)
 export class BusinessesController {
   constructor(
     @Inject(BusinessesService)
