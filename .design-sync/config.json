@@ -1,0 +1,17 @@
+{
+  "pkg": "@soyre/ui",
+  "globalName": "SoyreUI",
+  "projectId": "c043d260-6927-4275-8a98-1b2245fbada7",
+  "shape": "package",
+  "buildCmd": "pnpm -F \"@soyre/ui...\" build",
+  "cssEntry": "src/styles/_ds_sync_flat.css",
+  "extraFonts": ["../../.design-sync/fonts/dm-sans.css"],
+  "runtimeFontPrefixes": ["Inter"],
+  "readmeHeader": ".design-sync/conventions.md",
+  "overrides": {
+    "ConfirmDialog": { "cardMode": "single", "viewport": "620x420" },
+    "FormDrawer": { "cardMode": "single", "viewport": "780x560" },
+    "DataTable": { "cardMode": "column" },
+    "PageHeader": { "cardMode": "column" }
+  }
+}
