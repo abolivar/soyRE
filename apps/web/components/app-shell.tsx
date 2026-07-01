@@ -2,22 +2,31 @@
 
 import {
   Bell,
+  BarChart3,
   Building2,
   BriefcaseBusiness,
+  CalendarDays,
   CheckSquare,
+  DollarSign,
   FileText,
   Handshake,
+  Landmark,
   LayoutDashboard,
   ListChecks,
   LogOut,
+  Megaphone,
   Settings,
   ShieldCheck,
+  ScrollText,
+  Send,
   Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { apiFetch, AuthUser } from '../lib/api';
+import { activeMemberships } from './operational-format';
 import { BrandLogo } from './brand-logo';
 import { Button, SearchInput } from '@soyre/ui';
 
@@ -29,22 +38,43 @@ type NavigationItem = {
 
 const businessNavigation: NavigationItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/businesses/new', label: 'Negocios', icon: BriefcaseBusiness },
+  { href: '/businesses', label: 'Negocios', icon: BriefcaseBusiness },
+  { href: '/pipeline', label: 'Funnel', icon: ListChecks },
   { href: '/properties', label: 'Propiedades', icon: Building2 },
   { href: '/clients', label: 'Clientes', icon: Users },
   { href: '/agents', label: 'Agentes', icon: Handshake },
-  { href: '/pipeline', label: 'Funnel', icon: ListChecks },
+  { href: '/mandates', label: 'Mandatos', icon: Handshake },
+  { href: '/listings', label: 'Listings', icon: Megaphone },
+  { href: '/showings', label: 'Visitas', icon: CalendarDays },
+  { href: '/offers', label: 'Ofertas', icon: Send },
   { href: '/tasks', label: 'Tareas', icon: CheckSquare },
   { href: '/documents', label: 'Documentos', icon: FileText },
+  { href: '/reports', label: 'Reportes', icon: BarChart3 },
+];
+
+const financeNavigation: NavigationItem[] = [
+  { href: '/receivables', label: 'Cobranza', icon: DollarSign },
+  { href: '/commissions', label: 'Comisiones', icon: BriefcaseBusiness },
+  { href: '/settlements', label: 'Liquidaciones', icon: Landmark },
 ];
 
 const adminNavigation: NavigationItem[] = [
   { href: '/users', label: 'Usuarios', icon: ShieldCheck },
   { href: '/settings', label: 'Configuracion', icon: Settings },
+  { href: '/audit', label: 'Auditoria', icon: ScrollText },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    apiFetch<{ user: AuthUser }>('/auth/me')
+      .then((response) => setUser(response.user))
+      .catch(() => setUser(null));
+  }, []);
+
+  const activeMembership = useMemo(() => activeMemberships(user)[0] ?? null, [user]);
 
   return (
     <div className="app-frame">
@@ -63,13 +93,22 @@ export function AppShell({ children }: { children: ReactNode }) {
             label="Operacion"
             pathname={pathname}
           />
+          <NavSection
+            items={financeNavigation}
+            label="Finanzas"
+            pathname={pathname}
+          />
           <NavSection items={adminNavigation} label="Sistema" pathname={pathname} />
         </nav>
 
         <div className="sidebar-footer">
           <span>Organizacion activa</span>
-          <strong>SoyPMS Demo Realty</strong>
-          <span>Validacion remota Supabase</span>
+          <strong>{activeMembership?.organizationName ?? 'Sin sesion activa'}</strong>
+          <span>
+            {activeMembership
+              ? `${activeMembership.role} / Supabase remoto`
+              : 'Validacion remota Supabase'}
+          </span>
         </div>
       </aside>
 
