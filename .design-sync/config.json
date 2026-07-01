@@ -12,6 +12,8 @@
     "ConfirmDialog": { "cardMode": "single", "viewport": "620x420" },
     "FormDrawer": { "cardMode": "single", "viewport": "780x560" },
     "DataTable": { "cardMode": "column" },
-    "PageHeader": { "cardMode": "column" }
+    "PageHeader": { "cardMode": "column" },
+    "Input": { "cardMode": "column" },
+    "Textarea": { "cardMode": "column" }
   }
 }

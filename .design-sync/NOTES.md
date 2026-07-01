@@ -23,6 +23,11 @@ Repo-specific gotchas for syncing `@soyre/ui` to claude.ai/design. Read before e
 ## Card modes / overrides
 - `ConfirmDialog`, `FormDrawer` are overlays (`position: fixed` backdrop) → `cardMode: single` + a `viewport` so the open state renders inside the card.
 - `DataTable`, `PageHeader` are full-width → `cardMode: column`.
+- `Input`, `Textarea` → `cardMode: column`. Their controls are `width: 100%` (see craft pass below), so at default grid width they overflow the cell; column gives one full-width field per row.
+
+## Craft pass (Emil design-eng review) — applied to components.css
+- Added interaction polish: hover color `transition` on buttons/links/tabs, `:active { scale(0.97) }` press feedback, `:focus-visible` teal ring on buttons + inputs, spinner sped up 1.1s→0.7s, overlay entry animations via `@starting-style` (backdrop fade, dialog scale from center, drawer slide from right), `@media (hover:hover)` gate on PropertyCard lift, and a `prefers-reduced-motion` block.
+- **Fidelity fix:** the base form-control styling (`input`/`select`/`textarea`: border, bg, radius, `width:100%`, focus ring) lived only in `apps/web/app/globals.css` (element resets) and did NOT ship with the DS. Moved a scoped copy into `components.css` under `.input-field …` so Input/Select/Textarea are self-contained in the shipped CSS. `apps/web/globals.css` still has its own raw-element rules (harmless duplication; the app can later drop them in favor of the primitive).
 
 ## Known render warns (re-syncs: these are expected, not new)
 - **`[RENDER_THIN]` FormDrawer** — benign. The drawer renders fully (≈30 KB screenshot) but its `position: fixed` children collapse the measured root height to 0. Confirmed visually OK.
