@@ -49,13 +49,21 @@ export function Button({
   if (asChild && isValidElement<ButtonChildProps>(children)) {
     const child = children as ReactElement<ButtonChildProps>;
     const childClasses = [classes, child.props.className].filter(Boolean).join(' ');
-
-    return cloneElement(child, {
+    const childProps: ButtonChildProps = {
       ...rest,
       'aria-busy': loading || child.props['aria-busy'],
       'aria-disabled': isDisabled || child.props['aria-disabled'],
       className: childClasses,
-      onClick: (event: MouseEvent<HTMLElement>) => {
+      children: (
+        <>
+          {leadingContent}
+          {child.props.children}
+        </>
+      ),
+    };
+
+    if (isDisabled || child.props.onClick || onClick) {
+      childProps.onClick = (event: MouseEvent<HTMLElement>) => {
         if (isDisabled) {
           event.preventDefault();
           event.stopPropagation();
@@ -66,14 +74,10 @@ export function Button({
         (onClick as unknown as ((event: MouseEvent<HTMLElement>) => void) | undefined)?.(
           event,
         );
-      },
-      children: (
-        <>
-          {leadingContent}
-          {child.props.children}
-        </>
-      ),
-    });
+      };
+    }
+
+    return cloneElement(child, childProps);
   }
 
   return (
