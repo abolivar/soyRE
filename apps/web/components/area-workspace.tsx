@@ -9,6 +9,7 @@ import {
   Handshake,
   Landmark,
   Megaphone,
+  Plus,
   RefreshCcw,
   ScrollText,
   TrendingUp,
@@ -19,23 +20,30 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   apiFetch,
   AuthUser,
+  ClientsResponse,
   BusinessesResponse,
   BusinessListItem,
   DashboardSummaryResponse,
   DocumentsResponse,
   ListingsResponse,
   MandatesResponse,
+  MembershipRole,
   OffersResponse,
+  OrganizationClient,
+  OrganizationRealEstateAgent,
   OperationalDocument,
   OperationalListing,
   OperationalMandate,
   OperationalOffer,
   OperationalShowing,
   OrganizationProperty,
+  OrganizationUser,
   PropertiesResponse,
+  RealEstateAgentsResponse,
   ShowingsResponse,
   TaskListItem,
   TaskListResponse,
+  UsersResponse,
 } from '../lib/api';
 import {
   activeMemberships,
@@ -66,6 +74,8 @@ import {
   EmptyState,
   ErrorState,
   FilterBar,
+  FormDrawer,
+  Input,
   LoadingState,
   MetricCard,
   PageHeader,
@@ -73,6 +83,7 @@ import {
   SectionPanel,
   Select,
   StatusBadge,
+  Textarea,
   type Tone,
 } from '@soyre/ui';
 
@@ -101,6 +112,9 @@ type AreaConfig = {
   sideDescription: string;
 };
 
+type CreatableAreaKey =
+  'documents' | 'listings' | 'mandates' | 'offers' | 'showings';
+
 type AreaRow = {
   id: string;
   title: string;
@@ -121,7 +135,9 @@ type Metric = {
 };
 
 type WorkspaceData = {
+  agents: OrganizationRealEstateAgent[];
   businesses: BusinessListItem[];
+  clients: OrganizationClient[];
   documents: OperationalDocument[];
   listings: OperationalListing[];
   mandates: OperationalMandate[];
@@ -130,6 +146,31 @@ type WorkspaceData = {
   showings: OperationalShowing[];
   summary: DashboardSummaryResponse | null;
   tasks: TaskListItem[];
+  users: OrganizationUser[];
+};
+
+const operationalWriteRoles = new Set<MembershipRole>([
+  'OWNER',
+  'ADMIN',
+  'BROKER',
+  'AGENT',
+  'OPERATIONS',
+]);
+
+const creatableAreaLabels: Record<CreatableAreaKey, string> = {
+  documents: 'Nuevo documento',
+  listings: 'Nuevo listing',
+  mandates: 'Nuevo mandato',
+  offers: 'Nueva oferta',
+  showings: 'Nueva visita',
+};
+
+const creatableAreaEndpoints: Record<CreatableAreaKey, string> = {
+  documents: '/documents',
+  listings: '/listings',
+  mandates: '/mandates',
+  offers: '/offers',
+  showings: '/showings',
 };
 
 const areaConfig: Record<AreaKey, AreaConfig> = {
@@ -280,7 +321,9 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
     string | null
   >(null);
   const [data, setData] = useState<WorkspaceData>({
+    agents: [],
     businesses: [],
+    clients: [],
     documents: [],
     listings: [],
     mandates: [],
@@ -289,10 +332,14 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
     showings: [],
     summary: null,
     tasks: [],
+    users: [],
   });
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     apiFetch<{ user: AuthUser }>('/auth/me')
@@ -359,11 +406,16 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
     () => buildMetrics(area, data, filteredRows),
     [area, data, filteredRows],
   );
+  const canCreate = activeMembership
+    ? isCreatableArea(area) && operationalWriteRoles.has(activeMembership.role)
+    : false;
 
   async function refreshArea(organizationId = activeOrganizationId) {
     if (!organizationId) {
       setData({
+        agents: [],
         businesses: [],
+        clients: [],
         documents: [],
         listings: [],
         mandates: [],
@@ -372,6 +424,7 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
         showings: [],
         summary: null,
         tasks: [],
+        users: [],
       });
       setIsLoading(false);
       return;
@@ -382,7 +435,9 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
     const query = new URLSearchParams({ organizationId });
     const [
       summary,
+      agents,
       businesses,
+      clients,
       properties,
       tasks,
       documents,
@@ -390,11 +445,14 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
       listings,
       showings,
       offers,
+      users,
     ] = await Promise.all([
       apiFetch<DashboardSummaryResponse>(
         `/dashboard/summary?${query.toString()}`,
       ),
+      apiFetch<RealEstateAgentsResponse>(`/agents?${query.toString()}`),
       apiFetch<BusinessesResponse>(`/businesses?${query.toString()}`),
+      apiFetch<ClientsResponse>(`/clients?${query.toString()}`),
       apiFetch<PropertiesResponse>(`/properties?${query.toString()}`),
       apiFetch<TaskListResponse>(`/tasks?${query.toString()}`),
       apiFetch<DocumentsResponse>(`/documents?${query.toString()}`),
@@ -402,10 +460,13 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
       apiFetch<ListingsResponse>(`/listings?${query.toString()}`),
       apiFetch<ShowingsResponse>(`/showings?${query.toString()}`),
       apiFetch<OffersResponse>(`/offers?${query.toString()}`),
+      apiFetch<UsersResponse>(`/users?${query.toString()}`),
     ]);
 
     setData({
+      agents: agents.agents,
       businesses: businesses.businesses,
+      clients: clients.clients,
       documents: documents.documents,
       listings: listings.listings,
       mandates: mandates.mandates,
@@ -414,6 +475,7 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
       showings: showings.showings,
       summary,
       tasks: tasks.tasks,
+      users: users.users,
     });
     setIsLoading(false);
   }
@@ -425,13 +487,72 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
     setSearch(typeof value === 'string' ? value.trim() : '');
   }
 
+  function openCreateDrawer() {
+    setFormError(null);
+    setIsDrawerOpen(true);
+  }
+
+  function closeCreateDrawer() {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsDrawerOpen(false);
+    setFormError(null);
+  }
+
+  async function createOperationalRecord(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(null);
+
+    if (!activeOrganizationId || !isCreatableArea(area) || !canCreate) {
+      setFormError('No tienes permiso para crear registros en esta area.');
+      return;
+    }
+
+    const formElement = event.currentTarget;
+    setIsSubmitting(true);
+
+    try {
+      const payload = buildCreatePayload(
+        area,
+        new FormData(formElement),
+        activeOrganizationId,
+      );
+      await apiFetch(creatableAreaEndpoints[area], {
+        body: JSON.stringify(payload),
+        method: 'POST',
+      });
+      formElement.reset();
+      setIsDrawerOpen(false);
+      await refreshArea(activeOrganizationId);
+    } catch (caught) {
+      setFormError(
+        caught instanceof Error
+          ? caught.message
+          : 'No se pudo crear el registro.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <>
       <PageHeader
         actions={
           <div className="row-actions">
+            {isCreatableArea(area) ? (
+              <Button
+                disabled={!canCreate}
+                icon={Plus}
+                onClick={openCreateDrawer}
+              >
+                {creatableAreaLabels[area]}
+              </Button>
+            ) : null}
             {config.primaryHref && config.primaryLabel ? (
-              <Button asChild>
+              <Button asChild variant="secondary">
                 <Link href={config.primaryHref}>{config.primaryLabel}</Link>
               </Button>
             ) : null}
@@ -594,8 +715,583 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
           </section>
         </>
       )}
+
+      {isCreatableArea(area) ? (
+        <FormDrawer
+          description="Crea un registro operativo asociado a la organizacion activa."
+          footer={
+            <>
+              <Button
+                disabled={isSubmitting}
+                onClick={closeCreateDrawer}
+                type="button"
+                variant="secondary"
+              >
+                Cancelar
+              </Button>
+              <Button
+                disabled={isSubmitting}
+                form={`${area}-create-form`}
+                icon={Plus}
+                type="submit"
+              >
+                {isSubmitting ? 'Creando' : 'Crear'}
+              </Button>
+            </>
+          }
+          onClose={closeCreateDrawer}
+          open={isDrawerOpen && canCreate}
+          title={creatableAreaLabels[area]}
+        >
+          <form
+            className="drawer-form"
+            id={`${area}-create-form`}
+            onSubmit={createOperationalRecord}
+          >
+            <OperationalCreateFields area={area} data={data} />
+            {formError ? <p className="form-error">{formError}</p> : null}
+          </form>
+        </FormDrawer>
+      ) : null}
     </>
   );
+}
+
+function OperationalCreateFields({
+  area,
+  data,
+}: {
+  area: CreatableAreaKey;
+  data: WorkspaceData;
+}) {
+  switch (area) {
+    case 'documents':
+      return (
+        <>
+          <section className="form-section">
+            <div>
+              <h3>Documento</h3>
+              <p>Expediente operativo asociado a una entidad del sistema.</p>
+            </div>
+            <div className="form-grid two">
+              <Select
+                defaultValue="CLIENT"
+                id="document-entity-type"
+                label="Entidad"
+                name="entityType"
+                required
+              >
+                <option value="CLIENT">Cliente</option>
+                <option value="PROPERTY">Propiedad</option>
+                <option value="BUSINESS">Negocio</option>
+                <option value="MANDATE">Mandato</option>
+                <option value="LISTING">Listing</option>
+                <option value="OFFER">Oferta</option>
+                <option value="SHOWING">Visita</option>
+                <option value="OTHER">Otro</option>
+              </Select>
+              <Select
+                defaultValue="REQUIRED"
+                id="document-status"
+                label="Estado"
+                name="status"
+                required
+              >
+                <option value="REQUIRED">Requerido</option>
+                <option value="UPLOADED">Cargado</option>
+                <option value="IN_REVIEW">En revision</option>
+                <option value="APPROVED">Aprobado</option>
+              </Select>
+            </div>
+            <Input
+              id="document-name"
+              label="Nombre"
+              name="name"
+              placeholder="Pasaporte, contrato firmado, poder legal"
+              required
+            />
+            <Input
+              id="document-type"
+              label="Tipo documental"
+              name="documentType"
+              placeholder="Identidad, legal, comercial"
+              required
+            />
+            <div className="form-grid two">
+              <Input
+                id="document-file-name"
+                label="Archivo"
+                name="fileName"
+                placeholder="documento.pdf"
+              />
+              <Input
+                id="document-storage-path"
+                label="Ruta storage"
+                name="storagePath"
+                placeholder="documents/cliente/documento.pdf"
+              />
+            </div>
+          </section>
+
+          <details className="form-collapsible" open>
+            <summary>Relacion</summary>
+            <div className="form-section">
+              <div className="form-grid two">
+                <Select id="document-client" label="Cliente" name="clientId">
+                  <option value="">Sin cliente</option>
+                  {data.clients.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.displayName}
+                    </option>
+                  ))}
+                </Select>
+                <Select
+                  id="document-property"
+                  label="Propiedad"
+                  name="propertyId"
+                >
+                  <option value="">Sin propiedad</option>
+                  {data.properties.map((property) => (
+                    <option key={property.id} value={property.id}>
+                      {property.title}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <Select id="document-business" label="Negocio" name="businessId">
+                <option value="">Sin negocio</option>
+                {data.businesses.map((business) => (
+                  <option key={business.id} value={business.id}>
+                    {business.code} / {business.title}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </details>
+
+          <details className="form-collapsible">
+            <summary>Vigencia y notas</summary>
+            <div className="form-section">
+              <div className="form-grid two">
+                <Input
+                  id="document-required-by"
+                  label="Requerido para"
+                  name="requiredBy"
+                  type="date"
+                />
+                <Input
+                  id="document-expires-at"
+                  label="Vence"
+                  name="expiresAt"
+                  type="date"
+                />
+              </div>
+              <Textarea
+                id="document-notes"
+                label="Notas"
+                name="notes"
+                placeholder="Detalle operativo, responsable o condicion."
+              />
+            </div>
+          </details>
+        </>
+      );
+    case 'mandates':
+      return (
+        <>
+          <section className="form-section">
+            <div>
+              <h3>Mandato</h3>
+              <p>Autorizacion comercial y condiciones basicas pactadas.</p>
+            </div>
+            <Select
+              id="mandate-property"
+              label="Propiedad"
+              name="propertyId"
+              required
+            >
+              <option value="">Seleccionar propiedad</option>
+              {data.properties.map((property) => (
+                <option key={property.id} value={property.id}>
+                  {property.title}
+                </option>
+              ))}
+            </Select>
+            <div className="form-grid two">
+              <Select
+                defaultValue="SALE"
+                id="mandate-type"
+                label="Tipo"
+                name="type"
+              >
+                <option value="SALE">Venta</option>
+                <option value="RENT">Alquiler</option>
+                <option value="BOTH">Venta y alquiler</option>
+              </Select>
+              <Select
+                defaultValue="DRAFT"
+                id="mandate-status"
+                label="Estado"
+                name="status"
+              >
+                <option value="DRAFT">Borrador</option>
+                <option value="PENDING_DOCUMENTS">Docs pendientes</option>
+                <option value="ACTIVE">Activo</option>
+              </Select>
+            </div>
+            <label>
+              <input name="exclusive" type="checkbox" /> Exclusivo
+            </label>
+          </section>
+
+          <section className="form-section">
+            <div>
+              <h3>Responsables y valores</h3>
+              <p>Propietario, asesor asignado, precio autorizado y comision.</p>
+            </div>
+            <div className="form-grid two">
+              <Select
+                id="mandate-owner"
+                label="Propietario"
+                name="ownerClientId"
+              >
+                <option value="">Usar propietario de la propiedad</option>
+                {data.clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.displayName}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                id="mandate-user"
+                label="Asignado a"
+                name="assignedUserId"
+              >
+                <option value="">Usuario actual</option>
+                {data.users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.firstName} {user.lastName ?? ''}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="form-grid three">
+              <Input
+                id="mandate-price"
+                label="Precio autorizado"
+                min="0"
+                name="authorizedAmount"
+                placeholder="250000"
+                step="0.01"
+                type="number"
+              />
+              <Input
+                defaultValue="USD"
+                id="mandate-currency"
+                label="Moneda"
+                maxLength={3}
+                name="currency"
+              />
+              <Input
+                id="mandate-commission"
+                label="Comision %"
+                max="100"
+                min="0"
+                name="commissionPercent"
+                step="0.01"
+                type="number"
+              />
+            </div>
+          </section>
+
+          <details className="form-collapsible">
+            <summary>Fechas y notas</summary>
+            <div className="form-section">
+              <div className="form-grid three">
+                <Input
+                  id="mandate-starts"
+                  label="Inicio"
+                  name="startsAt"
+                  type="date"
+                />
+                <Input
+                  id="mandate-ends"
+                  label="Fin"
+                  name="endsAt"
+                  type="date"
+                />
+                <Input
+                  id="mandate-signed"
+                  label="Firma"
+                  name="signedAt"
+                  type="date"
+                />
+              </div>
+              <Textarea id="mandate-notes" label="Notas" name="notes" />
+            </div>
+          </details>
+        </>
+      );
+    case 'listings':
+      return (
+        <>
+          <section className="form-section">
+            <div>
+              <h3>Listing</h3>
+              <p>Preparacion comercial interna antes de publicar.</p>
+            </div>
+            <Select
+              id="listing-property"
+              label="Propiedad"
+              name="propertyId"
+              required
+            >
+              <option value="">Seleccionar propiedad</option>
+              {data.properties.map((property) => (
+                <option key={property.id} value={property.id}>
+                  {property.title}
+                </option>
+              ))}
+            </Select>
+            <Input
+              id="listing-title"
+              label="Titulo"
+              name="title"
+              placeholder="Apartamento con vista abierta"
+              required
+            />
+            <div className="form-grid two">
+              <Select id="listing-mandate" label="Mandato" name="mandateId">
+                <option value="">Sin mandato</option>
+                {data.mandates.map((mandate) => (
+                  <option key={mandate.id} value={mandate.id}>
+                    {mandate.property.title} / {mandateTypeLabel(mandate.type)}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                defaultValue="DRAFT"
+                id="listing-status"
+                label="Estado"
+                name="status"
+              >
+                <option value="DRAFT">Borrador</option>
+                <option value="READY">Listo</option>
+                <option value="APPROVED">Aprobado</option>
+                <option value="PUBLISHED">Publicado</option>
+              </Select>
+            </div>
+            <Input
+              id="listing-channels"
+              label="Canales"
+              name="channels"
+              placeholder="Web, Instagram, MLS"
+            />
+            <Textarea
+              id="listing-copy"
+              label="Copy publico"
+              name="publicCopy"
+              placeholder="Descripcion comercial inicial."
+            />
+          </section>
+        </>
+      );
+    case 'showings':
+      return (
+        <>
+          <section className="form-section">
+            <div>
+              <h3>Visita</h3>
+              <p>Agenda, participantes y responsable de seguimiento.</p>
+            </div>
+            <Select
+              id="showing-property"
+              label="Propiedad"
+              name="propertyId"
+              required
+            >
+              <option value="">Seleccionar propiedad</option>
+              {data.properties.map((property) => (
+                <option key={property.id} value={property.id}>
+                  {property.title}
+                </option>
+              ))}
+            </Select>
+            <div className="form-grid two">
+              <Input
+                id="showing-scheduled"
+                label="Fecha y hora"
+                name="scheduledFor"
+                required
+                type="datetime-local"
+              />
+              <Select
+                defaultValue="REQUESTED"
+                id="showing-status"
+                label="Estado"
+                name="status"
+              >
+                <option value="REQUESTED">Solicitada</option>
+                <option value="CONFIRMED">Confirmada</option>
+                <option value="COMPLETED">Completada</option>
+              </Select>
+            </div>
+          </section>
+
+          <section className="form-section">
+            <div>
+              <h3>Participantes</h3>
+              <p>Cliente, agente inmobiliario y usuario responsable.</p>
+            </div>
+            <div className="form-grid two">
+              <Select id="showing-client" label="Cliente" name="clientId">
+                <option value="">Sin cliente</option>
+                {data.clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.displayName}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                id="showing-agent"
+                label="Agente"
+                name="realEstateAgentId"
+              >
+                <option value="">Sin agente</option>
+                {data.agents.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.displayName}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="form-grid two">
+              <Select
+                id="showing-user"
+                label="Asignado a"
+                name="assignedUserId"
+              >
+                <option value="">Usuario actual</option>
+                {data.users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.firstName} {user.lastName ?? ''}
+                  </option>
+                ))}
+              </Select>
+              <Select id="showing-business" label="Negocio" name="businessId">
+                <option value="">Sin negocio</option>
+                {data.businesses.map((business) => (
+                  <option key={business.id} value={business.id}>
+                    {business.code} / {business.title}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <Textarea id="showing-notes" label="Notas" name="notes" />
+          </section>
+        </>
+      );
+    case 'offers':
+      return (
+        <>
+          <section className="form-section">
+            <div>
+              <h3>Oferta</h3>
+              <p>Propuesta economica previa a crear o enlazar negocio.</p>
+            </div>
+            <Select id="offer-client" label="Cliente" name="clientId" required>
+              <option value="">Seleccionar cliente</option>
+              {data.clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.displayName}
+                </option>
+              ))}
+            </Select>
+            <div className="form-grid two">
+              <Select
+                defaultValue="SALE"
+                id="offer-operation"
+                label="Operacion"
+                name="operationType"
+              >
+                <option value="SALE">Venta</option>
+                <option value="RENT">Alquiler</option>
+                <option value="RESERVATION">Reserva</option>
+                <option value="ASSIGNMENT">Cesion</option>
+                <option value="PRE_SALE">Preventa</option>
+                <option value="OTHER">Otro</option>
+              </Select>
+              <Select
+                defaultValue="DRAFT"
+                id="offer-status"
+                label="Estado"
+                name="status"
+              >
+                <option value="DRAFT">Borrador</option>
+                <option value="SENT">Enviada</option>
+                <option value="COUNTERED">Contraoferta</option>
+                <option value="ACCEPTED">Aceptada</option>
+              </Select>
+            </div>
+            <div className="form-grid two">
+              <Input
+                id="offer-amount"
+                label="Monto"
+                min="0"
+                name="amount"
+                placeholder="250000"
+                required
+                step="0.01"
+                type="number"
+              />
+              <Input
+                defaultValue="USD"
+                id="offer-currency"
+                label="Moneda"
+                maxLength={3}
+                name="currency"
+              />
+            </div>
+          </section>
+
+          <details className="form-collapsible" open>
+            <summary>Relacion y terminos</summary>
+            <div className="form-section">
+              <div className="form-grid two">
+                <Select id="offer-property" label="Propiedad" name="propertyId">
+                  <option value="">Sin propiedad</option>
+                  {data.properties.map((property) => (
+                    <option key={property.id} value={property.id}>
+                      {property.title}
+                    </option>
+                  ))}
+                </Select>
+                <Select id="offer-business" label="Negocio" name="businessId">
+                  <option value="">Sin negocio</option>
+                  {data.businesses.map((business) => (
+                    <option key={business.id} value={business.id}>
+                      {business.code} / {business.title}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <Input
+                id="offer-expires"
+                label="Vence"
+                name="expiresAt"
+                type="datetime-local"
+              />
+              <Textarea
+                id="offer-terms"
+                label="Terminos"
+                name="terms"
+                placeholder="Condiciones, deposito, plazo de respuesta o anexos."
+              />
+            </div>
+          </details>
+        </>
+      );
+  }
 }
 
 function buildRows(area: AreaKey, data: WorkspaceData): AreaRow[] {
@@ -898,4 +1594,184 @@ function propertyAskingAmount(
   }
 
   return undefined;
+}
+
+function isCreatableArea(area: AreaKey): area is CreatableAreaKey {
+  return (
+    area === 'documents' ||
+    area === 'listings' ||
+    area === 'mandates' ||
+    area === 'offers' ||
+    area === 'showings'
+  );
+}
+
+function buildCreatePayload(
+  area: CreatableAreaKey,
+  form: FormData,
+  organizationId: string,
+) {
+  switch (area) {
+    case 'documents':
+      return stripEmpty({
+        organizationId,
+        businessId: optionalString(form, 'businessId'),
+        clientId: optionalString(form, 'clientId'),
+        documentType: requiredString(form, 'documentType', 'Tipo documental'),
+        entityType: requiredString(form, 'entityType', 'Entidad'),
+        expiresAt: optionalString(form, 'expiresAt'),
+        fileName: optionalString(form, 'fileName'),
+        name: requiredString(form, 'name', 'Nombre'),
+        notes: optionalString(form, 'notes'),
+        propertyId: optionalString(form, 'propertyId'),
+        requiredBy: optionalString(form, 'requiredBy'),
+        status: requiredString(form, 'status', 'Estado'),
+        storagePath: optionalString(form, 'storagePath'),
+      });
+    case 'mandates':
+      return stripEmpty({
+        organizationId,
+        assignedUserId: optionalString(form, 'assignedUserId'),
+        authorizedPriceCents: optionalMoneyCents(form, 'authorizedAmount'),
+        commissionBps: optionalPercentBps(form, 'commissionPercent'),
+        currency: optionalString(form, 'currency') ?? 'USD',
+        endsAt: optionalString(form, 'endsAt'),
+        exclusive: form.get('exclusive') === 'on',
+        notes: optionalString(form, 'notes'),
+        ownerClientId: optionalString(form, 'ownerClientId'),
+        propertyId: requiredString(form, 'propertyId', 'Propiedad'),
+        signedAt: optionalString(form, 'signedAt'),
+        startsAt: optionalString(form, 'startsAt'),
+        status: requiredString(form, 'status', 'Estado'),
+        type: requiredString(form, 'type', 'Tipo'),
+      });
+    case 'listings':
+      return stripEmpty({
+        organizationId,
+        channels: splitList(optionalString(form, 'channels')),
+        mandateId: optionalString(form, 'mandateId'),
+        propertyId: requiredString(form, 'propertyId', 'Propiedad'),
+        publicCopy: optionalString(form, 'publicCopy'),
+        status: requiredString(form, 'status', 'Estado'),
+        title: requiredString(form, 'title', 'Titulo'),
+      });
+    case 'showings':
+      return stripEmpty({
+        organizationId,
+        assignedUserId: optionalString(form, 'assignedUserId'),
+        businessId: optionalString(form, 'businessId'),
+        clientId: optionalString(form, 'clientId'),
+        notes: optionalString(form, 'notes'),
+        propertyId: requiredString(form, 'propertyId', 'Propiedad'),
+        realEstateAgentId: optionalString(form, 'realEstateAgentId'),
+        scheduledFor: requiredDateTime(form, 'scheduledFor', 'Fecha y hora'),
+        status: requiredString(form, 'status', 'Estado'),
+      });
+    case 'offers':
+      return stripEmpty({
+        organizationId,
+        amountCents: requiredMoneyCents(form, 'amount', 'Monto'),
+        businessId: optionalString(form, 'businessId'),
+        clientId: requiredString(form, 'clientId', 'Cliente'),
+        currency: optionalString(form, 'currency') ?? 'USD',
+        expiresAt: optionalDateTime(form, 'expiresAt'),
+        operationType: requiredString(form, 'operationType', 'Operacion'),
+        propertyId: optionalString(form, 'propertyId'),
+        status: requiredString(form, 'status', 'Estado'),
+        terms: optionalString(form, 'terms'),
+      });
+  }
+}
+
+function optionalString(form: FormData, key: string) {
+  const value = form.get(key);
+
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function requiredString(form: FormData, key: string, label: string) {
+  const value = optionalString(form, key);
+
+  if (!value) {
+    throw new Error(`${label} es requerido.`);
+  }
+
+  return value;
+}
+
+function optionalMoneyCents(form: FormData, key: string) {
+  const value = optionalString(form, key);
+
+  return value ? moneyToCents(value, key) : undefined;
+}
+
+function requiredMoneyCents(form: FormData, key: string, label: string) {
+  const value = optionalString(form, key);
+
+  if (!value) {
+    throw new Error(`${label} es requerido.`);
+  }
+
+  return moneyToCents(value, label);
+}
+
+function moneyToCents(value: string, label: string) {
+  const normalized = value.replace(/,/g, '').trim();
+
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
+    throw new Error(`${label} debe ser un monto valido.`);
+  }
+
+  const [whole = '0', decimals = ''] = normalized.split('.');
+
+  return `${whole}${decimals.padEnd(2, '0')}`;
+}
+
+function optionalPercentBps(form: FormData, key: string) {
+  const value = optionalString(form, key);
+
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
+    throw new Error('Comision debe ser un porcentaje valido.');
+  }
+
+  const [whole = '0', decimals = ''] = normalized.split('.');
+
+  return Number(`${whole}${decimals.padEnd(2, '0')}`);
+}
+
+function optionalDateTime(form: FormData, key: string) {
+  const value = optionalString(form, key);
+
+  return value ? new Date(value).toISOString() : undefined;
+}
+
+function requiredDateTime(form: FormData, key: string, label: string) {
+  const value = optionalDateTime(form, key);
+
+  if (!value) {
+    throw new Error(`${label} es requerido.`);
+  }
+
+  return value;
+}
+
+function splitList(value: string | undefined) {
+  return (
+    value
+      ?.split(',')
+      .map((item) => item.trim())
+      .filter(Boolean) ?? []
+  );
+}
+
+function stripEmpty<T extends Record<string, unknown>>(value: T) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, item]) => item !== undefined),
+  );
 }
