@@ -59,6 +59,7 @@ import {
   CreateBusinessDraftDto,
   UpdateBusinessDraftDto,
 } from './dto/business-draft.dto.js';
+import { ListBusinessesQueryDto } from './dto/list-businesses-query.dto.js';
 
 const BUSINESS_READ_ROLES = new Set<MembershipRole>([
   MembershipRole.OWNER,
@@ -243,6 +244,82 @@ const DEFAULT_CONTRACT_TYPES = [
 
 type BusinessWithDetails = Prisma.BusinessGetPayload<{
   include: typeof BUSINESS_DETAIL_INCLUDE;
+}>;
+
+const BUSINESS_LIST_INCLUDE = {
+  primaryClient: {
+    select: {
+      id: true,
+      displayName: true,
+      email: true,
+      phone: true,
+    },
+  },
+  property: {
+    select: {
+      id: true,
+      title: true,
+      internalCode: true,
+      status: true,
+      city: true,
+      zone: true,
+    },
+  },
+  participants: {
+    where: {
+      role: {
+        in: [
+          BusinessParticipantRole.PRIMARY_AGENT,
+          BusinessParticipantRole.CO_AGENT,
+          BusinessParticipantRole.REFERRER,
+          BusinessParticipantRole.BROKER,
+        ],
+      },
+    },
+    orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+    select: {
+      id: true,
+      displayName: true,
+      role: true,
+      isPrimary: true,
+    },
+  },
+  paymentScheduleLines: {
+    where: {
+      status: {
+        in: [
+          PaymentScheduleLineStatus.PENDING,
+          PaymentScheduleLineStatus.INVOICED,
+          PaymentScheduleLineStatus.PARTIALLY_PAID,
+          PaymentScheduleLineStatus.OVERDUE,
+        ],
+      },
+    },
+    orderBy: [{ dueDate: 'asc' }, { sequence: 'asc' }],
+    take: 1,
+    select: {
+      id: true,
+      label: true,
+      amountCents: true,
+      dueDate: true,
+      status: true,
+    },
+  },
+  scheduledActions: {
+    where: { status: ScheduledActionStatus.PENDING },
+    orderBy: [{ scheduledFor: 'asc' }],
+    take: 1,
+    select: {
+      id: true,
+      eventType: true,
+      scheduledFor: true,
+      status: true,
+    },
+  },
+} satisfies Prisma.BusinessInclude;
+
+type BusinessListItem = Prisma.BusinessGetPayload<{
+  include: typeof BUSINESS_LIST_INCLUDE;
 }>;
 
 type ValidationLevel = 'ERROR' | 'WARNING' | 'INFO';
@@ -486,6 +563,45 @@ export class BusinessesService {
     }
 
     return { business: this.serializeBusiness(business, membership) };
+  }
+
+  async list(auth: AuthenticatedUser, query: ListBusinessesQueryDto) {
+    const membership = this.resolveReadableMembership(auth, query.organizationId);
+    const search = query.search?.trim();
+    const where: Prisma.BusinessWhereInput = {
+      organizationId: membership.organizationId,
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.operationType ? { operationType: query.operationType } : {}),
+      ...(search
+        ? {
+            OR: [
+              { code: { contains: search, mode: 'insensitive' } },
+              { title: { contains: search, mode: 'insensitive' } },
+              { primaryClient: { displayName: { contains: search, mode: 'insensitive' } } },
+              { property: { title: { contains: search, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
+
+    const businesses = await this.prisma.business.findMany({
+      where,
+      include: BUSINESS_LIST_INCLUDE,
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      take: 100,
+    });
+    const businessItems = businesses as BusinessListItem[];
+
+    return {
+      organization: this.serializeOrganization(membership),
+      businesses: businessItems.map((business: BusinessListItem) =>
+        this.serializeBusinessListItem(business, membership),
+      ),
+      permissionHints: {
+        canViewCommissions: BUSINESS_COMMISSION_ROLES.has(membership.role),
+        canCommit: BUSINESS_COMMIT_ROLES.has(membership.role),
+      },
+    };
   }
 
   async createDraft(auth: AuthenticatedUser, dto: CreateBusinessDraftDto) {
@@ -2005,6 +2121,68 @@ export class BusinessesService {
     }
 
     return serialized;
+  }
+
+  private serializeBusinessListItem(
+    business: BusinessListItem,
+    membership: AuthenticatedMembership,
+  ) {
+    const participants = business.participants as Array<{
+      displayName: string | null;
+      isPrimary: boolean;
+      role: BusinessParticipantRole;
+    }>;
+    const primaryAgent =
+      participants.find(
+        (participant) => participant.role === BusinessParticipantRole.PRIMARY_AGENT,
+      ) ??
+      participants.find((participant) => participant.isPrimary) ??
+      participants[0] ??
+      null;
+    const nextPayment = business.paymentScheduleLines[0] ?? null;
+    const nextAction = business.scheduledActions[0] ?? null;
+
+    return {
+      id: business.id,
+      organizationId: business.organizationId,
+      code: business.code,
+      title: business.title,
+      status: business.status,
+      mode: business.mode,
+      operationType: business.operationType,
+      currency: business.currency,
+      totalContractAmountCents: centsToString(business.totalContractAmountCents),
+      expectedClosingDate:
+        business.expectedClosingDate?.toISOString().slice(0, 10) ?? null,
+      updatedAt: business.updatedAt.toISOString(),
+      createdAt: business.createdAt.toISOString(),
+      clientName: business.primaryClient?.displayName ?? null,
+      propertyTitle: business.property?.title ?? null,
+      propertyLocation: business.property
+        ? [business.property.city, business.property.zone].filter(Boolean).join(' / ')
+        : null,
+      primaryAgentName: primaryAgent?.displayName ?? null,
+      nextPayment: nextPayment
+        ? {
+            id: nextPayment.id,
+            label: nextPayment.label,
+            amountCents: centsToString(nextPayment.amountCents),
+            dueDate: nextPayment.dueDate?.toISOString().slice(0, 10) ?? null,
+            status: nextPayment.status,
+          }
+        : null,
+      nextAction: nextAction
+        ? {
+            id: nextAction.id,
+            eventType: nextAction.eventType,
+            scheduledFor: nextAction.scheduledFor.toISOString(),
+            status: nextAction.status,
+          }
+        : null,
+      permissionHints: {
+        canViewCommissions: BUSINESS_COMMISSION_ROLES.has(membership.role),
+      },
+    };
   }
 
   private serializeOrganization(membership: AuthenticatedMembership) {

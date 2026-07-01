@@ -18,6 +18,7 @@ import {
   CreateBusinessDraftDto,
   UpdateBusinessDraftDto,
 } from './dto/business-draft.dto.js';
+import { ListBusinessesQueryDto } from './dto/list-businesses-query.dto.js';
 import { BusinessesService } from './businesses.service.js';
 
 @Controller()
@@ -34,6 +35,14 @@ export class BusinessesController {
     @Query('organizationId') organizationId?: string,
   ) {
     return this.businessesService.context(user, organizationId);
+  }
+
+  @Get('businesses')
+  list(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: ListBusinessesQueryDto,
+  ) {
+    return this.businessesService.list(user, query);
   }
 
   @Get('businesses/:businessId')

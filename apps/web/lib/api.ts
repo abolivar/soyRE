@@ -59,6 +59,20 @@ export type UsersResponse = {
   users: OrganizationUser[];
 };
 
+export type UserDetailResponse = {
+  user: OrganizationUser;
+};
+
+export type CreateUserPayload = {
+  organizationId?: string;
+  firstName: string;
+  lastName?: string;
+  email: string;
+  password: string;
+  role: MembershipRole;
+  startActive?: boolean;
+};
+
 export type RealEstateAgentCategory = 'BROKER' | 'EXTERNAL_BROKER' | 'REFERRER';
 
 export type OrganizationRealEstateAgent = {
@@ -616,6 +630,173 @@ export type BusinessPreview = {
   paymentPlan: PaymentPlanCalculation;
   commissionPlan: CommissionPlanCalculation;
   validation: BusinessValidationItem[];
+};
+
+export type ApiOrganization = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type PaymentScheduleLineStatus =
+  | 'PENDING'
+  | 'INVOICED'
+  | 'PARTIALLY_PAID'
+  | 'PAID'
+  | 'OVERDUE'
+  | 'CANCELLED';
+
+export type ScheduledActionType =
+  | 'PAYMENT_DUE'
+  | 'PAYMENT_OVERDUE'
+  | 'COMMISSION_DUE'
+  | 'CONTRACT_REVIEW_DUE'
+  | 'SIGNATURE_DUE'
+  | 'DOCUMENT_REQUIRED'
+  | 'APPROVAL_REQUIRED'
+  | 'CUSTOM';
+
+export type ScheduledActionStatus =
+  | 'PENDING'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'FAILED';
+
+export type DashboardSummaryResponse = {
+  organization: ApiOrganization;
+  metrics: {
+    activeProperties: number;
+    activeClients: number;
+    openBusinesses: number;
+    pendingActions: number;
+    overdueReceivables: {
+      count: number;
+      amountCents: string;
+    };
+    nextSevenDaysReceivables: {
+      count: number;
+      amountCents: string;
+    };
+    pendingCommissions: {
+      count: number;
+      amountCents: string;
+    };
+  };
+  recentBusinesses: Array<{
+    id: string;
+    code: string;
+    title: string;
+    status: BusinessStatus;
+    operationType: BusinessOperationType;
+    currency: string;
+    totalContractAmountCents: string;
+    expectedClosingDate: string | null;
+    clientName: string | null;
+    propertyTitle: string | null;
+    propertyLocation: string | null;
+    updatedAt: string;
+  }>;
+  myActions: Array<{
+    id: string;
+    eventType: ScheduledActionType;
+    scheduledFor: string;
+    status: ScheduledActionStatus;
+    businessId: string;
+    businessCode: string;
+    businessTitle: string;
+    businessStatus: BusinessStatus;
+    context: string;
+  }>;
+  activity: Array<{
+    id: string;
+    action: string;
+    targetType: string;
+    createdAt: string;
+    actor: string;
+  }>;
+};
+
+export type BusinessListItem = {
+  id: string;
+  organizationId: string;
+  code: string;
+  title: string;
+  status: BusinessStatus;
+  mode: BusinessMode;
+  operationType: BusinessOperationType;
+  currency: string;
+  totalContractAmountCents: string;
+  expectedClosingDate: string | null;
+  updatedAt: string;
+  createdAt: string;
+  clientName: string | null;
+  propertyTitle: string | null;
+  propertyLocation: string | null;
+  primaryAgentName: string | null;
+  nextPayment: {
+    id: string;
+    label: string;
+    amountCents: string;
+    dueDate: string | null;
+    status: PaymentScheduleLineStatus;
+  } | null;
+  nextAction: {
+    id: string;
+    eventType: ScheduledActionType;
+    scheduledFor: string;
+    status: ScheduledActionStatus;
+  } | null;
+  permissionHints: {
+    canViewCommissions: boolean;
+  };
+};
+
+export type BusinessesResponse = {
+  organization: ApiOrganization;
+  businesses: BusinessListItem[];
+  permissionHints: {
+    canViewCommissions: boolean;
+    canCommit: boolean;
+  };
+};
+
+export type TaskListItem = {
+  id: string;
+  businessId: string;
+  eventType: ScheduledActionType;
+  relatedEntityType: string | null;
+  relatedEntityId: string | null;
+  scheduledFor: string;
+  status: ScheduledActionStatus;
+  assignedToUserId: string | null;
+  assignedToUser: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string | null;
+  } | null;
+  metadata: Record<string, unknown> | null;
+  business: {
+    id: string;
+    code: string;
+    title: string;
+    status: BusinessStatus;
+    operationType: BusinessOperationType;
+    clientName: string | null;
+    propertyTitle: string | null;
+    propertyLocation: string | null;
+  };
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TaskListResponse = {
+  organization: ApiOrganization;
+  tasks: TaskListItem[];
+};
+
+export type TaskDetailResponse = {
+  task: TaskListItem;
 };
 
 export async function apiFetch<T>(
