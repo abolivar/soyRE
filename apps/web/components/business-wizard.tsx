@@ -190,7 +190,7 @@ const steps: Array<{
   { id: 'payments', label: 'Pagos', icon: CircleDollarSign },
   { id: 'commissions', label: 'Comisiones', icon: HandCoins },
   { id: 'automation', label: 'Acciones', icon: Workflow },
-  { id: 'review', label: 'Revision', icon: ClipboardCheck },
+  { id: 'review', label: 'Revisión', icon: ClipboardCheck },
 ];
 
 const clientRoleOptions: Array<{ value: BusinessParticipantRole; label: string }> = [
@@ -204,13 +204,13 @@ const clientRoleOptions: Array<{ value: BusinessParticipantRole; label: string }
 ];
 
 const operationLabels: Record<BusinessOperationType, string> = {
-  ASSIGNMENT: 'Cesion',
+  ASSIGNMENT: 'Cesión',
   OTHER: 'Otro',
   PRE_SALE: 'Preventa',
   RENT: 'Alquiler',
   RESERVATION: 'Reserva',
   SALE: 'Venta',
-  SEPARATION: 'Separacion',
+  SEPARATION: 'Separación',
 };
 
 const presetLabels: Record<string, string> = {
@@ -224,7 +224,7 @@ const presetLabels: Record<string, string> = {
 
 const releaseTriggerLabels: Record<string, string> = {
   BY_PAYMENT_LINE: 'Por cuota',
-  MANUAL_APPROVAL: 'Aprobacion manual',
+  MANUAL_APPROVAL: 'Aprobación manual',
   ON_CLOSING: 'Al cierre',
   ON_COLLECTION: 'Contra cobro',
   ON_SIGNATURE: 'A la firma',
@@ -356,7 +356,7 @@ export function BusinessWizard() {
         const draftId = searchParams.get('draftId');
 
         if (!membership) {
-          throw new Error('No tienes una organizacion activa.');
+          throw new Error('No tienes una organización activa.');
         }
 
         const draftResponse = draftId
@@ -400,7 +400,7 @@ export function BusinessWizard() {
       } catch (caught) {
         if (isMounted) {
           setError(
-            caught instanceof Error ? caught.message : 'No se pudo iniciar el wizard.',
+        caught instanceof Error ? caught.message : 'No se pudo iniciar el borrador.',
           );
         }
       } finally {
@@ -640,7 +640,7 @@ export function BusinessWizard() {
       return response.preview;
     } catch (caught) {
       setFormError(
-        caught instanceof Error ? caught.message : 'No se pudo generar el preview.',
+        caught instanceof Error ? caught.message : 'No se pudo generar la vista previa.',
       );
       return null;
     } finally {
@@ -708,7 +708,7 @@ export function BusinessWizard() {
           ['BUYER', 'TENANT', 'SELLER', 'LANDLORD'].includes(participant.role),
       )
     ) {
-      setClientError('Ese cliente ya esta agregado al negocio.');
+      setClientError('Ese cliente ya está agregado al negocio.');
       return;
     }
 
@@ -1028,8 +1028,8 @@ export function BusinessWizard() {
   if (isLoading) {
     return (
       <LoadingState
-        title="Preparando creacion de negocio"
-        description="Cargando contexto de organizacion, clientes, inmuebles y contratos."
+        title="Preparando creación de negocio"
+        description="Cargando contexto de organización, clientes, inmuebles y contratos."
       />
     );
   }
@@ -1037,7 +1037,7 @@ export function BusinessWizard() {
   if (error || !context || !draft) {
     return (
       <ErrorState
-        title="No se pudo abrir el wizard"
+        title="No se pudo abrir el borrador"
         description={error ?? 'Falta contexto para crear negocios.'}
       />
     );
@@ -1048,7 +1048,7 @@ export function BusinessWizard() {
       <PageHeader
         eyebrow="Negocios"
         title={draft.code ? `Continuar ${draft.code}` : 'Crear negocio'}
-        description="Wizard transaccional con borrador, calculos, validacion y preview antes de confirmar."
+        description="Flujo transaccional con borrador, cálculos, validación y vista previa antes de confirmar."
         actions={
           <>
             <span className="save-indicator">
@@ -1074,7 +1074,7 @@ export function BusinessWizard() {
                 void refreshPreview();
               }}
             >
-              Preview
+              Vista previa
             </Button>
           </>
         }
@@ -1085,7 +1085,7 @@ export function BusinessWizard() {
           detail={
             draftProgress.nextStepLabel
               ? `Siguiente bloque: ${draftProgress.nextStepLabel}.`
-              : 'Borrador listo para revision.'
+              : 'Borrador listo para revisión.'
           }
           label="Avance del borrador"
           value={draftProgress.percent}
@@ -1259,11 +1259,11 @@ function ModeStep({
   return (
     <SectionPanel
       title="Tipo de negocio y modo"
-      description="Primero definimos la operacion, moneda y fechas base. El modo avanzado abre estructuras multiples sin cambiar el flujo."
+      description="Primero definimos la operación, moneda y fechas base. El modo avanzado abre estructuras múltiples sin cambiar el flujo."
     >
       <div className="business-form-grid">
         <label>
-          Operacion
+          Operación
           <select
             value={data.operationType}
             onChange={(event) =>
@@ -1348,7 +1348,7 @@ function ModeStep({
           <BriefcaseBusiness size={18} />
           <span>
             <strong>Modo simple</strong>
-            <small>Un cliente, un agente, comision directa y pagos basicos.</small>
+            <small>Un cliente, un agente, comisión directa y pagos básicos.</small>
           </span>
         </button>
         <button
@@ -1359,7 +1359,7 @@ function ModeStep({
           <Sparkles size={18} />
           <span>
             <strong>Modo avanzado</strong>
-            <small>Participantes, hitos, referidos, cargos y reglas multiples.</small>
+            <small>Participantes, hitos, referidos, cargos y reglas múltiples.</small>
           </span>
         </button>
       </div>
@@ -1397,7 +1397,7 @@ function ClientsStep({
   return (
     <SectionPanel
       title="Cliente y partes"
-      description="Puedes buscar un cliente existente o crearlo sin salir del wizard."
+      description="Puedes buscar un cliente existente o crearlo sin salir del flujo."
     >
       {clientError ? <div className="form-error">{clientError}</div> : null}
       <div className="business-inline-actions">
@@ -1427,7 +1427,7 @@ function ClientsStep({
         {clientParticipants.length === 0 ? (
           <div className="business-empty-row">
             <Users size={18} />
-            Aun no hay clientes en el negocio.
+            Aún no hay clientes en el negocio.
           </div>
         ) : (
           clientParticipants.map((participant) => (
@@ -1436,7 +1436,7 @@ function ClientsStep({
               <div>
                 <strong>{participant.displayName}</strong>
                 <span className="meta-row">
-                  {participant.email ?? 'Sin email'} · {participant.phone ?? 'Sin telefono'}
+                  {participant.email ?? 'Sin email'} · {participant.phone ?? 'Sin teléfono'}
                 </span>
               </div>
               <select
@@ -1498,7 +1498,7 @@ function ClientsStep({
             />
           </label>
           <label>
-            Telefono
+            Teléfono
             <input
               value={newClient.phone}
               onChange={(event) =>
@@ -1538,7 +1538,7 @@ function PropertyStep({
   return (
     <SectionPanel
       title="Inmueble, proyecto o unidad"
-      description="El negocio puede quedar como borrador sin inmueble, pero algunos contratos lo requeriran para confirmar."
+      description="El negocio puede quedar como borrador sin inmueble, pero algunos contratos lo requerirán para confirmar."
     >
       <label>
         Inmueble
@@ -1582,7 +1582,7 @@ function PropertyStep({
       ) : (
         <div className="warning-banner">
           <AlertTriangle size={18} />
-          El borrador seguira sin inmueble. La confirmacion puede bloquearse si el contrato lo exige.
+          El borrador seguirá sin inmueble. La confirmación puede bloquearse si el contrato lo exige.
         </div>
       )}
     </SectionPanel>
@@ -1606,12 +1606,12 @@ function ContractStep({
     {
       type: 'MATERIAL_ESCALATION',
       label: 'Incremento por materiales',
-      detail: 'Condicion manual con aprobacion antes de crear cargos.',
+      detail: 'Condición manual con aprobación antes de crear cargos.',
     },
     {
       type: 'ASSIGNMENT_FEE',
-      label: 'Costo de cesion',
-      detail: 'Queda condicionado a solicitud de cesion.',
+      label: 'Costo de cesión',
+      detail: 'Queda condicionado a solicitud de cesión.',
     },
     {
       type: 'LATE_FEE',
@@ -1620,8 +1620,8 @@ function ContractStep({
     },
     {
       type: 'FINANCING_CONDITION',
-      label: 'Condicion de financiamiento',
-      detail: 'Marca revision operativa o legal.',
+      label: 'Condición de financiamiento',
+      detail: 'Marca revisión operativa o legal.',
     },
   ];
 
@@ -1714,7 +1714,7 @@ function FinancialStep({
   return (
     <SectionPanel
       title="Monto y base financiera"
-      description="Todos los montos se guardan en centavos. El total pagable alimenta el plan de pagos y la base de comision."
+      description="Todos los montos se guardan en centavos. El total pagable alimenta el plan de pagos y la base de comisión."
       actions={
         <Button
           variant="secondary"
@@ -1747,7 +1747,7 @@ function FinancialStep({
           onChange={(value) => updateFinancial('payableAmountCents', value)}
         />
         <MoneyField
-          label="Base de comision"
+          label="Base de comisión"
           value={data.financial.commissionBaseAmountCents}
           onChange={(value) => updateFinancial('commissionBaseAmountCents', value)}
         />
@@ -1769,7 +1769,7 @@ function FinancialStep({
           <strong>{formatMoney(data.financial.payableAmountCents, data.currency)}</strong>
         </span>
         <span>
-          Comision sobre
+          Comisión sobre
           <strong>
             {formatMoney(data.financial.commissionBaseAmountCents, data.currency)}
           </strong>
@@ -1802,7 +1802,7 @@ function PaymentPlanStep({
   return (
     <SectionPanel
       title="Estructura de pagos"
-      description="El backend recalcula el calendario y bloquea la confirmacion si la suma no cuadra."
+      description="El sistema recalcula el calendario y bloquea la confirmación si la suma no cuadra."
       actions={
         <span className="save-indicator">
           {isCalculating ? (
@@ -1882,7 +1882,7 @@ function PaymentPlanStep({
           />
         </label>
         <label>
-          Dia de vencimiento
+          Día de vencimiento
           <input
             min={1}
             max={31}
@@ -1918,7 +1918,7 @@ function PaymentPlanStep({
                 <option value="SPECIAL_INSTALLMENT">Especial</option>
                 <option value="CLOSING">Pago final</option>
                 <option value="HANDOVER">Entrega</option>
-                <option value="ASSIGNMENT_FEE">Cesion</option>
+                <option value="ASSIGNMENT_FEE">Cesión</option>
                 <option value="MATERIAL_ADJUSTMENT">Materiales</option>
               </select>
               <input
@@ -2123,7 +2123,7 @@ function CommissionStep({
                   }
                 >
                   <option value="PERCENTAGE_OF_SALE">% venta</option>
-                  <option value="PERCENTAGE_OF_COMMISSION">% comision</option>
+                  <option value="PERCENTAGE_OF_COMMISSION">% comisión</option>
                   <option value="FIXED_AMOUNT">Monto fijo</option>
                   <option value="CAPPED">Con tope</option>
                 </select>
@@ -2171,7 +2171,7 @@ function CommissionStep({
         </>
       ) : (
         <div className="business-note">
-          La comision simple se calcula contra la base definida y se asigna al agente principal.
+          La comisión simple se calcula contra la base definida y se asigna al agente principal.
         </div>
       )}
 
@@ -2211,7 +2211,7 @@ function AutomationStep({
   return (
     <SectionPanel
       title="Automatizaciones y relaciones"
-      description="Estas acciones quedan como datos programados para que luego las consuma el modulo de tareas o jobs."
+      description="Estas acciones quedan programadas para alimentar tareas y recordatorios."
     >
       <div className="automation-grid">
         <label>
@@ -2240,7 +2240,7 @@ function AutomationStep({
             type="checkbox"
             onChange={(event) => updateAutomation('reviewTask', event.target.checked)}
           />
-          Revision interna
+          Revisión interna
         </label>
         <label>
           <input
@@ -2250,11 +2250,11 @@ function AutomationStep({
               updateAutomation('commissionReminders', event.target.checked)
             }
           />
-          Recordatorios de comision
+          Recordatorios de comisión
         </label>
       </div>
       <div className="business-note">
-        Impactara cobranza futura, ventas por agente, comisiones pendientes y contratos por estado.
+        Impactará cobranza futura, ventas por agente, comisiones pendientes y contratos por estado.
       </div>
     </SectionPanel>
   );
@@ -2287,8 +2287,8 @@ function ReviewStep({
 
   return (
     <SectionPanel
-      title="Revision final"
-      description="Dry run antes de crear registros definitivos. Si hay errores bloqueantes, el backend no confirmara."
+      title="Revisión final"
+      description="Vista previa antes de crear registros definitivos. Si hay errores bloqueantes, el sistema no confirmará."
       actions={
         <Button
           variant="secondary"
@@ -2297,12 +2297,12 @@ function ReviewStep({
           loading={isPreviewing}
           onClick={onRefreshPreview}
         >
-          Actualizar preview
+          Actualizar vista previa
         </Button>
       }
     >
       <div className="review-grid">
-        <ReviewBlock label="Operacion" value={operationLabels[data.operationType]} />
+        <ReviewBlock label="Operación" value={operationLabels[data.operationType]} />
         <ReviewBlock label="Modo" value={data.mode === 'SIMPLE' ? 'Simple' : 'Avanzado'} />
         <ReviewBlock
           label="Total contrato"
@@ -2317,7 +2317,7 @@ function ReviewStep({
           value={formatMoney(paymentCalculation.differenceCents, data.currency)}
         />
         <ReviewBlock
-          label="Comision estimada"
+          label="Comisión estimada"
           value={formatMoney(
             commissionCalculation.totalCommissionAmountCents,
             data.currency,
@@ -2339,7 +2339,7 @@ function ReviewStep({
       ) : (
         <div className="business-empty-row">
           <ClipboardCheck size={18} />
-          Genera el preview para ver entidades, relaciones y snapshots.
+          Genera la vista previa para ver entidades, relaciones y respaldos de cálculo.
         </div>
       )}
 
@@ -2404,7 +2404,7 @@ function BusinessSummary({
       </div>
       <dl className="summary-list">
         <div>
-          <dt>Operacion</dt>
+          <dt>Operación</dt>
           <dd>{operationLabels[data.operationType]}</dd>
         </div>
         <div>
@@ -2432,7 +2432,7 @@ function BusinessSummary({
           <dd>{formatMoney(paymentCalculation.differenceCents, data.currency)}</dd>
         </div>
         <div>
-          <dt>Comision estimada</dt>
+          <dt>Comisión estimada</dt>
           <dd>
             {formatMoney(
               commissionCalculation.totalCommissionAmountCents,
@@ -2455,7 +2455,7 @@ function BusinessSummary({
         <span className={validationCounts.errors > 0 ? 'danger' : 'success'}>
           {validationCounts.errors} errores
         </span>
-        <span>{validationCounts.warnings} warnings</span>
+        <span>{validationCounts.warnings} avisos</span>
       </div>
       <div className="business-note">
         Rol activo: {activeMembership?.role ?? 'sin rol'} · Version {draft.version}
@@ -2522,7 +2522,7 @@ function ValidationList({ validation }: { validation: BusinessValidationItem[] }
     return (
       <div className="business-empty-row">
         <ShieldCheck size={18} />
-        Ejecuta el preview para ver validaciones.
+        Ejecuta la vista previa para ver validaciones.
       </div>
     );
   }
@@ -2595,7 +2595,7 @@ function CommissionBreakdown({
     return (
       <div className="business-empty-row">
         <HandCoins size={18} />
-        Sin allocations de comision todavia.
+        Sin asignaciones de comisión todavía.
       </div>
     );
   }
@@ -2720,7 +2720,7 @@ function defaultClause(clauseType: string): ClauseDraft {
       calculationType: 'MANUAL',
       clauseType,
       createsReceivable: false,
-      description: 'Ajuste sujeto a evento y aprobacion.',
+      description: 'Ajuste sujeto a evento y aprobación.',
       requiresApproval: true,
       title: 'Incremento por materiales',
       triggerEvent: 'ON_MATERIAL_INCREASE',
@@ -2733,10 +2733,10 @@ function defaultClause(clauseType: string): ClauseDraft {
       calculationType: 'PERCENTAGE',
       clauseType,
       createsReceivable: false,
-      description: 'Cargo condicionado a solicitud de cesion.',
+      description: 'Cargo condicionado a solicitud de cesión.',
       percentageBps: 100,
       requiresApproval: false,
-      title: 'Costo de cesion',
+      title: 'Costo de cesión',
       triggerEvent: 'ON_ASSIGNMENT_REQUEST',
     };
   }
@@ -2761,7 +2761,7 @@ function defaultClause(clauseType: string): ClauseDraft {
     clauseType,
     createsReceivable: false,
     requiresApproval: true,
-    title: 'Condicion especial',
+    title: 'Condición especial',
     triggerEvent: 'MANUAL',
   };
 }

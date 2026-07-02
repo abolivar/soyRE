@@ -51,12 +51,12 @@ const statusOptions: Array<{ label: string; value: ScheduledActionStatus }> = [
 const eventOptions: Array<{ label: string; value: ScheduledActionType }> = [
   { label: 'Cobro programado', value: 'PAYMENT_DUE' },
   { label: 'Cobro vencido', value: 'PAYMENT_OVERDUE' },
-  { label: 'Comision pendiente', value: 'COMMISSION_DUE' },
-  { label: 'Revision contrato', value: 'CONTRACT_REVIEW_DUE' },
+  { label: 'Comisión pendiente', value: 'COMMISSION_DUE' },
+  { label: 'Revisión contrato', value: 'CONTRACT_REVIEW_DUE' },
   { label: 'Firma pendiente', value: 'SIGNATURE_DUE' },
   { label: 'Documento requerido', value: 'DOCUMENT_REQUIRED' },
-  { label: 'Aprobacion requerida', value: 'APPROVAL_REQUIRED' },
-  { label: 'Accion', value: 'CUSTOM' },
+  { label: 'Aprobación requerida', value: 'APPROVAL_REQUIRED' },
+  { label: 'Acción', value: 'CUSTOM' },
 ];
 
 export function TasksWorkspace() {
@@ -83,7 +83,7 @@ export function TasksWorkspace() {
         setUser(response.user);
 
         if (!firstMembership) {
-          setError('No tienes una organizacion activa para consultar tareas.');
+          setError('No tienes una organización activa para consultar tareas.');
           setIsLoading(false);
           return;
         }
@@ -91,7 +91,7 @@ export function TasksWorkspace() {
         setActiveOrganizationId(firstMembership.organizationId);
       })
       .catch((caught) => {
-        setError(caught instanceof Error ? caught.message : 'Sesion no disponible.');
+        setError(caught instanceof Error ? caught.message : 'Sesión no disponible.');
         setIsLoading(false);
       });
   }, []);
@@ -245,7 +245,7 @@ export function TasksWorkspace() {
           {organizations.length > 1 ? (
             <Select
               id="tasks-filter-organization"
-              label="Organizacion"
+              label="Organización"
               labelHidden
               onChange={(event) => setActiveOrganizationId(event.target.value)}
               value={activeOrganizationId ?? ''}
@@ -331,7 +331,7 @@ export function TasksWorkspace() {
             columns={[
               { key: 'task', label: 'Tarea' },
               { key: 'context', label: 'Contexto' },
-              { key: 'owner', label: 'Owner' },
+              { key: 'owner', label: 'Responsable' },
               { key: 'due', label: 'Vence' },
               { key: 'status', label: 'Estado' },
               { key: 'actions', label: 'Acciones' },
@@ -405,7 +405,7 @@ export function TasksWorkspace() {
 
         <SectionPanel
           title="Criterio de prioridad"
-          description="Las acciones se ordenan por vencimiento y siempre mantienen relacion con un negocio."
+          description="Las acciones se ordenan por vencimiento y siempre mantienen relación con un negocio."
         >
           <div className="compact-list">
             <div className="split-row">
@@ -424,7 +424,7 @@ export function TasksWorkspace() {
             </div>
             <div className="split-row">
               <span>
-                <strong className="entity-title">Auditoria</strong>
+                <strong className="entity-title">Auditoría</strong>
                 <span className="meta-row">Cada cierre queda en audit log.</span>
               </span>
               <StatusBadge tone="primary">Activo</StatusBadge>

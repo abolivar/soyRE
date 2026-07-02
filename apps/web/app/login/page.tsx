@@ -14,15 +14,15 @@ export default function LoginPage() {
           </Link>
           <h1>Ingresar</h1>
           <p className="lead">
-            Acceso al workspace operativo de propiedades, clientes y usuarios.
+            Acceso al espacio operativo de propiedades, clientes y usuarios.
           </p>
         </div>
 
         <LoginForm />
 
         <p className="muted-row">
-          <span>Sin cuenta?</span>
-          <Link href="/register">Crear organizacion</Link>
+          <span>¿Sin cuenta?</span>
+          <Link href="/register">Crear organización</Link>
         </p>
       </section>
     </main>

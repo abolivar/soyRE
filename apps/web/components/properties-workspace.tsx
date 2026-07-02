@@ -134,7 +134,7 @@ export function PropertiesWorkspace() {
 
         if (!firstMembership) {
           setError(
-            'No tienes una organizacion activa para consultar propiedades.',
+            'No tienes una organización activa para consultar propiedades.',
           );
           setIsLoading(false);
           return;
@@ -143,7 +143,7 @@ export function PropertiesWorkspace() {
         setActiveOrganizationId(firstMembership.organizationId);
       })
       .catch((caught) => {
-        setError(caught instanceof Error ? caught.message : 'Sesion no disponible.');
+        setError(caught instanceof Error ? caught.message : 'Sesión no disponible.');
         setIsLoading(false);
       });
   }, []);
@@ -319,7 +319,7 @@ export function PropertiesWorkspace() {
     setFormError(null);
 
     if (!activeOrganizationId || !canCreateProperties) {
-      setFormError('No tienes permiso para crear propiedades en esta organizacion.');
+      setFormError('No tienes permiso para crear propiedades en esta organización.');
       return;
     }
 
@@ -402,7 +402,7 @@ export function PropertiesWorkspace() {
         description={
           activeMembership
             ? `Inventario operativo de ${activeMembership.organizationName}.`
-            : 'Activos inmobiliarios por organizacion, owner, modalidad y estado.'
+            : 'Activos inmobiliarios por organización, propietario, modalidad y estado.'
         }
         eyebrow="Inventario"
         title="Propiedades"
@@ -432,7 +432,7 @@ export function PropertiesWorkspace() {
           {organizations.length > 1 ? (
             <Select
               id="properties-filter-organization"
-              label="Organizacion"
+              label="Organización"
               labelHidden
               onChange={(event) => setActiveOrganizationId(event.target.value)}
               value={activeOrganizationId ?? ''}
@@ -451,7 +451,7 @@ export function PropertiesWorkspace() {
             aria-label="Buscar propiedad"
             defaultValue={filters.search}
             name="search"
-            placeholder="Buscar propiedad, codigo, zona u owner"
+            placeholder="Buscar propiedad, código, zona o propietario"
           />
           <Select
             id="properties-filter-operation"
@@ -489,7 +489,7 @@ export function PropertiesWorkspace() {
       <section className="dashboard-grid">
         {isLoading ? (
           <LoadingState
-            description="Consultando inventario de la organizacion activa."
+            description="Consultando inventario de la organización activa."
             title="Cargando propiedades"
           />
         ) : error ? (
@@ -514,7 +514,7 @@ export function PropertiesWorkspace() {
               { key: 'operation', label: 'Modalidad' },
               { key: 'price', label: 'Precio' },
               { key: 'status', label: 'Estado' },
-              { key: 'owner', label: 'Owner' },
+              { key: 'owner', label: 'Propietario' },
               { key: 'actions', label: 'Detalle' },
             ]}
             empty={
@@ -528,8 +528,8 @@ export function PropertiesWorkspace() {
                 }
                 description={
                   canCreateProperties
-                    ? 'Crea la primera ficha con datos minimos, modalidad, precio y ubicacion para activar inventario.'
-                    : 'Tu rol actual permite consultar inventario, pero no crear propiedades en esta organizacion.'
+                    ? 'Crea la primera ficha con datos mínimos, modalidad, precio y ubicación para activar inventario.'
+                    : 'Tu rol actual permite consultar inventario, pero no crear propiedades en esta organización.'
                 }
                 icon={Building2}
                 title="Sin propiedades registradas"
@@ -588,7 +588,7 @@ export function PropertiesWorkspace() {
                 owner:
                   property.ownerClient?.displayName ??
                   assignedUserLabel(property) ??
-                  'Sin owner',
+                  'Sin propietario',
                 price: formatPropertyPrice(property),
                 property: (
                   <span>
@@ -610,7 +610,7 @@ export function PropertiesWorkspace() {
         )}
 
         <SectionPanel
-          description="Ficha de trabajo de la propiedad seleccionada, con owner, precios, dimensiones y datos de publicacion."
+          description="Ficha de trabajo de la propiedad seleccionada, con propietario, precios, dimensiones y datos de publicación."
           title="Detalle operativo"
         >
           {isDetailLoading ? (
@@ -647,7 +647,7 @@ export function PropertiesWorkspace() {
       </section>
 
       <FormDrawer
-        description="Crea una ficha inicial conectada a la organizacion activa. Los campos adicionales quedan disponibles sin saturar el alta."
+        description="Crea una ficha inicial conectada a la organización activa. Los campos adicionales quedan disponibles sin saturar el alta."
         footer={
           <>
             <Button
@@ -678,8 +678,8 @@ export function PropertiesWorkspace() {
         >
           <section className="form-section">
             <div>
-              <h3>Identificacion basica</h3>
-              <p>Datos minimos para reconocer el activo en el inventario.</p>
+              <h3>Identificación básica</h3>
+              <p>Datos mínimos para reconocer el activo en el inventario.</p>
             </div>
             <label>
               Nombre comercial
@@ -723,7 +723,7 @@ export function PropertiesWorkspace() {
 
           <section className="form-section">
             <div>
-              <h3>Operacion y precio</h3>
+              <h3>Operación y precio</h3>
               <p>Selecciona venta, alquiler o ambas modalidades.</p>
             </div>
             <div className="option-grid">
@@ -753,7 +753,7 @@ export function PropertiesWorkspace() {
           </section>
 
           <details className="form-collapsible">
-            <summary>Asignacion y owner</summary>
+            <summary>Asignación y propietario</summary>
             <div className="form-section">
               <div>
                 <h3>Responsables internos</h3>
@@ -774,7 +774,7 @@ export function PropertiesWorkspace() {
                 <label>
                   Propietario
                   <select defaultValue="" name="ownerClientId">
-                    <option value="">Sin owner cliente</option>
+                    <option value="">Sin propietario cliente</option>
                     {ownerClients.map((client) => (
                       <option key={client.id} value={client.id}>
                         {client.displayName}
@@ -795,7 +795,7 @@ export function PropertiesWorkspace() {
                 </label>
                 <label>
                   Fuente
-                  <input name="source" placeholder="Referido, owner directo, portal" />
+                  <input name="source" placeholder="Referido, propietario directo, portal" />
                 </label>
               </div>
             </div>
@@ -806,7 +806,7 @@ export function PropertiesWorkspace() {
             <div className="form-section">
               <div>
                 <h3>Direccion y referencia</h3>
-                <p>Informacion util para visitas, publicaciones y documentos.</p>
+                <p>Información útil para visitas, publicaciones y documentos.</p>
               </div>
               <label>
                 Direccion
@@ -872,7 +872,7 @@ export function PropertiesWorkspace() {
             <div className="form-section">
               <div>
                 <h3>Gastos y disponibilidad</h3>
-                <p>Condiciones que suelen cambiar por operacion o negociacion.</p>
+              <p>Condiciones que suelen cambiar por operación o negociación.</p>
               </div>
               <div className="form-grid three">
                 <label>
@@ -892,7 +892,7 @@ export function PropertiesWorkspace() {
                 Condiciones
                 <textarea
                   name="listingConditions"
-                  placeholder="Exclusividad, disponibilidad, terminos de negociacion o restricciones."
+                  placeholder="Exclusividad, disponibilidad, términos de negociación o restricciones."
                 />
               </label>
             </div>
@@ -902,7 +902,7 @@ export function PropertiesWorkspace() {
             <summary>Publicacion y notas</summary>
             <div className="form-section">
               <div>
-                <h3>Descripcion y etiquetas</h3>
+                <h3>Descripción y etiquetas</h3>
                 <p>Contenido operativo para preparar canales sin publicar automaticamente.</p>
               </div>
               <div className="option-grid">
@@ -914,22 +914,22 @@ export function PropertiesWorkspace() {
                 ))}
               </div>
               <label>
-                Descripcion publica
+                Descripción pública
                 <textarea
                   name="publicDescription"
-                  placeholder="Descripcion comercial, atributos, entorno y beneficios."
+                  placeholder="Descripción comercial, atributos, entorno y beneficios."
                 />
               </label>
               <label>
                 Notas privadas
                 <textarea
                   name="privateNotes"
-                  placeholder="Contexto interno, owner, riesgos, pendientes o proximas acciones."
+                  placeholder="Contexto interno, responsable, riesgos, pendientes o próximas acciones."
                 />
               </label>
               <label>
                 Tags
-                <input name="tags" placeholder="VIP, inversion, familiar" />
+                <input name="tags" placeholder="VIP, inversión, familiar" />
               </label>
             </div>
           </details>
@@ -942,8 +942,8 @@ export function PropertiesWorkspace() {
         confirmLabel={isWithdrawing ? 'Retirando...' : 'Retirar'}
         description={
           propertyToWithdraw
-            ? `La propiedad ${propertyToWithdraw.title} saldra del inventario activo y quedara marcada para auditoria.`
-            : 'La propiedad saldra del inventario activo.'
+            ? `La propiedad ${propertyToWithdraw.title} saldrá del inventario activo y quedará marcada para auditoría.`
+            : 'La propiedad saldrá del inventario activo.'
         }
         onCancel={() => {
           if (!isWithdrawing) {
@@ -983,7 +983,7 @@ function PropertyDetailPanel({ property }: { property: OrganizationProperty }) {
           value={[property.city, property.zone].filter(Boolean).join(' / ')}
         />
         <DetailField label="Pais" value={property.country} />
-        <DetailField label="Owner cliente" value={property.ownerClient?.displayName ?? 'Pendiente'} />
+        <DetailField label="Propietario cliente" value={property.ownerClient?.displayName ?? 'Pendiente'} />
         <DetailField label="Responsable" value={assignedUserLabel(property) ?? 'Pendiente'} />
         <DetailField label="Area construida" value={areaLabel(property.builtArea)} />
         <DetailField label="Area terreno" value={areaLabel(property.lotArea)} />

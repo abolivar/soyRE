@@ -51,7 +51,7 @@ type PipelineColumn = {
 
 const statusOptions: Array<{ label: string; value: BusinessStatus }> = [
   { label: 'Borrador', value: 'DRAFT' },
-  { label: 'Revision', value: 'PENDING_REVIEW' },
+  { label: 'Revisión', value: 'PENDING_REVIEW' },
   { label: 'Aprobado', value: 'APPROVED' },
   { label: 'Contrato generado', value: 'CONTRACT_GENERATED' },
   { label: 'Firma pendiente', value: 'PENDING_SIGNATURE' },
@@ -65,16 +65,16 @@ const operationOptions: Array<{ label: string; value: BusinessOperationType }> =
   { label: 'Venta', value: 'SALE' },
   { label: 'Alquiler', value: 'RENT' },
   { label: 'Reserva', value: 'RESERVATION' },
-  { label: 'Cesion', value: 'ASSIGNMENT' },
+  { label: 'Cesión', value: 'ASSIGNMENT' },
   { label: 'Preventa', value: 'PRE_SALE' },
-  { label: 'Separacion', value: 'SEPARATION' },
+  { label: 'Separación', value: 'SEPARATION' },
   { label: 'Otro', value: 'OTHER' },
 ];
 
 const columns: PipelineColumn[] = [
   { title: 'Borrador', tone: 'neutral', statuses: ['DRAFT'] },
   {
-    title: 'Revision',
+    title: 'Revisión',
     tone: 'warning',
     statuses: ['PENDING_REVIEW', 'APPROVED'],
   },
@@ -113,7 +113,7 @@ export function PipelineWorkspace() {
         setUser(response.user);
 
         if (!firstMembership) {
-          setError('No tienes una organizacion activa para consultar negocios.');
+          setError('No tienes una organización activa para consultar negocios.');
           setIsLoading(false);
           return;
         }
@@ -121,7 +121,7 @@ export function PipelineWorkspace() {
         setActiveOrganizationId(firstMembership.organizationId);
       })
       .catch((caught) => {
-        setError(caught instanceof Error ? caught.message : 'Sesion no disponible.');
+        setError(caught instanceof Error ? caught.message : 'Sesión no disponible.');
         setIsLoading(false);
       });
   }, []);
@@ -214,7 +214,7 @@ export function PipelineWorkspace() {
         description={
           activeMembership
             ? `Pipeline transaccional de ${activeMembership.organizationName}.`
-            : 'Pipeline transaccional por organizacion.'
+            : 'Pipeline transaccional por organización.'
         }
         actions={
           <Button asChild icon={Plus}>
@@ -247,7 +247,7 @@ export function PipelineWorkspace() {
           {organizations.length > 1 ? (
             <Select
               id="pipeline-filter-organization"
-              label="Organizacion"
+              label="Organización"
               labelHidden
               onChange={(event) => setActiveOrganizationId(event.target.value)}
               value={activeOrganizationId ?? ''}
@@ -284,7 +284,7 @@ export function PipelineWorkspace() {
           </Select>
           <Select
             id="pipeline-filter-operation"
-            label="Operacion"
+            label="Operación"
             labelHidden
             defaultValue={filters.operationType}
             name="operationType"
@@ -328,7 +328,7 @@ export function PipelineWorkspace() {
               <Link href="/businesses/new">Crear primer negocio</Link>
             </Button>
           }
-          description="Crea un borrador o confirma una operacion para alimentar el pipeline."
+          description="Crea un borrador o confirma una operación para alimentar el pipeline."
           icon={ListChecks}
           title="Sin negocios en el filtro"
         />
@@ -384,7 +384,7 @@ export function PipelineWorkspace() {
                         <span className="meta-row">
                           {business.nextAction
                             ? scheduledActionLabel(business.nextAction.eventType)
-                            : business.primaryAgentName ?? 'Sin siguiente accion'}
+                            : business.primaryAgentName ?? 'Sin siguiente acción'}
                         </span>
                         <Button asChild variant="ghost">
                           <Link href="/tasks">

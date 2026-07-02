@@ -1,16 +1,16 @@
 # Design System Architecture
 
-Este documento cubre la **arquitectura** del sistema de diseño: dónde viven las primitivas, cómo se construyen, cómo se consumen y qué se permite o no se permite agregar. El **diseño visual** (tokens, tipografía, anatomía de componentes, accesibilidad) vive en `design.md` en la raíz del repo. La decisión firme está en `docs/decisions/adr-0005-design-system-home.md`.
+Este documento cubre la **arquitectura** del sistema de diseño: dónde viven las primitivas, cómo se construyen, cómo se consumen y qué se permite o no se permite agregar. El **diseño visual** (tokens, tipografía, anatomía de componentes, accesibilidad) vive en `design.md` en la raíz del repo. El **lenguaje visual vigente del producto** vive en `docs/architecture/visual-language.md`. La decisión firme está en `docs/decisions/adr-0005-design-system-home.md`.
 
 ## Decisiones
 
 1. **Home canónica:** `packages/ui` (workspace `@soyre/ui`). Toda primitiva visual reutilizable entre apps del monorepo vive aquí.
 2. **No librería de terceros como base.** Sin shadcn/ui, Radix, MUI, Chakra. Las primitivas son código propio que aplica las clases CSS de `apps/web/app/globals.css` y los tokens de `design.md`. Ver ADR-0005.
 3. **Tokens como variables CSS.** No se duplican en código JS/TS. Se exponen desde `packages/ui/src/styles/tokens.css` y se consumen vía `var(--token-name)`.
-4. **Tipografía:** DM Sans self-hosted (en uso). Space Grotesk (planeada en `design.md §3` para display) se incorpora cuando una primitiva o pantalla la necesite explícitamente.
+4. **Tipografía:** DM Sans self-hosted (en uso). Los pesos visibles se limitan a `400`, `500` y `600-700`; no se usa `800/850` como valor por defecto.
 5. **Iconografía:** lucide-react. No se introducen sets adicionales.
 6. **Estados obligatorios** para componentes dependientes de datos: loading, empty, error, data (per `CODEX.md §Reglas De UI`).
-7. **UI copy en español; identifiers, props, types y nombres de archivo en inglés** (per `CONTRIBUTING.md` y `CODEX.md §Convenciones`).
+7. **UI copy en español correcto, con acentos y sin lenguaje técnico interno; identifiers, props, types y nombres de archivo en inglés** (per `CONTRIBUTING.md`, `CODEX.md` y `docs/architecture/visual-language.md`).
 
 ## Layout dentro de `packages/ui`
 

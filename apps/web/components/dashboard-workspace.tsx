@@ -61,7 +61,7 @@ export function DashboardWorkspace() {
         setUser(response.user);
 
         if (!firstMembership) {
-          setError('No tienes una organizacion activa para ver el dashboard.');
+          setError('No tienes una organización activa para ver el panel.');
           setIsLoading(false);
           return;
         }
@@ -69,7 +69,7 @@ export function DashboardWorkspace() {
         setActiveOrganizationId(firstMembership.organizationId);
       })
       .catch((caught) => {
-        setError(caught instanceof Error ? caught.message : 'Sesion no disponible.');
+        setError(caught instanceof Error ? caught.message : 'Sesión no disponible.');
         setIsLoading(false);
       });
   }, []);
@@ -121,7 +121,7 @@ export function DashboardWorkspace() {
           value: String(summary.metrics.activeProperties),
         },
         {
-          detail: 'Clientes activos para gestion comercial.',
+          detail: 'Clientes activos para gestión comercial.',
           icon: Users,
           label: 'Clientes',
           tone: 'neutral' as const,
@@ -148,12 +148,12 @@ export function DashboardWorkspace() {
   return (
     <>
       <PageHeader
-        eyebrow="Operacion inmobiliaria"
+        eyebrow="Operación inmobiliaria"
         title="Dashboard"
         description={
           activeMembership
             ? `Control operativo de ${activeMembership.organizationName}.`
-            : 'Control operativo por organizacion.'
+            : 'Control operativo por organización.'
         }
         actions={
           <div className="row-actions">
@@ -177,7 +177,7 @@ export function DashboardWorkspace() {
         {organizations.length > 1 ? (
           <Select
             id="dashboard-filter-organization"
-            label="Organizacion"
+            label="Organización"
             labelHidden
             onChange={(event) => setActiveOrganizationId(event.target.value)}
             value={activeOrganizationId ?? ''}
@@ -203,7 +203,7 @@ export function DashboardWorkspace() {
 
       {isLoading ? (
         <LoadingState
-          description="Consultando actividad, tareas y negocios de la organizacion."
+          description="Consultando actividad, tareas y negocios de la organización."
           title="Cargando dashboard"
         />
       ) : error ? (
@@ -244,7 +244,7 @@ export function DashboardWorkspace() {
               </strong>
             </div>
             <div>
-              <span>Proximos 7 dias</span>
+              <span>Próximos 7 días</span>
               <strong>
                 {formatMoneyCents(
                   summary.metrics.nextSevenDaysReceivables.amountCents,
@@ -267,7 +267,7 @@ export function DashboardWorkspace() {
             <div className="dashboard-columns">
               <SectionPanel
                 title="Borradores en progreso"
-                description="Negocios guardados que pueden continuarse desde el wizard."
+                description="Negocios guardados que pueden continuarse desde el flujo de creación."
                 actions={
                   <Button asChild variant="secondary">
                     <Link href="/businesses">
@@ -291,7 +291,7 @@ export function DashboardWorkspace() {
                           <Link href="/businesses/new">Crear borrador</Link>
                         </Button>
                       }
-                      description="Los negocios guardados como borrador apareceran aqui para retomarlos."
+                      description="Los negocios guardados como borrador aparecerán aquí para retomarlos."
                       icon={ClipboardCheck}
                       title="Sin borradores"
                     />
@@ -318,7 +318,7 @@ export function DashboardWorkspace() {
                           detail={
                             business.draftProgress.nextStepLabel
                               ? `Siguiente: ${business.draftProgress.nextStepLabel}`
-                              : 'Listo para revision'
+                              : 'Listo para revisión'
                           }
                           label="Avance"
                           size="sm"
@@ -358,7 +358,7 @@ export function DashboardWorkspace() {
                           <Link href="/businesses/new">Crear negocio</Link>
                         </Button>
                       }
-                      description="Los negocios confirmados o en borrador apareceran aqui."
+              description="Los negocios confirmados o en borrador aparecerán aquí."
                       icon={ClipboardCheck}
                       title="Sin negocios recientes"
                     />
@@ -442,7 +442,7 @@ export function DashboardWorkspace() {
 
             <SectionPanel
               title="Actividad reciente"
-              description="Eventos de negocio y sistema listos para auditoria."
+              description="Eventos de negocio y sistema listos para auditoría."
             >
               <ActivityTimeline
                 empty={

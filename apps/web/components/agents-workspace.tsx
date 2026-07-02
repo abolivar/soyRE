@@ -93,7 +93,7 @@ export function AgentsWorkspace() {
         setUser(response.user);
 
         if (!firstMembership) {
-          setError('No tienes una organizacion activa para consultar agentes.');
+          setError('No tienes una organización activa para consultar agentes.');
           setIsLoading(false);
           return;
         }
@@ -101,7 +101,7 @@ export function AgentsWorkspace() {
         setActiveOrganizationId(firstMembership.organizationId);
       })
       .catch((caught) => {
-        setError(caught instanceof Error ? caught.message : 'Sesion no disponible.');
+        setError(caught instanceof Error ? caught.message : 'Sesión no disponible.');
         setIsLoading(false);
       });
   }, []);
@@ -240,7 +240,7 @@ export function AgentsWorkspace() {
     setFormError(null);
 
     if (!activeOrganizationId || !canCreateAgents) {
-      setFormError('No tienes permiso para crear agentes en esta organizacion.');
+      setFormError('No tienes permiso para crear agentes en esta organización.');
       return;
     }
 
@@ -284,7 +284,7 @@ export function AgentsWorkspace() {
         description={
           activeMembership
             ? `Red comercial de ${activeMembership.organizationName}.`
-            : 'Agentes internos, brokers externos y referidos por organizacion.'
+            : 'Agentes internos, brokers externos y referidos por organización.'
         }
         eyebrow="Red comercial"
         title="Agentes inmobiliarios"
@@ -314,7 +314,7 @@ export function AgentsWorkspace() {
           {organizations.length > 1 ? (
             <Select
               id="agents-filter-organization"
-              label="Organizacion"
+              label="Organización"
               labelHidden
               onChange={(event) => setActiveOrganizationId(event.target.value)}
               value={activeOrganizationId ?? ''}
@@ -333,11 +333,11 @@ export function AgentsWorkspace() {
             aria-label="Buscar agente"
             defaultValue={filters.search}
             name="search"
-            placeholder="Buscar agente, empresa, email o telefono"
+            placeholder="Buscar agente, empresa, email o teléfono"
           />
           <Select
             id="agents-filter-category"
-            label="Categoria"
+            label="Categoría"
             labelHidden
             defaultValue={filters.category}
             name="category"
@@ -358,7 +358,7 @@ export function AgentsWorkspace() {
       <section className="dashboard-grid">
         {isLoading ? (
           <LoadingState
-            description="Consultando red comercial de la organizacion activa."
+            description="Consultando red comercial de la organización activa."
             title="Cargando agentes"
           />
         ) : error ? (
@@ -379,7 +379,7 @@ export function AgentsWorkspace() {
           <DataTable
             columns={[
               { key: 'agent', label: 'Agente' },
-              { key: 'category', label: 'Categoria' },
+              { key: 'category', label: 'Categoría' },
               { key: 'contact', label: 'Contacto' },
               { key: 'company', label: 'Empresa' },
               { key: 'created', label: 'Creado' },
@@ -397,7 +397,7 @@ export function AgentsWorkspace() {
                 description={
                   canCreateAgents
                     ? 'Registra brokers internos, brokers externos o referidos para centralizar la red comercial.'
-                    : 'Tu rol actual permite consultar agentes, pero no crearlos en esta organizacion.'
+                    : 'Tu rol actual permite consultar agentes, pero no crearlos en esta organización.'
                 }
                 icon={Handshake}
                 title="Sin agentes registrados"
@@ -477,7 +477,7 @@ export function AgentsWorkspace() {
       </section>
 
       <FormDrawer
-        description="Crea un registro simple de agente para la organizacion activa."
+        description="Crea un registro simple de agente para la organización activa."
         footer={
           <>
             <Button
@@ -504,11 +504,11 @@ export function AgentsWorkspace() {
         <form className="drawer-form" id="agent-create-form" onSubmit={createAgent}>
           <section className="form-section">
             <div>
-              <h3>Datos basicos</h3>
-              <p>Identificacion y categoria comercial del agente.</p>
+              <h3>Datos básicos</h3>
+              <p>Identificación y categoría comercial del agente.</p>
             </div>
             <label>
-              Categoria
+              Categoría
               <select defaultValue="BROKER" name="category" required>
                 {categoryOptions.map((category) => (
                   <option key={category.value} value={category.value}>
@@ -532,7 +532,7 @@ export function AgentsWorkspace() {
           <section className="form-section">
             <div>
               <h3>Contacto</h3>
-              <p>Email, telefono o WhatsApp. Al menos uno es requerido.</p>
+              <p>Email, teléfono o WhatsApp. Al menos uno es requerido.</p>
             </div>
             <label>
               Email
@@ -540,7 +540,7 @@ export function AgentsWorkspace() {
             </label>
             <div className="form-grid two">
               <label>
-                Telefono
+                Teléfono
                 <input name="phone" placeholder="+507 6000-0000" />
               </label>
               <label>
@@ -598,9 +598,9 @@ function AgentDetailPanel({ agent }: { agent: OrganizationRealEstateAgent }) {
       </div>
 
       <div className="detail-grid">
-        <DetailField label="Categoria" value={categoryLabel(agent.category)} />
+        <DetailField label="Categoría" value={categoryLabel(agent.category)} />
         <DetailField label="Email" value={agent.email ?? 'Pendiente'} />
-        <DetailField label="Telefono" value={agent.phone ?? 'Pendiente'} />
+        <DetailField label="Teléfono" value={agent.phone ?? 'Pendiente'} />
         <DetailField label="WhatsApp" value={agent.whatsapp ?? 'Pendiente'} />
         <DetailField label="Empresa" value={agent.companyName ?? 'Independiente'} />
         <DetailField label="Licencia" value={agent.licenseNumber ?? 'Pendiente'} />
@@ -673,7 +673,7 @@ function buildAgentPayload(form: FormData): CreateRealEstateAgentPayload {
   }) as CreateRealEstateAgentPayload;
 
   if (!payload.email && !payload.phone && !payload.whatsapp) {
-    throw new Error('Agrega email, telefono o WhatsApp para el agente.');
+    throw new Error('Agrega email, teléfono o WhatsApp para el agente.');
   }
 
   return payload;

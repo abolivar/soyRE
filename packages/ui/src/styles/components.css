@@ -20,7 +20,7 @@
   border-radius: 8px;
   border: 1px solid transparent;
   display: inline-flex;
-  font-weight: 800;
+  font-weight: 600;
   gap: 8px;
   justify-content: center;
   min-height: 40px;
@@ -146,7 +146,7 @@
 .eyebrow {
   color: var(--primary-strong);
   font-size: 0.76rem;
-  font-weight: 850;
+  font-weight: 600;
   letter-spacing: 0;
   margin-bottom: 10px;
   text-transform: uppercase;
@@ -177,7 +177,7 @@
 
 .muted-row a {
   color: var(--primary-strong);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .form-error {
@@ -204,7 +204,7 @@
   color: var(--ink-strong);
   font-family: var(--font-display);
   font-size: 2.4rem;
-  font-weight: 850;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1.02;
 }
@@ -302,7 +302,7 @@
 .summary-strip span {
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .summary-strip strong {
@@ -421,14 +421,14 @@
 .metric-label {
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 750;
+  font-weight: 500;
 }
 
 .metric-value {
   color: var(--ink-strong);
   font-family: var(--font-display);
   font-size: 1.8rem;
-  font-weight: 850;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1.08;
 }
@@ -459,18 +459,18 @@
 .progress-meter-copy span {
   color: var(--muted);
   font-size: 0.74rem;
-  font-weight: 750;
+  font-weight: 500;
 }
 
 .progress-meter-copy strong {
   color: var(--ink-strong);
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .progress-meter-track {
   background: var(--surface-muted);
-  border-radius: var(--radius-pill, 999px);
+  border-radius: 8px;
   height: 8px;
   overflow: hidden;
 }
@@ -539,7 +539,7 @@
   color: var(--ink-strong);
   font-family: var(--font-display);
   font-size: 1.08rem;
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .section-description {
@@ -558,7 +558,7 @@
   border-radius: 999px;
   display: inline-flex;
   font-size: 0.74rem;
-  font-weight: 850;
+  font-weight: 600;
   min-height: 26px;
   padding: 0 10px;
   white-space: nowrap;
@@ -606,7 +606,7 @@
 .entity-title {
   color: var(--ink-strong);
   display: block;
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .entity-link {
@@ -674,7 +674,7 @@
   color: var(--ink);
   display: inline-flex;
   font-size: 0.8rem;
-  font-weight: 850;
+  font-weight: 600;
   height: 36px;
   justify-content: center;
   width: 36px;
@@ -885,7 +885,7 @@
   color: var(--ink);
   display: inline-flex;
   font-size: 0.74rem;
-  font-weight: 850;
+  font-weight: 600;
   height: 36px;
   justify-content: center;
   position: relative;
@@ -1120,7 +1120,7 @@
   cursor: pointer;
   display: flex;
   font-size: 0.9rem;
-  font-weight: 850;
+  font-weight: 600;
   justify-content: space-between;
   list-style: none;
   min-height: 48px;
@@ -1155,7 +1155,7 @@
   display: flex;
   flex-direction: row;
   font-size: 0.84rem;
-  font-weight: 850;
+  font-weight: 600;
   gap: 8px;
   min-height: 42px;
   padding: 0 10px;

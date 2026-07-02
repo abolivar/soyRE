@@ -6,7 +6,7 @@ export default function NewBusinessPage() {
     <Suspense
       fallback={
         <div className="state-panel">
-          <h2>Cargando wizard</h2>
+          <h2>Cargando flujo</h2>
           <p>Preparando el borrador del negocio.</p>
         </div>
       }

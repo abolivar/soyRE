@@ -65,8 +65,8 @@ const financeNavigation: NavigationItem[] = [
 
 const adminNavigation: NavigationItem[] = [
   { href: '/users', label: 'Usuarios', icon: ShieldCheck, requiresManager: true },
-  { href: '/settings', label: 'Configuracion', icon: Settings, requiresManager: true },
-  { href: '/audit', label: 'Auditoria', icon: ScrollText, requiresManager: true },
+  { href: '/settings', label: 'Configuración', icon: Settings, requiresManager: true },
+  { href: '/audit', label: 'Auditoría', icon: ScrollText, requiresManager: true },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -90,19 +90,19 @@ export function AppShell({ children }: { children: ReactNode }) {
           <BrandLogo decorative variant="seal" />
           <span className="brand-copy">
             <strong>SoyPMS</strong>
-            <span>Broker workspace</span>
+            <span>Espacio broker</span>
           </span>
         </Link>
 
-        <nav className="app-nav" aria-label="Navegacion principal">
+        <nav className="app-nav" aria-label="Navegación principal">
           <NavSection
             items={operationNavigation}
-            label="Operacion"
+            label="Operación"
             pathname={pathname}
           />
           <NavSection
             items={managementNavigation}
-            label="Gestion"
+            label="Gestión"
             pathname={pathname}
           />
           <NavSection
@@ -119,12 +119,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="sidebar-footer">
-          <span>Organizacion activa</span>
-          <strong>{activeMembership?.organizationName ?? 'Sin sesion activa'}</strong>
+          <span>Organización activa</span>
+          <strong>{activeMembership?.organizationName ?? 'Sin sesión activa'}</strong>
           <span>
             {activeMembership
-              ? `${formatRoleLabel(activeMembership.role)} / Supabase remoto`
-              : 'Validacion remota Supabase'}
+              ? `${formatRoleLabel(activeMembership.role)} / validación remota`
+              : 'Validación remota activa'}
           </span>
         </div>
       </aside>

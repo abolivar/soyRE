@@ -183,26 +183,26 @@ const areaConfig: Record<AreaKey, AreaConfig> = {
     eyebrow: 'Sistema',
     icon: ScrollText,
     sideDescription:
-      'La auditoria se alimenta desde el API y debe crecer con cada accion critica.',
-    sideTitle: 'Criterios de auditoria',
-    title: 'Auditoria',
+      'La auditoría se alimenta desde el sistema y debe crecer con cada acción crítica.',
+    sideTitle: 'Criterios de auditoría',
+    title: 'Auditoría',
   },
   commissions: {
     description:
       'Vista financiera para comisiones devengadas, pagaderas y pendientes.',
     emptyDescription:
-      'Las comisiones apareceran al confirmar negocios con planes de comision.',
+      'Las comisiones aparecerán al confirmar negocios con planes de comisión.',
     emptyTitle: 'Sin comisiones visibles',
     eyebrow: 'Finanzas',
     icon: TrendingUp,
     sideDescription:
-      'Los montos finales deben venir de allocations calculadas, no de estimaciones manuales.',
+      'Los montos finales deben venir de asignaciones calculadas, no de estimaciones manuales.',
     sideTitle: 'Regla financiera',
     title: 'Comisiones',
   },
   documents: {
     description:
-      'Expedientes por cliente, propiedad y negocio con revision documental.',
+      'Expedientes por cliente, propiedad y negocio con revisión documental.',
     emptyDescription:
       'Sube documentos desde clientes o crea acciones documentales desde un negocio.',
     emptyTitle: 'Sin documentos operativos',
@@ -232,7 +232,7 @@ const areaConfig: Record<AreaKey, AreaConfig> = {
   },
   mandates: {
     description:
-      'Autorizaciones comerciales, exclusividad, vigencia y comision pactada.',
+      'Autorizaciones comerciales, exclusividad, vigencia y comisión pactada.',
     emptyDescription:
       'Crea propiedades con propietario para preparar mandatos comerciales.',
     emptyTitle: 'Sin mandatos derivados',
@@ -250,7 +250,7 @@ const areaConfig: Record<AreaKey, AreaConfig> = {
       'Ofertas, contraofertas y negociaciones antes de crear o confirmar negocio.',
     emptyDescription:
       'Las ofertas se conectaran a clientes, propiedades y negocios.',
-    emptyTitle: 'Sin ofertas en negociacion',
+    emptyTitle: 'Sin ofertas en negociación',
     eyebrow: 'Negociacion',
     icon: ClipboardCheck,
     primaryHref: '/businesses/new',
@@ -262,9 +262,9 @@ const areaConfig: Record<AreaKey, AreaConfig> = {
   },
   receivables: {
     description:
-      'Cobros programados, vencidos y proximos derivados de planes de pago.',
+      'Cobros programados, vencidos y próximos derivados de planes de pago.',
     emptyDescription:
-      'Los cobros apareceran cuando los negocios tengan planes de pago confirmados.',
+      'Los cobros aparecerán cuando los negocios tengan planes de pago confirmados.',
     emptyTitle: 'Sin cobros programados',
     eyebrow: 'Finanzas',
     icon: DollarSign,
@@ -277,30 +277,30 @@ const areaConfig: Record<AreaKey, AreaConfig> = {
     description:
       'Lecturas operativas para ventas, cobranza, comisiones y actividad.',
     emptyDescription:
-      'Los reportes apareceran a medida que existan negocios y actividad.',
+      'Los reportes aparecerán a medida que existan negocios y actividad.',
     emptyTitle: 'Sin reportes calculables',
     eyebrow: 'Inteligencia operativa',
     icon: BarChart3,
     sideDescription:
-      'Los reportes se alimentan de relaciones existentes, no de snapshots manuales.',
+      'Los reportes se alimentan de relaciones existentes, no de respaldos manuales.',
     sideTitle: 'Fuente de verdad',
     title: 'Reportes',
   },
   settlements: {
-    description: 'Liquidacion y pago de comisiones aprobadas.',
+    description: 'Liquidación y pago de comisiones aprobadas.',
     emptyDescription:
-      'Las liquidaciones apareceran cuando haya comisiones aprobadas para pago.',
+      'Las liquidaciones aparecerán cuando haya comisiones aprobadas para pago.',
     emptyTitle: 'Sin liquidaciones pendientes',
     eyebrow: 'Finanzas',
     icon: Landmark,
     sideDescription:
-      'Pagar una comision debe dejar auditoria y estado financiero trazable.',
+      'Pagar una comisión debe dejar auditoría y estado financiero trazable.',
     sideTitle: 'Control de pago',
     title: 'Liquidaciones',
   },
   showings: {
     description:
-      'Agenda de visitas, participantes, resultado y siguiente accion.',
+      'Agenda de visitas, participantes, resultado y siguiente acción.',
     emptyDescription:
       'Las visitas se conectaran a propiedades, clientes y agentes.',
     emptyTitle: 'Sin visitas registradas',
@@ -308,7 +308,7 @@ const areaConfig: Record<AreaKey, AreaConfig> = {
     icon: CalendarDays,
     primaryHref: '/tasks',
     primaryLabel: 'Ver tareas',
-    sideDescription: 'Cada visita debe cerrar con resultado y proxima accion.',
+    sideDescription: 'Cada visita debe cerrar con resultado y próxima acción.',
     sideTitle: 'Seguimiento',
     title: 'Visitas',
   },
@@ -350,7 +350,7 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
 
         if (!firstMembership) {
           setError(
-            'No tienes una organizacion activa para consultar esta area.',
+            'No tienes una organización activa para consultar esta área.',
           );
           setIsLoading(false);
           return;
@@ -360,7 +360,7 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
       })
       .catch((caught) => {
         setError(
-          caught instanceof Error ? caught.message : 'Sesion no disponible.',
+          caught instanceof Error ? caught.message : 'Sesión no disponible.',
         );
         setIsLoading(false);
       });
@@ -567,7 +567,7 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
         }
         description={
           activeMembership
-            ? `${config.description} Organizacion: ${activeMembership.organizationName}.`
+            ? `${config.description} Organización: ${activeMembership.organizationName}.`
             : config.description
         }
         eyebrow={config.eyebrow}
@@ -579,7 +579,7 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
           {organizations.length > 1 ? (
             <Select
               id={`${area}-filter-organization`}
-              label="Organizacion"
+              label="Organización"
               labelHidden
               onChange={(event) => setActiveOrganizationId(event.target.value)}
               value={activeOrganizationId ?? ''}
@@ -608,7 +608,7 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
 
       {isLoading ? (
         <LoadingState
-          description={`Consultando ${config.title.toLowerCase()} de la organizacion.`}
+          description={`Consultando ${config.title.toLowerCase()} de la organización.`}
           title={`Cargando ${config.title.toLowerCase()}`}
         />
       ) : error ? (
@@ -694,9 +694,9 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
                 </div>
                 <div className="split-row">
                   <span>
-                    <strong className="entity-title">Multi-organizacion</strong>
+                    <strong className="entity-title">Multi-organización</strong>
                     <span className="meta-row">
-                      Las consultas usan la organizacion activa.
+                      Las consultas usan la organización activa.
                     </span>
                   </span>
                   <StatusBadge tone="primary">Base</StatusBadge>
@@ -705,7 +705,7 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
                   <span>
                     <strong className="entity-title">Siguiente bloque</strong>
                     <span className="meta-row">
-                      Persistencia especifica y acciones avanzadas por modulo.
+                      Persistencia específica y acciones avanzadas por módulo.
                     </span>
                   </span>
                   <StatusBadge tone="warning">Pendiente</StatusBadge>
@@ -718,7 +718,7 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
 
       {isCreatableArea(area) ? (
         <FormDrawer
-          description="Crea un registro operativo asociado a la organizacion activa."
+          description="Crea un registro operativo asociado a la organización activa."
           footer={
             <>
               <Button
@@ -799,7 +799,7 @@ function OperationalCreateFields({
               >
                 <option value="REQUIRED">Requerido</option>
                 <option value="UPLOADED">Cargado</option>
-                <option value="IN_REVIEW">En revision</option>
+                <option value="IN_REVIEW">En revisión</option>
                 <option value="APPROVED">Aprobado</option>
               </Select>
             </div>
@@ -834,7 +834,7 @@ function OperationalCreateFields({
           </section>
 
           <details className="form-collapsible" open>
-            <summary>Relacion</summary>
+            <summary>Relación</summary>
             <div className="form-section">
               <div className="form-grid two">
                 <Select id="document-client" label="Cliente" name="clientId">
@@ -947,7 +947,7 @@ function OperationalCreateFields({
           <section className="form-section">
             <div>
               <h3>Responsables y valores</h3>
-              <p>Propietario, asesor asignado, precio autorizado y comision.</p>
+              <p>Propietario, asesor asignado, precio autorizado y comisión.</p>
             </div>
             <div className="form-grid two">
               <Select
@@ -994,7 +994,7 @@ function OperationalCreateFields({
               />
               <Input
                 id="mandate-commission"
-                label="Comision %"
+                label="Comisión %"
                 max="100"
                 min="0"
                 name="commissionPercent"
@@ -1055,7 +1055,7 @@ function OperationalCreateFields({
             </Select>
             <Input
               id="listing-title"
-              label="Titulo"
+              label="Título"
               name="title"
               placeholder="Apartamento con vista abierta"
               required
@@ -1091,7 +1091,7 @@ function OperationalCreateFields({
               id="listing-copy"
               label="Copy publico"
               name="publicCopy"
-              placeholder="Descripcion comercial inicial."
+              placeholder="Descripción comercial inicial."
             />
           </section>
         </>
@@ -1197,7 +1197,7 @@ function OperationalCreateFields({
           <section className="form-section">
             <div>
               <h3>Oferta</h3>
-              <p>Propuesta economica previa a crear o enlazar negocio.</p>
+              <p>Propuesta económica previa a crear o enlazar negocio.</p>
             </div>
             <Select id="offer-client" label="Cliente" name="clientId" required>
               <option value="">Seleccionar cliente</option>
@@ -1211,13 +1211,13 @@ function OperationalCreateFields({
               <Select
                 defaultValue="SALE"
                 id="offer-operation"
-                label="Operacion"
+                label="Operación"
                 name="operationType"
               >
                 <option value="SALE">Venta</option>
                 <option value="RENT">Alquiler</option>
                 <option value="RESERVATION">Reserva</option>
-                <option value="ASSIGNMENT">Cesion</option>
+                <option value="ASSIGNMENT">Cesión</option>
                 <option value="PRE_SALE">Preventa</option>
                 <option value="OTHER">Otro</option>
               </Select>
@@ -1255,7 +1255,7 @@ function OperationalCreateFields({
           </section>
 
           <details className="form-collapsible" open>
-            <summary>Relacion y terminos</summary>
+            <summary>Relación y términos</summary>
             <div className="form-section">
               <div className="form-grid two">
                 <Select id="offer-property" label="Propiedad" name="propertyId">
@@ -1285,7 +1285,7 @@ function OperationalCreateFields({
                 id="offer-terms"
                 label="Terminos"
                 name="terms"
-                placeholder="Condiciones, deposito, plazo de respuesta o anexos."
+                placeholder="Condiciones, depósito, plazo de respuesta o anexos."
               />
             </div>
           </details>
@@ -1462,9 +1462,9 @@ function buildMetrics(
         value: formatMoneyCents(summary.metrics.overdueReceivables.amountCents),
       },
       {
-        detail: 'Cobros de los proximos 7 dias.',
+        detail: 'Cobros de los próximos 7 días.',
         icon: CalendarDays,
-        label: '7 dias',
+        label: '7 días',
         tone: 'warning',
         value: formatMoneyCents(
           summary.metrics.nextSevenDaysReceivables.amountCents,
@@ -1482,7 +1482,7 @@ function buildMetrics(
 
   return [
     {
-      detail: 'Registros visibles con la organizacion activa.',
+      detail: 'Registros visibles con la organización activa.',
       icon: areaConfig[area].icon,
       label: 'Registros',
       tone: 'primary',
@@ -1545,7 +1545,7 @@ function buildReportRows(data: WorkspaceData): AreaRow[] {
         summary.metrics.nextSevenDaysReceivables.amountCents,
       ),
       context: 'Cobranza',
-      date: '7 dias',
+      date: '7 días',
       id: 'report-next-seven',
       meta: `${summary.metrics.nextSevenDaysReceivables.count} cuotas`,
       status: 'Disponible',
@@ -1557,7 +1557,7 @@ function buildReportRows(data: WorkspaceData): AreaRow[] {
       context: 'Finanzas',
       date: 'Actual',
       id: 'report-commissions',
-      meta: `${summary.metrics.pendingCommissions.count} allocations`,
+      meta: `${summary.metrics.pendingCommissions.count} asignaciones`,
       status: 'Disponible',
       title: 'Comisiones pendientes',
       tone: 'featured',
@@ -1572,7 +1572,7 @@ function documentContext(document: OperationalDocument) {
     document.business?.title ??
     document.business?.code ??
     document.businessContract?.contractNumber ??
-    'Sin relacion'
+    'Sin relación'
   );
 }
 
@@ -1653,7 +1653,7 @@ function buildCreatePayload(
         propertyId: requiredString(form, 'propertyId', 'Propiedad'),
         publicCopy: optionalString(form, 'publicCopy'),
         status: requiredString(form, 'status', 'Estado'),
-        title: requiredString(form, 'title', 'Titulo'),
+        title: requiredString(form, 'title', 'Título'),
       });
     case 'showings':
       return stripEmpty({
@@ -1675,7 +1675,7 @@ function buildCreatePayload(
         clientId: requiredString(form, 'clientId', 'Cliente'),
         currency: optionalString(form, 'currency') ?? 'USD',
         expiresAt: optionalDateTime(form, 'expiresAt'),
-        operationType: requiredString(form, 'operationType', 'Operacion'),
+        operationType: requiredString(form, 'operationType', 'Operación'),
         propertyId: optionalString(form, 'propertyId'),
         status: requiredString(form, 'status', 'Estado'),
         terms: optionalString(form, 'terms'),
@@ -1719,7 +1719,7 @@ function moneyToCents(value: string, label: string) {
   const normalized = value.replace(/,/g, '').trim();
 
   if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
-    throw new Error(`${label} debe ser un monto valido.`);
+    throw new Error(`${label} debe ser un monto válido.`);
   }
 
   const [whole = '0', decimals = ''] = normalized.split('.');
@@ -1737,7 +1737,7 @@ function optionalPercentBps(form: FormData, key: string) {
   const normalized = value.trim();
 
   if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
-    throw new Error('Comision debe ser un porcentaje valido.');
+    throw new Error('Comisión debe ser un porcentaje válido.');
   }
 
   const [whole = '0', decimals = ''] = normalized.split('.');

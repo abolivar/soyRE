@@ -59,7 +59,7 @@ export function formatDate(value: string | null | undefined) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return 'Fecha invalida';
+    return 'Fecha inválida';
   }
 
   return new Intl.DateTimeFormat('es-PA', {
@@ -77,7 +77,7 @@ export function formatDateTime(value: string | null | undefined) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return 'Fecha invalida';
+    return 'Fecha inválida';
   }
 
   return new Intl.DateTimeFormat('es-PA', {
@@ -96,7 +96,7 @@ export function formatRelativeDue(value: string | null | undefined) {
   const dueDate = new Date(value);
 
   if (Number.isNaN(dueDate.getTime())) {
-    return 'Fecha invalida';
+    return 'Fecha inválida';
   }
 
   const today = new Date();
@@ -139,7 +139,7 @@ export function businessStatusLabel(status: BusinessStatus) {
   return (
     {
       DRAFT: 'Borrador',
-      PENDING_REVIEW: 'Revision',
+      PENDING_REVIEW: 'Revisión',
       APPROVED: 'Aprobado',
       CONTRACT_GENERATED: 'Contrato',
       PENDING_SIGNATURE: 'Firma',
@@ -173,9 +173,9 @@ export function operationLabel(operation: BusinessOperationType) {
       SALE: 'Venta',
       RENT: 'Alquiler',
       RESERVATION: 'Reserva',
-      ASSIGNMENT: 'Cesion',
+      ASSIGNMENT: 'Cesión',
       PRE_SALE: 'Preventa',
-      SEPARATION: 'Separacion',
+      SEPARATION: 'Separación',
       OTHER: 'Otro',
     } satisfies Record<BusinessOperationType, string>
   )[operation];
@@ -200,12 +200,12 @@ export function scheduledActionLabel(type: ScheduledActionType) {
     {
       PAYMENT_DUE: 'Cobro programado',
       PAYMENT_OVERDUE: 'Cobro vencido',
-      COMMISSION_DUE: 'Comision pendiente',
-      CONTRACT_REVIEW_DUE: 'Revision contrato',
+      COMMISSION_DUE: 'Comisión pendiente',
+      CONTRACT_REVIEW_DUE: 'Revisión de contrato',
       SIGNATURE_DUE: 'Firma pendiente',
       DOCUMENT_REQUIRED: 'Documento requerido',
-      APPROVAL_REQUIRED: 'Aprobacion requerida',
-      CUSTOM: 'Accion',
+      APPROVAL_REQUIRED: 'Aprobación requerida',
+      CUSTOM: 'Acción',
     } satisfies Record<ScheduledActionType, string>
   )[type];
 }
@@ -295,7 +295,7 @@ export function documentStatusLabel(status: DocumentStatus) {
       APPROVED: 'Aprobado',
       ARCHIVED: 'Archivado',
       EXPIRED: 'Vencido',
-      IN_REVIEW: 'Revision',
+      IN_REVIEW: 'Revisión',
       REJECTED: 'Rechazado',
       REQUIRED: 'Requerido',
       UPLOADED: 'Cargado',

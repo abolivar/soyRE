@@ -93,7 +93,7 @@ th {
 th {
   color: var(--muted);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -107,7 +107,7 @@ label {
   color: var(--ink);
   display: grid;
   font-size: 0.86rem;
-  font-weight: 750;
+  font-weight: 500;
   gap: 8px;
 }
 
@@ -146,7 +146,7 @@ label {
   color: var(--ink-strong);
   font-family: var(--font-display);
   font-size: 3.2rem;
-  font-weight: 850;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1.02;
 }
@@ -278,7 +278,7 @@ label {
 
 .landing-hero-metrics dt {
   color: #ffffff;
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .landing-hero-metrics dd {
@@ -400,7 +400,7 @@ label {
   color: var(--ink-strong);
   font-family: var(--font-display);
   font-size: 3.2rem;
-  font-weight: 850;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1.02;
 }
@@ -434,7 +434,7 @@ label {
   color: var(--ink-strong);
   font-family: var(--font-display);
   font-size: 1.55rem;
-  font-weight: 850;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -451,7 +451,7 @@ label {
 
 .landing-access-note a {
   color: var(--primary-strong);
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .landing-section {
@@ -501,7 +501,7 @@ label {
   color: var(--ink-strong);
   font-family: var(--font-display);
   font-size: 1.08rem;
-  font-weight: 850;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -544,7 +544,7 @@ label {
   color: var(--ink-strong);
   display: inline-flex;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 600;
   gap: 8px;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -627,7 +627,7 @@ label {
 .brand-copy strong {
   font-family: var(--font-display);
   font-size: 0.9rem;
-  font-weight: 850;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -650,7 +650,7 @@ label {
 .app-nav-label {
   color: var(--sidebar-subtle);
   font-size: 0.66rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0;
   margin-bottom: 4px;
   padding: 0 8px;
@@ -683,7 +683,7 @@ label {
 .app-nav-link.active {
   border-left-color: var(--sidebar-accent);
   color: var(--sidebar-text);
-  font-weight: 750;
+  font-weight: 500;
 }
 
 .app-nav-link.active svg {
@@ -715,7 +715,7 @@ label {
 .sidebar-footer strong {
   color: var(--sidebar-text);
   font-size: 0.78rem;
-  font-weight: 750;
+  font-weight: 500;
 }
 
 .app-main {
@@ -760,7 +760,7 @@ label {
 
 .topbar a {
   color: var(--primary-strong);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .app-content {
@@ -791,7 +791,7 @@ label {
   color: var(--muted);
   display: inline-flex;
   font-size: 0.86rem;
-  font-weight: 850;
+  font-weight: 600;
   gap: 8px;
   justify-content: center;
   min-height: 42px;
@@ -904,7 +904,7 @@ label {
   color: var(--primary-strong);
   display: inline-flex;
   font-size: 0.76rem;
-  font-weight: 850;
+  font-weight: 600;
   gap: 5px;
   margin-top: 5px;
 }
@@ -939,7 +939,7 @@ label {
   color: var(--ink-strong);
   font-family: var(--font-display);
   font-size: 1.15rem;
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .detail-hero small,
@@ -972,7 +972,7 @@ label {
 .detail-notes strong {
   color: var(--ink-strong);
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
@@ -1068,7 +1068,7 @@ label {
   color: var(--muted);
   display: flex;
   font-size: 0.84rem;
-  font-weight: 850;
+  font-weight: 600;
   gap: 9px;
   justify-content: flex-start;
   min-height: 40px;
@@ -1126,7 +1126,7 @@ label {
   color: var(--ink-strong);
   font-family: var(--font-display);
   font-size: 1.18rem;
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .summary-list {
@@ -1149,14 +1149,14 @@ label {
 .summary-list dt {
   color: var(--muted);
   font-size: 0.76rem;
-  font-weight: 850;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
 .summary-list dd {
   color: var(--ink);
   font-size: 0.9rem;
-  font-weight: 750;
+  font-weight: 500;
   margin: 0;
   overflow-wrap: anywhere;
 }
@@ -1172,7 +1172,7 @@ label {
   border-radius: 8px;
   color: var(--muted);
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 600;
   padding: 10px;
   text-align: center;
 }
@@ -1233,7 +1233,7 @@ label {
 .inline-create-form > strong {
   color: var(--ink-strong);
   display: block;
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .mode-selector small,
@@ -1387,7 +1387,7 @@ label {
   background: var(--success-soft);
   border: 1px solid rgba(42, 127, 98, 0.28);
   color: var(--success);
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .clause-grid {
@@ -1455,7 +1455,7 @@ label {
   color: var(--muted);
   display: grid;
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 600;
   gap: 6px;
   padding: 12px;
 }
@@ -1493,7 +1493,7 @@ label {
   color: var(--muted);
   display: inline-flex;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 600;
   gap: 6px;
   min-height: 40px;
   padding: 0 12px;
@@ -1565,7 +1565,7 @@ label {
 
 .business-confirm-bar span {
   color: var(--ink);
-  font-weight: 850;
+  font-weight: 600;
 }
 
 /* ============================================================

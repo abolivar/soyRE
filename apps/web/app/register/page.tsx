@@ -46,9 +46,9 @@ export default function RegisterPage() {
           <Link className="brand-link" href="/" aria-label="SoyPMS inicio">
             <BrandLogo />
           </Link>
-          <h1>Crear organizacion</h1>
+          <h1>Crear organización</h1>
           <p className="lead">
-            Crea el owner inicial y deja la organizacion lista para validacion
+            Crea el administrador inicial y deja la organización lista para validación
             de usuarios.
           </p>
         </div>
@@ -57,7 +57,7 @@ export default function RegisterPage() {
           <div className="field-grid">
             <Input
               id="register-organization-name"
-              label="Organizacion"
+              label="Organización"
               name="organizationName"
               required
             />

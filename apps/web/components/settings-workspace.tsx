@@ -25,7 +25,7 @@ export function SettingsWorkspace() {
 
   useEffect(() => {
     refreshSession().catch((caught) => {
-      setError(caught instanceof Error ? caught.message : 'Sesion no disponible.');
+      setError(caught instanceof Error ? caught.message : 'Sesión no disponible.');
       setIsLoading(false);
     });
   }, []);
@@ -62,15 +62,15 @@ export function SettingsWorkspace() {
         description={
           activeMembership
             ? `Reglas base de ${activeMembership.organizationName}.`
-            : 'Reglas base de organizacion, acceso y operacion.'
+            : 'Reglas base de organización, acceso y operación.'
         }
-        eyebrow="Configuracion"
+        eyebrow="Configuración"
         title="Ajustes"
       />
 
       {isLoading ? (
         <LoadingState
-          description="Consultando organizacion activa y permisos."
+          description="Consultando organización activa y permisos."
           title="Cargando ajustes"
         />
       ) : error ? (
@@ -86,14 +86,14 @@ export function SettingsWorkspace() {
       ) : (
         <section className="settings-grid">
           <SectionPanel
-            title="Organizacion"
-            description="Valores operativos que se usan como contexto del workspace."
+            title="Organización"
+            description="Valores operativos que se usan como contexto del espacio de trabajo."
           >
             <div className="compact-list">
               {organizations.length > 1 ? (
                 <Select
                   id="settings-active-organization"
-                  label="Organizacion activa"
+                  label="Organización activa"
                   onChange={(event) => setActiveOrganizationId(event.target.value)}
                   value={activeMembership?.organizationId ?? ''}
                 >
@@ -111,13 +111,13 @@ export function SettingsWorkspace() {
                 id="settings-public-name"
                 label="Nombre publico"
                 readOnly
-                value={activeMembership?.organizationName ?? 'Sin organizacion activa'}
+                value={activeMembership?.organizationName ?? 'Sin organización activa'}
               />
               <Input
                 id="settings-slug"
                 label="Slug"
                 readOnly
-                value={activeMembership?.organizationSlug ?? 'sin-organizacion'}
+                value={activeMembership?.organizationSlug ?? 'sin-organización'}
               />
               <Select
                 id="settings-timezone"
@@ -139,7 +139,7 @@ export function SettingsWorkspace() {
           <div className="dashboard-columns">
             <SectionPanel
               title="Acceso"
-              description="Politicas actuales para el sistema de validacion."
+              description="Políticas actuales para el sistema de validación."
             >
               <div className="compact-list">
                 <article className="setting-row">
@@ -147,9 +147,9 @@ export function SettingsWorkspace() {
                     <ShieldCheck size={17} strokeWidth={2.2} />
                   </span>
                   <span>
-                    <strong className="entity-title">Validacion manual</strong>
+                    <strong className="entity-title">Validación manual</strong>
                     <span className="meta-row">
-                      Owner o admin aprueban usuarios por membresia.
+                      Administradores aprueban usuarios por membresía.
                     </span>
                   </span>
                   <StatusBadge tone="success">Activo</StatusBadge>
@@ -159,7 +159,7 @@ export function SettingsWorkspace() {
                     <KeyRound size={17} strokeWidth={2.2} />
                   </span>
                   <span>
-                    <strong className="entity-title">Password minimo</strong>
+                    <strong className="entity-title">Contraseña mínima</strong>
                     <span className="meta-row">10 caracteres en registro local.</span>
                   </span>
                   <StatusBadge tone="primary">Base</StatusBadge>

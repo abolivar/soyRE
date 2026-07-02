@@ -45,7 +45,7 @@ type BusinessFilters = {
 
 const statusOptions: Array<{ label: string; value: BusinessStatus }> = [
   { label: 'Borrador', value: 'DRAFT' },
-  { label: 'Revision', value: 'PENDING_REVIEW' },
+  { label: 'Revisión', value: 'PENDING_REVIEW' },
   { label: 'Aprobado', value: 'APPROVED' },
   { label: 'Contrato generado', value: 'CONTRACT_GENERATED' },
   { label: 'Firma pendiente', value: 'PENDING_SIGNATURE' },
@@ -59,9 +59,9 @@ const operationOptions: Array<{ label: string; value: BusinessOperationType }> =
   { label: 'Venta', value: 'SALE' },
   { label: 'Alquiler', value: 'RENT' },
   { label: 'Reserva', value: 'RESERVATION' },
-  { label: 'Cesion', value: 'ASSIGNMENT' },
+  { label: 'Cesión', value: 'ASSIGNMENT' },
   { label: 'Preventa', value: 'PRE_SALE' },
-  { label: 'Separacion', value: 'SEPARATION' },
+  { label: 'Separación', value: 'SEPARATION' },
   { label: 'Otro', value: 'OTHER' },
 ];
 
@@ -87,7 +87,7 @@ export function BusinessesWorkspace() {
         setUser(response.user);
 
         if (!firstMembership) {
-          setError('No tienes una organizacion activa para consultar negocios.');
+          setError('No tienes una organización activa para consultar negocios.');
           setIsLoading(false);
           return;
         }
@@ -95,7 +95,7 @@ export function BusinessesWorkspace() {
         setActiveOrganizationId(firstMembership.organizationId);
       })
       .catch((caught) => {
-        setError(caught instanceof Error ? caught.message : 'Sesion no disponible.');
+        setError(caught instanceof Error ? caught.message : 'Sesión no disponible.');
         setIsLoading(false);
       });
   }, []);
@@ -194,7 +194,7 @@ export function BusinessesWorkspace() {
         description={
           activeMembership
             ? `Listado transaccional de ${activeMembership.organizationName}.`
-            : 'Listado transaccional por organizacion.'
+            : 'Listado transaccional por organización.'
         }
         eyebrow="Negocios"
         title="Negocios"
@@ -224,7 +224,7 @@ export function BusinessesWorkspace() {
           {organizations.length > 1 ? (
             <Select
               id="businesses-filter-organization"
-              label="Organizacion"
+              label="Organización"
               labelHidden
               onChange={(event) => setActiveOrganizationId(event.target.value)}
               value={activeOrganizationId ?? ''}
@@ -261,7 +261,7 @@ export function BusinessesWorkspace() {
           </Select>
           <Select
             id="businesses-filter-operation"
-            label="Operacion"
+            label="Operación"
             labelHidden
             defaultValue={filters.operationType}
             name="operationType"
@@ -281,7 +281,7 @@ export function BusinessesWorkspace() {
 
       {isLoading ? (
         <LoadingState
-          description="Consultando negocios de la organizacion activa."
+          description="Consultando negocios de la organización activa."
           title="Cargando negocios"
         />
       ) : error ? (
@@ -304,10 +304,10 @@ export function BusinessesWorkspace() {
             { key: 'business', label: 'Negocio' },
             { key: 'client', label: 'Cliente' },
             { key: 'property', label: 'Inmueble' },
-            { key: 'operation', label: 'Operacion' },
+            { key: 'operation', label: 'Operación' },
             { key: 'status', label: 'Estado' },
             { key: 'progress', label: 'Avance' },
-            { key: 'next', label: 'Proximo' },
+            { key: 'next', label: 'Próximo' },
             { key: 'amount', label: 'Monto' },
           ]}
           empty={
@@ -317,7 +317,7 @@ export function BusinessesWorkspace() {
                   <Link href="/businesses/new">Crear primer negocio</Link>
                 </Button>
               }
-              description="Crea un borrador o confirma una operacion para alimentar esta vista."
+              description="Crea un borrador o confirma una operación para alimentar esta vista."
               icon={ClipboardCheck}
               title="Sin negocios"
             />
@@ -366,7 +366,7 @@ export function BusinessesWorkspace() {
                 ) : business.status === 'DRAFT' ? (
                   'Continuar borrador'
                 ) : (
-                  'Sin siguiente accion'
+                  'Sin siguiente acción'
                 ),
                 operation: (
                   <StatusBadge tone={operationTone(business.operationType)}>

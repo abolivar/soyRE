@@ -1087,14 +1087,14 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    const message =
+    const rawMessage =
       typeof body?.message === 'string'
         ? body.message
         : Array.isArray(body?.message)
           ? body.message.join(', ')
           : 'Request failed.';
 
-    throw new Error(message);
+    throw new Error(toUserFacingApiError(rawMessage, response.status));
   }
 
   return response.json() as Promise<T>;
@@ -1107,7 +1107,9 @@ export async function downloadApiFile(path: string) {
 
   if (!response.ok) {
     const message = await response.text().catch(() => 'Request failed.');
-    throw new Error(message || 'Request failed.');
+    throw new Error(
+      toUserFacingApiError(message || 'Request failed.', response.status),
+    );
   }
 
   const blob = await response.blob();
@@ -1117,4 +1119,69 @@ export async function downloadApiFile(path: string) {
     'documento';
 
   return { blob, fileName };
+}
+
+function toUserFacingApiError(message: string, status: number) {
+  const normalized = message.trim();
+  const exactMessages: Record<string, string> = {
+    'A user with this email already exists.':
+      'Ya existe un usuario con ese correo.',
+    'An organization with this slug already exists.':
+      'Ya existe una organización con ese identificador.',
+    'Authentication is required.': 'Inicia sesión para continuar.',
+    'Business draft has changed. Reload before committing.':
+      'El borrador cambió en otra sesión. Recarga antes de confirmar.',
+    'Business draft has changed. Reload before saving.':
+      'El borrador cambió en otra sesión. Recarga antes de guardar.',
+    'Business draft was not found.': 'No encontramos ese borrador.',
+    'Business was not found in this organization.':
+      'No encontramos ese negocio en la organización activa.',
+    'Client was not found in this organization.':
+      'No encontramos ese cliente en la organización activa.',
+    'Invalid authentication token.': 'La sesión venció. Inicia sesión nuevamente.',
+    'Invalid email or password.': 'Correo o contraseña incorrectos.',
+    'No active membership for this organization.':
+      'No tienes acceso activo a esta organización.',
+    'Only draft businesses can be committed.':
+      'Solo se pueden confirmar negocios en borrador.',
+    'Only draft businesses can be edited.':
+      'Solo se pueden editar negocios en borrador.',
+    'Property was not found in this organization.':
+      'No encontramos ese inmueble en la organización activa.',
+    'Request failed.': 'No se pudo completar la solicitud.',
+    'Required role is missing.': 'Tu rol no permite realizar esta acción.',
+    'User has no active memberships.':
+      'Tu usuario no tiene una organización activa.',
+    'User is not active.': 'Tu usuario no está activo.',
+  };
+
+  if (exactMessages[normalized]) {
+    return exactMessages[normalized];
+  }
+
+  if (/is required\.?$/i.test(normalized)) {
+    return 'Completa los campos requeridos.';
+  }
+
+  if (/permission is required\.?$/i.test(normalized)) {
+    return 'Tu rol no permite realizar esta acción.';
+  }
+
+  if (/not found/i.test(normalized)) {
+    return 'No encontramos el registro solicitado.';
+  }
+
+  if (status === 401) {
+    return 'Inicia sesión para continuar.';
+  }
+
+  if (status === 403) {
+    return 'Tu rol no permite realizar esta acción.';
+  }
+
+  if (status >= 500) {
+    return 'El servicio no respondió correctamente. Intenta de nuevo.';
+  }
+
+  return normalized || 'No se pudo completar la solicitud.';
 }

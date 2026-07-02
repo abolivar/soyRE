@@ -30,9 +30,9 @@ export default function ModuleTemplatePage() {
     <>
       <PageHeader
         eyebrow="Modulo"
-        title="Nombre del modulo"
+        title="Nombre del módulo"
         description="Describe el objetivo operativo de la pantalla en una frase concreta."
-        actions={<Button icon={Plus}>Nueva accion</Button>}
+        actions={<Button icon={Plus}>Nueva acción</Button>}
       />
 
       <FilterBar>

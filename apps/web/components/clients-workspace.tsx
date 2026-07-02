@@ -173,7 +173,7 @@ export function ClientsWorkspace() {
         setUser(response.user);
 
         if (!firstMembership) {
-          setError('No tienes una organizacion activa para consultar clientes.');
+          setError('No tienes una organización activa para consultar clientes.');
           setIsLoading(false);
           return;
         }
@@ -181,7 +181,7 @@ export function ClientsWorkspace() {
         setActiveOrganizationId(firstMembership.organizationId);
       })
       .catch((caught) => {
-        setError(caught instanceof Error ? caught.message : 'Sesion no disponible.');
+        setError(caught instanceof Error ? caught.message : 'Sesión no disponible.');
         setIsLoading(false);
       });
   }, []);
@@ -313,7 +313,7 @@ export function ClientsWorkspace() {
     setFormError(null);
 
     if (!activeOrganizationId || !canCreateClients) {
-      setFormError('No tienes permiso para crear clientes en esta organizacion.');
+      setFormError('No tienes permiso para crear clientes en esta organización.');
       return;
     }
 
@@ -647,7 +647,7 @@ export function ClientsWorkspace() {
           {organizations.length > 1 ? (
             <Select
               id="clients-filter-organization"
-              label="Organizacion"
+              label="Organización"
               labelHidden
               onChange={(event) => setActiveOrganizationId(event.target.value)}
               value={activeOrganizationId ?? ''}
@@ -666,7 +666,7 @@ export function ClientsWorkspace() {
             aria-label="Buscar cliente"
             defaultValue={filters.search}
             name="search"
-            placeholder="Buscar cliente, email, telefono o empresa"
+            placeholder="Buscar cliente, email, teléfono o empresa"
           />
           <Select
             id="clients-filter-status"
@@ -704,7 +704,7 @@ export function ClientsWorkspace() {
       <section className="dashboard-grid">
         {isLoading ? (
           <LoadingState
-            description="Consultando clientes de la organizacion activa."
+            description="Consultando clientes de la organización activa."
             title="Cargando clientes"
           />
         ) : error ? (
@@ -729,7 +729,7 @@ export function ClientsWorkspace() {
               { key: 'interest', label: 'Interes' },
               { key: 'budget', label: 'Presupuesto' },
               { key: 'followUp', label: 'Seguimiento' },
-              { key: 'owner', label: 'Owner' },
+              { key: 'owner', label: 'Responsable' },
               { key: 'actions', label: 'Detalle' },
             ]}
             empty={
@@ -743,8 +743,8 @@ export function ClientsWorkspace() {
                 }
                 description={
                   canCreateClients
-                    ? 'Crea clientes con roles comerciales, presupuesto, preferencias y proxima accion para alimentar el ciclo inmobiliario.'
-                    : 'Tu rol actual permite consultar clientes, pero no crear registros en esta organizacion.'
+                    ? 'Crea clientes con roles comerciales, presupuesto, preferencias y próxima acción para alimentar el ciclo inmobiliario.'
+                    : 'Tu rol actual permite consultar clientes, pero no crear registros en esta organización.'
                 }
                 icon={Users}
                 title="Sin clientes registrados"
@@ -799,7 +799,7 @@ export function ClientsWorkspace() {
                   ? `${client.assignedUser.firstName} ${
                       client.assignedUser.lastName ?? ''
                     }`.trim()
-                  : 'Sin owner',
+                  : 'Sin responsable',
                 actions: (
                   <button
                     className={
@@ -1065,8 +1065,8 @@ export function ClientsWorkspace() {
 
           <section className="form-section">
             <div>
-              <h3>Identificacion basica</h3>
-              <p>Datos minimos para reconocer al cliente en la organizacion.</p>
+              <h3>Identificación básica</h3>
+              <p>Datos mínimos para reconocer al cliente en la organización.</p>
             </div>
             <div className="form-grid three">
               <label>
@@ -1131,7 +1131,7 @@ export function ClientsWorkspace() {
           <section className="form-section">
             <div>
               <h3>Contacto principal</h3>
-              <p>Email, telefono o WhatsApp son requeridos para activar seguimiento.</p>
+              <p>Email, teléfono o WhatsApp son requeridos para activar seguimiento.</p>
             </div>
             <div className="form-grid two">
               <label>
@@ -1142,7 +1142,7 @@ export function ClientsWorkspace() {
                 Metodo preferido
                 <select defaultValue="WHATSAPP" name="preferredContactMethod">
                   <option value="WHATSAPP">WhatsApp</option>
-                  <option value="PHONE">Telefono</option>
+                  <option value="PHONE">Teléfono</option>
                   <option value="EMAIL">Email</option>
                   <option value="SMS">SMS</option>
                   <option value="IN_PERSON">Presencial</option>
@@ -1151,7 +1151,7 @@ export function ClientsWorkspace() {
             </div>
             <div className="form-grid two">
               <label>
-                Telefono
+                Teléfono
                 <input name="phone" placeholder="+507 6000-0000" />
               </label>
               <label>
@@ -1186,7 +1186,7 @@ export function ClientsWorkspace() {
             <div className="form-section">
               <div>
                 <h3>Estado y asignacion</h3>
-                <p>Clasificacion inicial para operacion interna.</p>
+                <p>Clasificación inicial para operación interna.</p>
               </div>
               <div className="form-grid three">
                 <label>
@@ -1253,11 +1253,11 @@ export function ClientsWorkspace() {
             <div className="form-section">
               <div>
                 <h3>Preferencias comerciales</h3>
-                <p>Informacion para conectar clientes con propiedades y procesos.</p>
+                <p>Información para conectar clientes con propiedades y procesos.</p>
               </div>
               <div className="form-grid three">
                 <label>
-                  Interes
+                  Interés
                   <select defaultValue="BUY" name="interestType">
                     <option value="BUY">Compra</option>
                     <option value="RENT">Alquiler</option>
@@ -1348,7 +1348,7 @@ export function ClientsWorkspace() {
             <summary>Seguimiento y permisos</summary>
             <div className="form-section">
               <div>
-                <h3>Proxima accion</h3>
+                <h3>Próxima acción</h3>
                 <p>Notas, tags y consentimientos para continuidad operativa.</p>
               </div>
               <div className="form-grid two">
@@ -1357,17 +1357,17 @@ export function ClientsWorkspace() {
                   <input name="lastContactAt" type="date" />
                 </label>
                 <label>
-                  Proximo seguimiento
+                  Próximo seguimiento
                   <input name="nextFollowUpAt" type="date" />
                 </label>
               </div>
               <label>
                 Tags
-                <input name="tags" placeholder="VIP, inversion, referido" />
+                <input name="tags" placeholder="VIP, inversión, referido" />
               </label>
               <label>
                 Notas
-                <textarea name="notes" placeholder="Necesidad, objeciones, preferencias y proxima accion." />
+                <textarea name="notes" placeholder="Necesidad, objeciones, preferencias y próxima acción." />
               </label>
               <div className="consent-list">
                 <label className="inline-check">
@@ -1415,11 +1415,11 @@ function ClientDetailPanel({
       <div className="detail-grid">
         <DetailField label="Tipo" value={client.type === 'COMPANY' ? 'Empresa' : 'Persona'} />
         <DetailField label="Temperatura" value={temperatureLabel(client.temperature)} />
-        <DetailField label="Owner" value={assignedUserLabel(client)} />
+        <DetailField label="Responsable" value={assignedUserLabel(client)} />
         <DetailField label="Contacto" value={preferredContactLabel(client.preferredContactMethod)} />
-        <DetailField label="Telefono" value={client.phone ?? client.whatsapp ?? 'Pendiente'} />
+        <DetailField label="Teléfono" value={client.phone ?? client.whatsapp ?? 'Pendiente'} />
         <DetailField label="Email" value={client.email ?? 'Pendiente'} />
-        <DetailField label="Identificacion" value={client.legalId ?? 'Pendiente'} />
+        <DetailField label="Identificación" value={client.legalId ?? 'Pendiente'} />
         <DetailField label="Ubicacion" value={[client.city, client.zone].filter(Boolean).join(' / ') || 'Pendiente'} />
         <DetailField label="Interes" value={interestLabel(client.interestType)} />
         <DetailField label="Presupuesto" value={formatBudget(client)} />
@@ -1795,7 +1795,7 @@ function preferredContactLabel(value: OrganizationClient['preferredContactMethod
   const labels: Record<string, string> = {
     EMAIL: 'Email',
     IN_PERSON: 'Presencial',
-    PHONE: 'Telefono',
+    PHONE: 'Teléfono',
     SMS: 'SMS',
     WHATSAPP: 'WhatsApp',
   };
@@ -1805,7 +1805,7 @@ function preferredContactLabel(value: OrganizationClient['preferredContactMethod
 
 function assignedUserLabel(client: OrganizationClient | OrganizationClientDetail) {
   if (!client.assignedUser) {
-    return 'Sin owner';
+    return 'Sin responsable';
   }
 
   return `${client.assignedUser.firstName} ${

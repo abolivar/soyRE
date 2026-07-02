@@ -42,7 +42,7 @@ type UserFilters = {
 const managerRoles = new Set<MembershipRole>(['OWNER', 'ADMIN']);
 
 const roleOptions: Array<{ label: string; value: MembershipRole }> = [
-  { label: 'Owner', value: 'OWNER' },
+  { label: 'Administrador', value: 'OWNER' },
   { label: 'Admin', value: 'ADMIN' },
   { label: 'Broker', value: 'BROKER' },
   { label: 'Agente', value: 'AGENT' },
@@ -103,7 +103,7 @@ export function UsersWorkspace() {
         setUser(response.user);
 
         if (!firstMembership) {
-          setError('No tienes una organizacion activa para consultar usuarios.');
+          setError('No tienes una organización activa para consultar usuarios.');
           setIsLoading(false);
           return;
         }
@@ -111,7 +111,7 @@ export function UsersWorkspace() {
         setActiveOrganizationId(firstMembership.organizationId);
       })
       .catch((caught) => {
-        setError(caught instanceof Error ? caught.message : 'Sesion no disponible.');
+        setError(caught instanceof Error ? caught.message : 'Sesión no disponible.');
         setIsLoading(false);
       });
   }, []);
@@ -220,7 +220,7 @@ export function UsersWorkspace() {
     setFormError(null);
 
     if (!activeOrganizationId || !canManageUsers) {
-      setFormError('No tienes permiso para crear usuarios en esta organizacion.');
+      setFormError('No tienes permiso para crear usuarios en esta organización.');
       return;
     }
 
@@ -285,7 +285,7 @@ export function UsersWorkspace() {
         description={
           activeMembership
             ? `Roles y acceso de ${activeMembership.organizationName}.`
-            : 'Roles y acceso por organizacion.'
+            : 'Roles y acceso por organización.'
         }
         actions={
           <Button
@@ -322,7 +322,7 @@ export function UsersWorkspace() {
           {organizations.length > 1 ? (
             <Select
               id="users-filter-organization"
-              label="Organizacion"
+              label="Organización"
               labelHidden
               onChange={(event) => setActiveOrganizationId(event.target.value)}
               value={activeOrganizationId ?? ''}
@@ -381,7 +381,7 @@ export function UsersWorkspace() {
         <div className="dashboard-columns">
           {isLoading ? (
             <LoadingState
-              description="Consultando usuarios y membresias."
+              description="Consultando usuarios y membresías."
               title="Cargando usuarios"
             />
           ) : error ? (
@@ -498,7 +498,7 @@ export function UsersWorkspace() {
 
         <SectionPanel
           title="Reglas activas"
-          description="Politicas base para mantener controlado el acceso al workspace."
+          description="Políticas base para mantener controlado el acceso al espacio de trabajo."
         >
           <div className="role-list">
             <article className="role-item">
@@ -506,9 +506,9 @@ export function UsersWorkspace() {
                 <ShieldCheck size={17} strokeWidth={2.2} />
               </span>
               <span>
-                <strong className="entity-title">Owner protegido</strong>
+                <strong className="entity-title">Administrador protegido</strong>
                 <span className="meta-row">
-                  El backend bloquea suspender el ultimo owner activo.
+                  El sistema impide suspender el último administrador activo.
                 </span>
               </span>
               <StatusBadge tone="success">Activo</StatusBadge>
@@ -518,9 +518,9 @@ export function UsersWorkspace() {
                 <UserCheck size={17} strokeWidth={2.2} />
               </span>
               <span>
-                <strong className="entity-title">Validacion manual</strong>
+                <strong className="entity-title">Validación manual</strong>
                 <span className="meta-row">
-                  Invitados pasan a activos por accion administrativa.
+                  Invitados pasan a activos por acción administrativa.
                 </span>
               </span>
               <StatusBadge tone="warning">Base</StatusBadge>
@@ -530,7 +530,7 @@ export function UsersWorkspace() {
       </section>
 
       <FormDrawer
-        description="Crea un usuario con membresia en la organizacion activa."
+        description="Crea un usuario con membresía en la organización activa."
         footer={
           <>
             <Button
@@ -557,8 +557,8 @@ export function UsersWorkspace() {
         <form className="drawer-form" id="user-create-form" onSubmit={createUser}>
           <section className="form-section">
             <div>
-              <h3>Datos basicos</h3>
-              <p>Identidad, email y rol dentro de la organizacion.</p>
+              <h3>Datos básicos</h3>
+              <p>Identidad, email y rol dentro de la organización.</p>
             </div>
             <div className="form-grid two">
               <label>
@@ -586,7 +586,7 @@ export function UsersWorkspace() {
                 </select>
               </label>
               <label>
-                Password temporal
+                Contraseña temporal
                 <input
                   minLength={10}
                   name="password"
@@ -639,7 +639,7 @@ function roleLabel(role: MembershipRole) {
       EXTERNAL_AGENT: 'Externo',
       FINANCE: 'Finanzas',
       OPERATIONS: 'Operaciones',
-      OWNER: 'Owner',
+      OWNER: 'Administrador',
       READONLY: 'Lectura',
     } satisfies Record<MembershipRole, string>
   )[role];
@@ -649,7 +649,7 @@ function requiredString(form: FormData, field: string) {
   const value = stringValue(form, field);
 
   if (!value) {
-    throw new Error(`${field} is required.`);
+    throw new Error('Completa los campos requeridos.');
   }
 
   return value;

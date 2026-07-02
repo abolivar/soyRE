@@ -32,7 +32,7 @@ const operatingAreas: LandingItem[] = [
     title: 'Clientes',
   },
   {
-    description: 'Mandatos, soportes, identidad y archivos asociados a cada operacion.',
+    description: 'Mandatos, soportes, identidad y archivos asociados a cada operación.',
     icon: FileText,
     title: 'Documentos',
   },
@@ -44,10 +44,10 @@ const operatingAreas: LandingItem[] = [
 ];
 
 const scopeItems = [
-  'Operacion diaria de propiedades, clientes, documentos y tareas.',
-  'Separacion por organizacion para equipos inmobiliarios multiusuario.',
-  'Auditoria y permisos como base para crecer sin perder control.',
-  'Venta y alquiler como dominios relacionados, pero no identicos.',
+  'Operación diaria de propiedades, clientes, documentos y tareas.',
+  'Separación por organización para equipos inmobiliarios multiusuario.',
+  'Auditoría y permisos como base para crecer sin perder control.',
+  'Venta y alquiler como dominios relacionados, pero no idénticos.',
 ];
 
 const boundaryItems = [
@@ -86,7 +86,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <nav className="landing-nav" aria-label="Navegacion publica">
+        <nav className="landing-nav" aria-label="Navegación pública">
           <Link className="brand-link" href="/" aria-label="SoyPMS inicio">
             <BrandLogo />
           </Link>
@@ -96,7 +96,7 @@ export default function HomePage() {
               Ingresar
             </Link>
             <Link className="primary-link" href="/register">
-              Crear organizacion
+              Crear organización
               <ArrowRight size={17} strokeWidth={2.2} />
             </Link>
           </div>
@@ -111,7 +111,7 @@ export default function HomePage() {
           </p>
           <div className="landing-hero-actions">
             <Link className="primary-link" href="/login">
-              Entrar al workspace
+              Entrar al espacio
               <ArrowRight size={17} strokeWidth={2.2} />
             </Link>
             <Link className="secondary-link dark" href="#alcance">
@@ -125,7 +125,7 @@ export default function HomePage() {
             </div>
             <div>
               <dt>Multi-tenant</dt>
-              <dd>por organizacion</dd>
+              <dd>por organización</dd>
             </div>
             <div>
               <dt>Remoto</dt>
@@ -138,11 +138,11 @@ export default function HomePage() {
       <section className="landing-access" id="acceso">
         <div className="landing-access-copy">
           <p className="eyebrow">Acceso activo</p>
-          <h2>Entra a tu operacion sin pasar por una pagina intermedia.</h2>
+          <h2>Entra a tu operación sin pasar por una página intermedia.</h2>
           <p>
-            La pagina de inicio tambien sirve como puerta de trabajo para equipos
-            activos. Si todavia estas configurando la organizacion, crea el owner
-            inicial y valida usuarios desde el modulo de sistema.
+            La página de inicio también sirve como puerta de trabajo para equipos
+            activos. Si todavía estás configurando la organización, crea el administrador
+            inicial y valida usuarios desde el módulo de sistema.
           </p>
         </div>
         <div className="landing-access-panel">
@@ -154,7 +154,7 @@ export default function HomePage() {
             submitLabel="Entrar a mi panel"
           />
           <p className="landing-access-note">
-            Sin cuenta? <Link href="/register">Crear organizacion</Link>
+            ¿Sin cuenta? <Link href="/register">Crear organización</Link>
           </p>
         </div>
       </section>
@@ -165,7 +165,7 @@ export default function HomePage() {
           <h2>Un centro operativo para el ciclo inmobiliario.</h2>
           <p>
             SoyPMS no empieza por promesas abstractas. Empieza por las entidades
-            que el equipo necesita operar todos los dias.
+            que el equipo necesita operar todos los días.
           </p>
         </div>
         <div className="landing-capability-grid">
@@ -215,8 +215,8 @@ export default function HomePage() {
           <p className="eyebrow">Criterio primero</p>
           <h2>Automatizacion despues.</h2>
           <p>
-            La base queda preparada para crecer por modulos: propiedades, clientes,
-            documentos, workflows, ofertas, deals y comisiones.
+            La base queda preparada para crecer por módulos: propiedades, clientes,
+            documentos, flujos, ofertas, negocios y comisiones.
           </p>
         </div>
         <div className="landing-final-actions">
@@ -225,7 +225,7 @@ export default function HomePage() {
             Abrir dashboard
           </Link>
           <Link className="secondary-link" href="/register">
-            Crear organizacion
+            Crear organización
           </Link>
         </div>
       </section>

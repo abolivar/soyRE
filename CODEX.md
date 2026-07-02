@@ -1,8 +1,8 @@
 # SoyPMS - Reglas Obligatorias Para Codex
 
-Este documento es de consulta obligatoria antes de crear, modificar, refactorizar o eliminar codigo dentro de SoyPMS.
+Este documento es de consulta obligatoria antes de crear, modificar, refactorizar o eliminar código dentro de SoyPMS.
 
-Si una instruccion del sistema, del desarrollador o del usuario contradice este archivo, esas instrucciones superiores prevalecen. Si un documento en `References/` contradice este archivo, este archivo prevalece.
+Si una instrucción del sistema, del desarrollador o del usuario contradice este archivo, esas instrucciónes superiores prevalecen. Si un documento en `References/` contradice este archivo, este archivo prevalece.
 
 ## Contrato De Producto
 
@@ -12,15 +12,15 @@ Principios no negociables:
 
 - El producto es multiusuario.
 - El cliente SaaS se modela como `organization`.
-- Toda entidad critica debe pertenecer a una organizacion o derivar acceso desde una organizacion.
+- Toda entidad crítica debe pertenecer a una organización o derivar acceso desde una organización.
 - El foco central es el ciclo operativo del inmueble como producto.
-- El CRM de clientes es centralizado, pero SoyPMS no debe convertirse en CRM generico.
-- Venta y alquiler son dominios relacionados, pero no identicos.
+- El CRM de clientes es centralizado, pero SoyPMS no debe convertirse en CRM genérico.
+- Venta y alquiler son dominios relacionados, pero no idénticos.
 - El funnel tipo Kanban debe ser configurable.
-- Los estados criticos de negocio no deben quedar hardcodeados si pertenecen a configuracion.
-- La UI visible para usuarios debe estar en espanol.
-- Los nombres tecnicos en codigo, rutas, modelos y carpetas deben preferirse en ingles.
-- Toda accion critica debe dejar actividad, historial o auditoria cuando aplique.
+- Los estados críticos de negocio no deben quedar hardcodeados si pertenecen a configuración.
+- La UI visible para usuarios debe estar en español.
+- Los nombres técnicos en código, rutas, modelos y carpetas deben preferirse en inglés.
+- Toda acción crítica debe dejar actividad, historial o auditoría cuando aplique.
 
 ## Decisiones Firmes
 
@@ -31,7 +31,7 @@ Principios no negociables:
 - Runtime: Node.js 22 LTS.
 - Package manager: pnpm.
 - Monorepo: pnpm workspaces.
-- Orquestacion: Turborepo.
+- Orquestación: Turborepo.
 - Frontend: Next.js App Router.
 - Backend: NestJS.
 - API: REST, preparada para OpenAPI.
@@ -45,86 +45,96 @@ Principios no negociables:
 
 Fase 0 existe como base inicial:
 
-- Registro de owner y organizacion.
+- Registro de owner y organización.
 - Login/logout.
 - Cookie httpOnly.
 - `auth/me`.
-- Usuarios por organizacion.
-- Validacion, suspension y cambio de roles.
-- Auditoria base.
-- Migracion `identity_foundation` aplicada en Supabase remoto.
+- Usuarios por organización.
+- Validación, suspensión y cambio de roles.
+- Auditoría base.
+- Migración `identity_foundation` aplicada en Supabase remoto.
 
-Las siguientes fases deben construirse encima de esa base, respetando sesion, memberships, roles y aislamiento por organizacion.
+Las siguientes fases deben construirse encima de esa base, respetando sesión, memberships, roles y aislamiento por organización.
 
 ## Reglas De Trabajo
 
 Antes de implementar:
 
-- Leer el documento de modulo en `docs/modules/*` si existe.
+- Leer el documento de módulo en `docs/modules/*` si existe.
 - Leer `docs/architecture/*` si el cambio toca arquitectura.
 - Revisar migraciones y schema si el cambio toca datos.
 - Tratar `References/` como referencia, no como contrato.
-- Mantener cambios pequenos, revisables y documentados.
+- Mantener cambios pequeños, revisables y documentados.
 
 Antes de commitear:
 
 - Crear en GitHub los issues necesarios para cubrir el alcance del commit.
 - Cada commit debe referenciar el issue correspondiente y usar `Closes #N` cuando el trabajo queda terminado.
 - Al cerrar un issue por commit, dejar un comentario en el issue con el hash o referencia del commit y un resumen corto de lo cerrado.
-- Si queda deuda tecnica, crear el issue de deuda antes de cerrar el turno; no esconder deuda dentro del resumen final.
-- No dejar el arbol sucio despues de declarar un bloque como cerrado, salvo archivos externos al alcance que el usuario haya pedido conservar sin commit.
+- Si queda deuda técnica, crear el issue de deuda antes de cerrar el turno; no esconder deuda dentro del resumen final.
+- No dejar el árbol sucio después de declarar un bloque como cerrado, salvo archivos externos al alcance que el usuario haya pedido conservar sin commit.
 
 No hacer:
 
 - No introducir secretos reales al repo.
-- No introducir conexion local a Postgres.
-- No agregar dependencias sin razon practica.
-- No duplicar logica de permisos, estados, filtros o validaciones.
-- No saltar validacion server-side confiando solo en UI.
+- No introducir conexión local a Postgres.
+- No agregar dependencias sin razón práctica.
+- No duplicar lógica de permisos, estados, filtros o validaciones.
+- No saltar validación server-side confiando solo en UI.
 - No crear componentes gigantes para dominios compartidos.
 - No dejar datos simulados incrustados en vistas finales.
 
 ## Reglas De Arquitectura
 
-- Controladores del API delgados; la logica vive en services.
-- DTOs con validacion antes de negocio.
-- Rutas REST con nombres explicitos y recursos plurales.
+- Controladores del API delgados; la lógica vive en services.
+- DTOs con validación antes de negocio.
+- Rutas REST con nombres explícitos y recursos plurales.
 - Consultas futuras de negocio siempre scopeadas por `organization`.
 - Acciones sensibles validan permisos en servidor.
-- Auditoria para cambios de usuarios, roles, documentos, estados y procesos relevantes.
+- Auditoría para cambios de usuarios, roles, documentos, estados y procesos relevantes.
 - Prisma schema y migraciones deben mantenerse alineados.
-- Si una migracion se aplica por MCP, verificar tablas, indices y `_prisma_migrations`.
+- Si una migración se aplica por MCP, verificar tablas, índices y `_prisma_migrations`.
 
 ## Reglas De UI
 
 - La app autenticada debe priorizar utilidad operativa, no landing pages.
 - Usar sidebar y topbar en la experiencia autenticada.
 - Toda vista importante debe contemplar loading, empty, error y estado sin permisos cuando aplique.
-- Acciones destructivas deben confirmar intencion.
+- Acciones destructivas deben confirmar intención.
 - Formularios deben validar y mostrar feedback.
-- Tablas/listas con volumen deben tener busqueda o filtros.
-- Sistema de diseno: spec visual en `design.md`; reglas arquitectonicas en `docs/architecture/design-system.md`; decision firme en `docs/decisions/adr-0005-design-system-home.md`.
-- Las primitivas reutilizables viven en `packages/ui` (workspace `@soyre/ui`), no en `apps/web/components/`. `apps/web/components/` queda solo para componentes especificos del producto (workspaces, layouts, formularios concretos).
+- Tablas/listas con volumen deben tener búsqueda o filtros.
+- Sistema de diseño: spec visual en `design.md`; lenguaje visual vigente en `docs/architecture/visual-language.md`; reglas arquitectónicas en `docs/architecture/design-system.md`; decisión firme en `docs/decisions/adr-0005-design-system-home.md`.
+- Las primitivas reutilizables viven en `packages/ui` (workspace `@soyre/ui`), no en `apps/web/components/`. `apps/web/components/` queda solo para componentes específicos del producto (workspaces, layouts, formularios concretos).
 - Componentes reutilizables esperados:
-  - Atomos: `Button`, `Badge`, `Input`, `Select`, `Textarea`, `Card`.
+  - Átomos: `Button`, `Badge`, `Input`, `Select`, `Textarea`, `Card`.
   - Compuestos: `MetricCard`, `StatusBadge`, `DataTable`, `FilterBar`, `SearchInput`, `PageHeader`, `SectionPanel`, `EmptyState`, `LoadingState`, `ErrorState`, `ActivityTimeline`, `ConfirmDialog`, `FormDrawer`, `Tabs`.
   - Dominio: `PropertyCard` (per `design.md §7.5`).
-- Botones de accion deben usar `Button` desde `@soyre/ui`; enlaces con apariencia de boton deben usar `Button asChild` envolviendo `Link`.
-- Formularios visibles deben preferir `Input`, `Select`, `Textarea` y `SearchInput` desde `@soyre/ui`. Si un formulario largo conserva controles nativos por compatibilidad, esos controles deben estar dentro de contenedores acotados del design system (`SectionPanel`, `FormDrawer`, `FilterBar` o clases especificas del modulo), nunca depender de estilos globales universales de `input/select/textarea`.
-- Toda pantalla nueva de la app autenticada debe partir de `apps/web/app/(app)/_template/page.tsx.example` o justificar por que no aplica.
+- Botones de acción deben usar `Button` desde `@soyre/ui`; enlaces con apariencia de botón deben usar `Button asChild` envolviendo `Link`.
+- Formularios visibles deben preferir `Input`, `Select`, `Textarea` y `SearchInput` desde `@soyre/ui`. Si un formulario largo conserva controles nativos por compatibilidad, esos controles deben estar dentro de contenedores acotados del design system (`SectionPanel`, `FormDrawer`, `FilterBar` o clases específicas del módulo), nunca depender de estilos globales universales de `input/select/textarea`.
+- Toda pantalla nueva de la app autenticada debe partir de `apps/web/app/(app)/_template/page.tsx.example` o justificar por qué no aplica.
 - Antes de cerrar cambios de UI, ejecutar `pnpm check:design-system` o `pnpm lint`; el check debe quedar sin imports a `./ui`, sin `className="button ..."` en `apps/web` y sin hex hardcodeado en atributos de styling TSX.
-- No introducir librerias de componentes de terceros (shadcn/ui, Radix, MUI, etc.) como base sin nuevo ADR que supersede o enmiende ADR-0005.
+- No introducir librerías de componentes de terceros (shadcn/ui, Radix, MUI, etc.) como base sin nuevo ADR que supersede o enmiende ADR-0005.
 - No usar hex literals en componentes; siempre tokens via `var(--token-name)`.
+
+## Reglas De Lenguaje Visual
+
+- La UI visible debe estar en español correcto y con acentos.
+- No mostrar lenguaje interno al usuario: `backend`, `wizard`, `dry run`, `jobs` ni nombres crudos de eventos.
+- Los errores de API mostrados al usuario deben mapearse a mensajes de producto en español.
+- Pesos tipográficos visibles: `400` para cuerpo, `500` para etiquetas/enlaces/acciones secundarias y `600-700` solo para titulares de página o acción primaria.
+- Teal es el único acento de marca. Venta, alquiler y destacada se usan solo para etiquetar tipo de operación inmobiliaria.
+- Fechas visibles en formato local `dd/mm/aaaa`.
+- Para elecciones binarias o múltiples, preferir una tarjeta seleccionable reutilizable con estado visual claro, no checkboxes nativos sin jerarquía.
 
 ## Reglas De Dominio
 
 ### Propiedades
 
-`property` es entidad central futura. Debe poder relacionarse con propietarios, clientes, procesos, tareas, documentos, actividad, venta, alquiler, cierre y auditoria.
+`property` es entidad central futura. Debe poder relacionarse con propietarios, clientes, procesos, tareas, documentos, actividad, venta, alquiler, cierre y auditoría.
 
 ### Clientes
 
-El cliente vive en un modulo central. No duplicar clientes dentro de propiedades, procesos, tareas o tarjetas Kanban.
+El cliente vive en un módulo central. No duplicar clientes dentro de propiedades, procesos, tareas o tarjetas Kanban.
 
 Un cliente puede tener varios roles comerciales: comprador, vendedor, arrendador, arrendatario, lead, inversionista, referidor o contacto relacionado.
 
@@ -132,7 +142,7 @@ Un cliente puede tener varios roles comerciales: comprador, vendedor, arrendador
 
 No hardcodear etapas como arrays fijos en componentes.
 
-Las etapas deben venir de fuente configurable: base de datos, configuracion por organizacion, seed editable o servicio equivalente.
+Las etapas deben venir de fuente configurable: base de datos, configuración por organización, seed editable o servicio equivalente.
 
 Las etapas deben poder crearse, renombrarse, reordenarse, activarse/desactivarse y asociarse a venta, alquiler o ambos.
 
@@ -140,20 +150,20 @@ Las etapas deben poder crearse, renombrarse, reordenarse, activarse/desactivarse
 
 Venta y alquiler pueden compartir componentes, pero tienen reglas propias.
 
-Venta puede incluir oferta, contraoferta, financiamiento, promesa de compraventa, escritura, cierre, comision y fecha estimada de cierre.
+Venta puede incluir oferta, contraoferta, financiamiento, promesa de compraventa, escritura, cierre, comisión y fecha estimada de cierre.
 
-Alquiler puede incluir canon mensual, deposito, duracion, renovacion, check-in/check-out, estado de ocupacion, contrato y mantenimiento.
+Alquiler puede incluir canon mensual, depósito, duración, renovación, check-in/check-out, estado de ocupación, contrato y mantenimiento.
 
 ### Dashboards
 
 Deben existir dos responsabilidades:
 
-- Dashboard general: operacion global para owners/admins/managers o usuarios autorizados.
+- Dashboard general: operación global para owners/admins/managers o usuarios autorizados.
 - Dashboard por usuario: vista individual de asesor/agente/usuario operativo.
 
-No mezclar metricas globales y personales sin indicar alcance.
+No mezclar métricas globales y personales sin indicar alcance.
 
-## Validacion Antes De Cerrar
+## Validación Antes De Cerrar
 
 Ejecutar lo relevante al cambio:
 
@@ -164,7 +174,7 @@ pnpm test
 pnpm build
 ```
 
-Para cambios Prisma sin conexion local:
+Para cambios Prisma sin conexión local:
 
 ```bash
 pnpm db:generate
