@@ -13,6 +13,7 @@ import {
   Landmark,
   LayoutDashboard,
   ListChecks,
+  Lock,
   LogOut,
   Megaphone,
   Settings,
@@ -34,17 +35,21 @@ type NavigationItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  requiresManager?: boolean;
 };
 
-const businessNavigation: NavigationItem[] = [
+const operationNavigation: NavigationItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/businesses', label: 'Negocios', icon: BriefcaseBusiness },
   { href: '/pipeline', label: 'Funnel', icon: ListChecks },
   { href: '/properties', label: 'Propiedades', icon: Building2 },
   { href: '/clients', label: 'Clientes', icon: Users },
+];
+
+const managementNavigation: NavigationItem[] = [
   { href: '/agents', label: 'Agentes', icon: Handshake },
   { href: '/mandates', label: 'Mandatos', icon: Handshake },
-  { href: '/listings', label: 'Listings', icon: Megaphone },
+  { href: '/listings', label: 'Publicaciones', icon: Megaphone },
   { href: '/showings', label: 'Visitas', icon: CalendarDays },
   { href: '/offers', label: 'Ofertas', icon: Send },
   { href: '/tasks', label: 'Tareas', icon: CheckSquare },
@@ -59,9 +64,9 @@ const financeNavigation: NavigationItem[] = [
 ];
 
 const adminNavigation: NavigationItem[] = [
-  { href: '/users', label: 'Usuarios', icon: ShieldCheck },
-  { href: '/settings', label: 'Configuracion', icon: Settings },
-  { href: '/audit', label: 'Auditoria', icon: ScrollText },
+  { href: '/users', label: 'Usuarios', icon: ShieldCheck, requiresManager: true },
+  { href: '/settings', label: 'Configuracion', icon: Settings, requiresManager: true },
+  { href: '/audit', label: 'Auditoria', icon: ScrollText, requiresManager: true },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -75,6 +80,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   const activeMembership = useMemo(() => activeMemberships(user)[0] ?? null, [user]);
+  const isManager =
+    activeMembership?.role === 'OWNER' || activeMembership?.role === 'ADMIN';
 
   return (
     <div className="app-frame">
@@ -89,8 +96,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="app-nav" aria-label="Navegacion principal">
           <NavSection
-            items={businessNavigation}
+            items={operationNavigation}
             label="Operacion"
+            pathname={pathname}
+          />
+          <NavSection
+            items={managementNavigation}
+            label="Gestion"
             pathname={pathname}
           />
           <NavSection
@@ -98,7 +110,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             label="Finanzas"
             pathname={pathname}
           />
-          <NavSection items={adminNavigation} label="Sistema" pathname={pathname} />
+          <NavSection
+            canManage={isManager}
+            items={adminNavigation}
+            label="Sistema"
+            pathname={pathname}
+          />
         </nav>
 
         <div className="sidebar-footer">
@@ -106,7 +123,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <strong>{activeMembership?.organizationName ?? 'Sin sesion activa'}</strong>
           <span>
             {activeMembership
-              ? `${activeMembership.role} / Supabase remoto`
+              ? `${formatRoleLabel(activeMembership.role)} / Supabase remoto`
               : 'Validacion remota Supabase'}
           </span>
         </div>
@@ -138,10 +155,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function NavSection({
+  canManage = true,
   label,
   items,
   pathname,
 }: {
+  canManage?: boolean;
   label: string;
   items: NavigationItem[];
   pathname: string | null;
@@ -153,7 +172,22 @@ function NavSection({
         const isActive =
           pathname === item.href ||
           (item.href !== '/dashboard' && pathname?.startsWith(item.href));
+        const isDisabled = item.requiresManager && !canManage;
         const Icon = item.icon;
+
+        if (isDisabled) {
+          return (
+            <span
+              aria-disabled="true"
+              className="app-nav-link disabled"
+              key={item.href}
+            >
+              <Icon size={16} strokeWidth={2.1} />
+              <span>{item.label}</span>
+              <Lock className="nav-lock" size={13} strokeWidth={2.2} />
+            </span>
+          );
+        }
 
         return (
           <Link
@@ -169,4 +203,11 @@ function NavSection({
       })}
     </div>
   );
+}
+
+function formatRoleLabel(role: string) {
+  return role
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

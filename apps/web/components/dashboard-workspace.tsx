@@ -116,28 +116,29 @@ export function DashboardWorkspace() {
           detail: 'Inventario activo, publicado o en proceso.',
           icon: Building2,
           label: 'Propiedades',
-          tone: 'primary' as const,
+          tone: 'neutral' as const,
           value: String(summary.metrics.activeProperties),
         },
         {
           detail: 'Clientes activos para gestion comercial.',
           icon: Users,
           label: 'Clientes',
-          tone: 'rent' as const,
+          tone: 'neutral' as const,
           value: String(summary.metrics.activeClients),
         },
         {
           detail: 'Negocios abiertos en flujo transaccional.',
           icon: DollarSign,
+          emphasis: 'highlight' as const,
           label: 'Negocios',
-          tone: 'featured' as const,
+          tone: 'primary' as const,
           value: String(summary.metrics.openBusinesses),
         },
         {
           detail: 'Acciones programadas pendientes.',
           icon: CalendarCheck,
           label: 'Tareas',
-          tone: 'warning' as const,
+          tone: 'neutral' as const,
           value: String(summary.metrics.pendingActions),
         },
       ]
@@ -224,6 +225,7 @@ export function DashboardWorkspace() {
             {metricCards.map((metric) => (
               <MetricCard
                 detail={metric.detail}
+                emphasis={metric.emphasis}
                 icon={metric.icon}
                 key={metric.label}
                 label={metric.label}

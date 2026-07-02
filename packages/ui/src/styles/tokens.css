@@ -19,6 +19,8 @@
   --surface-strong: #ecece8;
   --ink: #242421;
   --ink-strong: #141412;
+  --text-on-primary: #ffffff;
+  --text-on-dark: #ffffff;
   --muted: #6f716c;
   --muted-soft: #9a9a96;
   --line: #e2e2dd;
@@ -38,7 +40,13 @@
   --warning-soft: #f8ead6;
   --danger: #b42318;
   --danger-soft: #fff0ed;
-  --sidebar: #141412;
-  --sidebar-muted: #aaa99f;
+  --sidebar: #0d3f38;
+  --sidebar-surface: #14524a;
+  --sidebar-accent: #5fd9c4;
+  --sidebar-text: #ffffff;
+  --sidebar-text-muted: #b9d8d1;
+  --sidebar-muted: #8fbfb5;
+  --sidebar-subtle: #6fa097;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
   --shadow-soft: 0 18px 44px rgba(20, 20, 18, 0.08);
 }

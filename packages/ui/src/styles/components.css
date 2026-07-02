@@ -317,7 +317,7 @@
 
 .metric-grid {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 18px;
 }
@@ -334,24 +334,26 @@
 
 .metric-card {
   display: grid;
-  gap: 14px;
-  min-height: 148px;
-  padding: 18px;
+  gap: 12px;
+  min-height: 132px;
+  padding: 16px;
 }
 
 .metric-card-header {
   align-items: center;
   display: flex;
-  justify-content: space-between;
+  gap: 8px;
+  justify-content: flex-start;
 }
 
 .metric-card-icon {
   align-items: center;
-  border-radius: 8px;
+  border-radius: 6px;
   display: inline-flex;
-  height: 38px;
+  flex: 0 0 auto;
+  height: 28px;
   justify-content: center;
-  width: 38px;
+  width: 28px;
 }
 
 .tone-primary .metric-card-icon,
@@ -396,24 +398,45 @@
   color: var(--muted);
 }
 
+.metric-card.emphasis-highlight {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+
+.metric-card.emphasis-highlight .metric-card-icon {
+  background: var(--primary);
+  color: var(--text-on-primary);
+}
+
+.metric-card.emphasis-highlight .metric-label,
+.metric-card.emphasis-highlight .metric-value,
+.metric-card.emphasis-highlight .metric-detail {
+  color: var(--primary-strong);
+}
+
+.metric-card.emphasis-highlight .metric-detail {
+  opacity: 0.76;
+}
+
 .metric-label {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 750;
 }
 
 .metric-value {
   color: var(--ink-strong);
   font-family: var(--font-display);
-  font-size: 2.15rem;
+  font-size: 1.8rem;
   font-weight: 850;
   letter-spacing: 0;
+  line-height: 1.08;
 }
 
 .metric-detail {
   color: var(--muted);
-  font-size: 0.84rem;
-  line-height: 1.5;
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 /* ============================================================
@@ -1322,6 +1345,10 @@
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease;
+}
+
+.search-input input {
+  padding-left: 40px;
 }
 
 .input-field textarea,
