@@ -38,6 +38,7 @@ import {
   LoadingState,
   MetricCard,
   PageHeader,
+  ProgressMeter,
   SectionPanel,
   Select,
   StatusBadge,
@@ -265,6 +266,72 @@ export function DashboardWorkspace() {
           <section className="dashboard-grid">
             <div className="dashboard-columns">
               <SectionPanel
+                title="Borradores en progreso"
+                description="Negocios guardados que pueden continuarse desde el wizard."
+                actions={
+                  <Button asChild variant="secondary">
+                    <Link href="/businesses">
+                      Ver negocios
+                      <ArrowUpRight size={16} strokeWidth={2.2} />
+                    </Link>
+                  </Button>
+                }
+              >
+                <DataTable
+                  columns={[
+                    { key: 'business', label: 'Borrador' },
+                    { key: 'client', label: 'Cliente' },
+                    { key: 'progress', label: 'Avance' },
+                    { key: 'updated', label: 'Actualizado' },
+                  ]}
+                  empty={
+                    <EmptyState
+                      action={
+                        <Button asChild>
+                          <Link href="/businesses/new">Crear borrador</Link>
+                        </Button>
+                      }
+                      description="Los negocios guardados como borrador apareceran aqui para retomarlos."
+                      icon={ClipboardCheck}
+                      title="Sin borradores"
+                    />
+                  }
+                  rows={summary.draftBusinesses.map((business) => ({
+                    id: business.id,
+                    cells: {
+                      business: (
+                        <Link
+                          className="entity-link"
+                          href={`/businesses/new?draftId=${business.id}`}
+                        >
+                          <strong className="entity-title">
+                            {business.title}
+                          </strong>
+                          <span className="meta-row">
+                            {business.code} / {operationLabel(business.operationType)}
+                          </span>
+                        </Link>
+                      ),
+                      client: business.clientName ?? 'Sin cliente',
+                      progress: (
+                        <ProgressMeter
+                          detail={
+                            business.draftProgress.nextStepLabel
+                              ? `Siguiente: ${business.draftProgress.nextStepLabel}`
+                              : 'Listo para revision'
+                          }
+                          label="Avance"
+                          size="sm"
+                          value={business.draftProgress.percent}
+                        />
+                      ),
+                      updated: formatDateTime(business.updatedAt),
+                    },
+                  }))}
+                />
+              </SectionPanel>
+
+              <SectionPanel
                 title="Negocios recientes"
                 description="Flujo transaccional con monto, cliente y estado actual."
                 actions={
@@ -304,14 +371,28 @@ export function DashboardWorkspace() {
                         business.currency,
                       ),
                       business: (
-                        <span>
-                          <strong className="entity-title">
-                            {business.title}
-                          </strong>
-                          <span className="meta-row">
-                            {business.code} / {operationLabel(business.operationType)}
+                        business.status === 'DRAFT' ? (
+                          <Link
+                            className="entity-link"
+                            href={`/businesses/new?draftId=${business.id}`}
+                          >
+                            <strong className="entity-title">
+                              {business.title}
+                            </strong>
+                            <span className="meta-row">
+                              {business.code} / continuar
+                            </span>
+                          </Link>
+                        ) : (
+                          <span>
+                            <strong className="entity-title">
+                              {business.title}
+                            </strong>
+                            <span className="meta-row">
+                              {business.code} / {operationLabel(business.operationType)}
+                            </span>
                           </span>
-                        </span>
+                        )
                       ),
                       client: business.clientName ?? 'Sin cliente',
                       closing: formatDate(business.expectedClosingDate),

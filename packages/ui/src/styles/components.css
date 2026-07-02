@@ -440,6 +440,74 @@
 }
 
 /* ============================================================
+ * Progress meter
+ * ============================================================ */
+
+.progress-meter {
+  display: grid;
+  gap: 6px;
+  min-width: 140px;
+}
+
+.progress-meter-copy {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.progress-meter-copy span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.progress-meter-copy strong {
+  color: var(--ink-strong);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.progress-meter-track {
+  background: var(--surface-muted);
+  border-radius: var(--radius-pill, 999px);
+  height: 8px;
+  overflow: hidden;
+}
+
+.progress-meter-track span {
+  background: var(--primary);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  min-width: 6px;
+}
+
+.progress-meter p {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.progress-meter-sm {
+  gap: 5px;
+  min-width: 118px;
+}
+
+.progress-meter-sm .progress-meter-track {
+  height: 6px;
+}
+
+.progress-meter-sm .progress-meter-copy span,
+.progress-meter-sm p {
+  font-size: 0.7rem;
+}
+
+.progress-meter-sm .progress-meter-copy strong {
+  font-size: 0.74rem;
+}
+
+/* ============================================================
  * Dashboard grid + section panel
  * ============================================================ */
 
@@ -539,6 +607,23 @@
   color: var(--ink-strong);
   display: block;
   font-weight: 850;
+}
+
+.entity-link {
+  border-radius: 6px;
+  color: inherit;
+  display: inline-grid;
+  gap: 0;
+  outline: none;
+  text-decoration: none;
+}
+
+.entity-link:hover .entity-title {
+  color: var(--primary-strong);
+}
+
+.entity-link:focus-visible {
+  box-shadow: 0 0 0 3px rgba(26, 158, 143, 0.16);
 }
 
 .meta-row {

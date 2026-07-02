@@ -23,7 +23,12 @@ import {
   Workflow,
   X,
 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  calculateBusinessDraftProgress,
+  type BusinessDraftProgress,
+} from '@soyre/shared';
 import {
   apiFetch,
   AuthMembership,
@@ -50,6 +55,7 @@ import {
   ErrorState,
   LoadingState,
   PageHeader,
+  ProgressMeter,
   SectionPanel,
   StatusBadge,
 } from '@soyre/ui';
@@ -297,6 +303,7 @@ const emptyCommissionCalculation: CommissionPlanCalculation = {
 };
 
 export function BusinessWizard() {
+  const searchParams = useSearchParams();
   const latestDataRef = useRef(defaultWizardData);
   const saveInFlightRef = useRef(false);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -346,29 +353,33 @@ export function BusinessWizard() {
       try {
         const auth = await apiFetch<{ user: AuthUser }>('/auth/me');
         const membership = activeMemberships(auth.user)[0];
+        const draftId = searchParams.get('draftId');
 
         if (!membership) {
           throw new Error('No tienes una organizacion activa.');
         }
 
-        const query = new URLSearchParams({
-          organizationId: membership.organizationId,
-        });
+        const draftResponse = draftId
+          ? await apiFetch<BusinessDraftResponse>(`/businesses/${draftId}`)
+          : await apiFetch<BusinessDraftResponse>('/business-drafts', {
+              body: JSON.stringify({
+                currency: defaultWizardData.currency,
+                mode: defaultWizardData.mode,
+                operationType: defaultWizardData.operationType,
+                organizationId: membership.organizationId,
+                title: 'Nuevo negocio',
+              }),
+              method: 'POST',
+            });
+
+        if (draftResponse.business.status !== 'DRAFT') {
+          throw new Error('Este negocio ya no es un borrador editable.');
+        }
+
+        const organizationId = draftResponse.business.organizationId;
+        const query = new URLSearchParams({ organizationId });
         const contextResponse = await apiFetch<BusinessContextResponse>(
           `/businesses/new/context?${query.toString()}`,
-        );
-        const draftResponse = await apiFetch<BusinessDraftResponse>(
-          '/business-drafts',
-          {
-            body: JSON.stringify({
-              currency: defaultWizardData.currency,
-              mode: defaultWizardData.mode,
-              operationType: defaultWizardData.operationType,
-              organizationId: membership.organizationId,
-              title: 'Nuevo negocio',
-            }),
-            method: 'POST',
-          },
         );
         const merged = mergeWizardData(
           defaultWizardData,
@@ -380,7 +391,7 @@ export function BusinessWizard() {
         }
 
         setUser(auth.user);
-        setActiveOrganizationId(membership.organizationId);
+        setActiveOrganizationId(organizationId);
         setContext(contextResponse);
         setDraft(draftResponse.business);
         setData(merged);
@@ -404,7 +415,7 @@ export function BusinessWizard() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!draft || !isDirty) {
@@ -438,6 +449,10 @@ export function BusinessWizard() {
     [activeOrganizationId, user],
   );
   const currentStepIndex = steps.findIndex((step) => step.id === activeStep);
+  const draftProgress = useMemo(
+    () => calculateBusinessDraftProgress(data),
+    [data],
+  );
   const selectedProperty = useMemo(
     () =>
       context?.properties.find((property) => property.id === data.propertyId) ??
@@ -1032,7 +1047,7 @@ export function BusinessWizard() {
     <div className="business-wizard-page">
       <PageHeader
         eyebrow="Negocios"
-        title="Crear negocio"
+        title={draft.code ? `Continuar ${draft.code}` : 'Crear negocio'}
         description="Wizard transaccional con borrador, calculos, validacion y preview antes de confirmar."
         actions={
           <>
@@ -1064,6 +1079,18 @@ export function BusinessWizard() {
           </>
         }
       />
+
+      <div className="business-progress-card">
+        <ProgressMeter
+          detail={
+            draftProgress.nextStepLabel
+              ? `Siguiente bloque: ${draftProgress.nextStepLabel}.`
+              : 'Borrador listo para revision.'
+          }
+          label="Avance del borrador"
+          value={draftProgress.percent}
+        />
+      </div>
 
       {formError ? <div className="form-error">{formError}</div> : null}
       {calcError ? <div className="form-error">{calcError}</div> : null}
@@ -1215,6 +1242,7 @@ export function BusinessWizard() {
           selectedContractType={selectedContractType}
           selectedProperty={selectedProperty}
           validationCounts={validationCounts}
+          draftProgress={draftProgress}
         />
       </div>
     </div>
@@ -2345,6 +2373,7 @@ function BusinessSummary({
   commissionCalculation,
   data,
   draft,
+  draftProgress,
   paymentCalculation,
   selectedContractType,
   selectedProperty,
@@ -2354,6 +2383,7 @@ function BusinessSummary({
   commissionCalculation: CommissionPlanCalculation;
   data: BusinessWizardData;
   draft: BusinessRecord;
+  draftProgress: BusinessDraftProgress;
   paymentCalculation: PaymentPlanCalculation;
   selectedContractType: BusinessContextResponse['contractTypes'][number] | null;
   selectedProperty: BusinessContextProperty | null;
@@ -2411,6 +2441,16 @@ function BusinessSummary({
           </dd>
         </div>
       </dl>
+      <ProgressMeter
+        detail={
+          draftProgress.nextStepLabel
+            ? `Siguiente: ${draftProgress.nextStepLabel}`
+            : 'Borrador completo'
+        }
+        label="Avance"
+        size="sm"
+        value={draftProgress.percent}
+      />
       <div className="summary-alerts">
         <span className={validationCounts.errors > 0 ? 'danger' : 'success'}>
           {validationCounts.errors} errores

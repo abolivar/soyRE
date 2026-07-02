@@ -41,6 +41,8 @@ export type {
 export { PageHeader } from './components/PageHeader';
 export { MetricCard } from './components/MetricCard';
 export { StatusBadge } from './components/StatusBadge';
+export { ProgressMeter } from './components/ProgressMeter';
+export type { ProgressMeterProps, ProgressMeterSize } from './components/ProgressMeter';
 export { SectionPanel } from './components/SectionPanel';
 export { SearchInput } from './components/SearchInput';
 export type { SearchInputProps } from './components/SearchInput';

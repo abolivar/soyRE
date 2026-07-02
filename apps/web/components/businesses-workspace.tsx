@@ -31,6 +31,7 @@ import {
   FilterBar,
   LoadingState,
   PageHeader,
+  ProgressMeter,
   SearchInput,
   Select,
   StatusBadge,
@@ -305,6 +306,7 @@ export function BusinessesWorkspace() {
             { key: 'property', label: 'Inmueble' },
             { key: 'operation', label: 'Operacion' },
             { key: 'status', label: 'Estado' },
+            { key: 'progress', label: 'Avance' },
             { key: 'next', label: 'Proximo' },
             { key: 'amount', label: 'Monto' },
           ]}
@@ -320,48 +322,78 @@ export function BusinessesWorkspace() {
               title="Sin negocios"
             />
           }
-          rows={businesses.map((business) => ({
-            id: business.id,
-            cells: {
-              amount: formatMoneyCents(
-                business.totalContractAmountCents,
-                business.currency,
-              ),
-              business: (
-                <span>
-                  <strong className="entity-title">{business.title}</strong>
-                  <span className="meta-row">{business.code}</span>
-                </span>
-              ),
-              client: business.clientName ?? 'Sin cliente',
-              next: business.nextPayment ? (
-                <span>
-                  <strong className="entity-title">{business.nextPayment.label}</strong>
-                  <span className="meta-row">
-                    {formatDate(business.nextPayment.dueDate)}
+          rows={businesses.map((business) => {
+            const continuationHref =
+              business.status === 'DRAFT'
+                ? `/businesses/new?draftId=${business.id}`
+                : null;
+
+            return {
+              id: business.id,
+              cells: {
+                amount: formatMoneyCents(
+                  business.totalContractAmountCents,
+                  business.currency,
+                ),
+                business: continuationHref ? (
+                  <Link className="entity-link" href={continuationHref}>
+                    <strong className="entity-title">{business.title}</strong>
+                    <span className="meta-row">{business.code} / continuar</span>
+                  </Link>
+                ) : (
+                  <span>
+                    <strong className="entity-title">{business.title}</strong>
+                    <span className="meta-row">{business.code}</span>
                   </span>
-                  <StatusBadge tone={paymentStatusTone(business.nextPayment.status)}>
-                    {paymentStatusLabel(business.nextPayment.status)}
+                ),
+                client: business.clientName ?? 'Sin cliente',
+                next: business.nextPayment ? (
+                  <span>
+                    <strong className="entity-title">
+                      {business.nextPayment.label}
+                    </strong>
+                    <span className="meta-row">
+                      {formatDate(business.nextPayment.dueDate)}
+                    </span>
+                    <StatusBadge
+                      tone={paymentStatusTone(business.nextPayment.status)}
+                    >
+                      {paymentStatusLabel(business.nextPayment.status)}
+                    </StatusBadge>
+                  </span>
+                ) : business.nextAction ? (
+                  scheduledActionLabel(business.nextAction.eventType)
+                ) : business.status === 'DRAFT' ? (
+                  'Continuar borrador'
+                ) : (
+                  'Sin siguiente accion'
+                ),
+                operation: (
+                  <StatusBadge tone={operationTone(business.operationType)}>
+                    {operationLabel(business.operationType)}
                   </StatusBadge>
-                </span>
-              ) : business.nextAction ? (
-                scheduledActionLabel(business.nextAction.eventType)
-              ) : (
-                'Sin siguiente accion'
-              ),
-              operation: (
-                <StatusBadge tone={operationTone(business.operationType)}>
-                  {operationLabel(business.operationType)}
-                </StatusBadge>
-              ),
-              property: business.propertyTitle ?? 'Sin inmueble',
-              status: (
-                <StatusBadge tone={businessStatusTone(business.status)}>
-                  {businessStatusLabel(business.status)}
-                </StatusBadge>
-              ),
-            },
-          }))}
+                ),
+                progress: (
+                  <ProgressMeter
+                    detail={
+                      business.draftProgress.nextStepLabel
+                        ? `Siguiente: ${business.draftProgress.nextStepLabel}`
+                        : 'Completo'
+                    }
+                    label="Borrador"
+                    size="sm"
+                    value={business.draftProgress.percent}
+                  />
+                ),
+                property: business.propertyTitle ?? 'Sin inmueble',
+                status: (
+                  <StatusBadge tone={businessStatusTone(business.status)}>
+                    {businessStatusLabel(business.status)}
+                  </StatusBadge>
+                ),
+              },
+            };
+          })}
         />
       )}
     </>

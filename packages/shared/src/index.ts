@@ -7,5 +7,6 @@ export const DOMAIN_TERMS = {
 } as const;
 
 export * from './commission-plan.js';
+export * from './business-progress.js';
 export * from './money.js';
 export * from './payment-plan.js';

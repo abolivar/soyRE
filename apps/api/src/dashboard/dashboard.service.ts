@@ -9,6 +9,7 @@ import {
   ScheduledActionStatus,
   ScheduledActionType,
 } from '@soyre/database';
+import { calculateBusinessDraftProgress } from '@soyre/shared';
 import { READ_ROLES } from '../auth/authorization.constants.js';
 import { OrganizationAccessService } from '../auth/organization-access.service.js';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
@@ -21,7 +22,8 @@ type DashboardRecentBusiness = {
   status: BusinessStatus;
   operationType: BusinessOperationType;
   currency: string;
-  totalContractAmountCents: bigint;
+  draftData: unknown;
+  totalContractAmountCents: bigint | null;
   expectedClosingDate: Date | null;
   primaryClient: { displayName: string } | null;
   property: { title: string; city: string; zone: string } | null;
@@ -77,6 +79,7 @@ export class DashboardService {
       upcomingPaymentLines,
       commissionAggregate,
       recentBusinesses,
+      draftBusinesses,
       recentAuditLogs,
       myActions,
     ] = await Promise.all([
@@ -179,6 +182,29 @@ export class DashboardService {
           status: true,
           operationType: true,
           currency: true,
+          draftData: true,
+          totalContractAmountCents: true,
+          expectedClosingDate: true,
+          primaryClient: { select: { displayName: true } },
+          property: { select: { title: true, city: true, zone: true } },
+          updatedAt: true,
+        },
+      }),
+      this.prisma.business.findMany({
+        where: {
+          organizationId: membership.organizationId,
+          status: BusinessStatus.DRAFT,
+        },
+        orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+        take: 6,
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          status: true,
+          operationType: true,
+          currency: true,
+          draftData: true,
           totalContractAmountCents: true,
           expectedClosingDate: true,
           primaryClient: { select: { displayName: true } },
@@ -223,6 +249,7 @@ export class DashboardService {
       }),
     ]);
     const recentBusinessItems = recentBusinesses as DashboardRecentBusiness[];
+    const draftBusinessItems = draftBusinesses as DashboardRecentBusiness[];
     const actionItems = myActions as DashboardAction[];
     const auditLogItems = recentAuditLogs as DashboardAuditLog[];
 
@@ -255,6 +282,29 @@ export class DashboardService {
         status: business.status,
         operationType: business.operationType,
         currency: business.currency,
+        draftProgress: calculateBusinessDraftProgress(
+          objectRecord(business.draftData),
+        ),
+        totalContractAmountCents: centsString(business.totalContractAmountCents),
+        expectedClosingDate:
+          business.expectedClosingDate?.toISOString().slice(0, 10) ?? null,
+        clientName: business.primaryClient?.displayName ?? null,
+        propertyTitle: business.property?.title ?? null,
+        propertyLocation: business.property
+          ? [business.property.city, business.property.zone].filter(Boolean).join(' / ')
+          : null,
+        updatedAt: business.updatedAt.toISOString(),
+      })),
+      draftBusinesses: draftBusinessItems.map((business) => ({
+        id: business.id,
+        code: business.code,
+        title: business.title,
+        status: business.status,
+        operationType: business.operationType,
+        currency: business.currency,
+        draftProgress: calculateBusinessDraftProgress(
+          objectRecord(business.draftData),
+        ),
         totalContractAmountCents: centsString(business.totalContractAmountCents),
         expectedClosingDate:
           business.expectedClosingDate?.toISOString().slice(0, 10) ?? null,
@@ -306,6 +356,12 @@ export class DashboardService {
 
 function centsString(value: bigint | number | null | undefined) {
   return value === null || value === undefined ? '0' : value.toString();
+}
+
+function objectRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function startOfDay(value: Date) {

@@ -40,6 +40,7 @@ import {
   ScheduledActionType,
 } from '@soyre/database';
 import {
+  calculateBusinessDraftProgress,
   calculateCommissionPlan,
   calculatePaymentPlan,
   centsToString,
@@ -2095,7 +2096,10 @@ export class BusinessesService {
       mode: business.mode,
       operationType: business.operationType,
       currency: business.currency,
-      totalContractAmountCents: centsToString(business.totalContractAmountCents),
+      draftProgress: calculateBusinessDraftProgress(
+        objectValue(business.draftData),
+      ),
+      totalContractAmountCents: centsString(business.totalContractAmountCents),
       expectedClosingDate:
         business.expectedClosingDate?.toISOString().slice(0, 10) ?? null,
       updatedAt: business.updatedAt.toISOString(),
@@ -2157,6 +2161,16 @@ function clauseDraftsFromData(data: Record<string, unknown>) {
   const clauses = [...arrayValue(data.clauses), ...arrayValue(contract.clauses)];
 
   return clauses.map((item) => objectValue(item) as DraftClause);
+}
+
+function centsString(value: bigint | number | null | undefined) {
+  if (value === null || value === undefined) {
+    return '0';
+  }
+
+  return typeof value === 'bigint'
+    ? centsToString(value)
+    : centsToString(BigInt(value));
 }
 
 function feeDraftsFromData(data: Record<string, unknown>) {

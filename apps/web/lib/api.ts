@@ -1,3 +1,5 @@
+import type { BusinessDraftProgress } from '@soyre/shared';
+
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ??
   'http://localhost:4000';
@@ -674,6 +676,22 @@ export type DashboardSummaryResponse = {
     status: BusinessStatus;
     operationType: BusinessOperationType;
     currency: string;
+    draftProgress: BusinessDraftProgress;
+    totalContractAmountCents: string;
+    expectedClosingDate: string | null;
+    clientName: string | null;
+    propertyTitle: string | null;
+    propertyLocation: string | null;
+    updatedAt: string;
+  }>;
+  draftBusinesses: Array<{
+    id: string;
+    code: string;
+    title: string;
+    status: BusinessStatus;
+    operationType: BusinessOperationType;
+    currency: string;
+    draftProgress: BusinessDraftProgress;
     totalContractAmountCents: string;
     expectedClosingDate: string | null;
     clientName: string | null;
@@ -710,6 +728,7 @@ export type BusinessListItem = {
   mode: BusinessMode;
   operationType: BusinessOperationType;
   currency: string;
+  draftProgress: BusinessDraftProgress;
   totalContractAmountCents: string;
   expectedClosingDate: string | null;
   updatedAt: string;
