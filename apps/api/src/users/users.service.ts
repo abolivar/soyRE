@@ -160,12 +160,13 @@ export class UsersService {
         include: { user: true },
       });
 
-      if (updated.user.status === UserStatus.PENDING) {
-        await tx.user.update({
-          where: { id: updated.userId },
-          data: { status: UserStatus.ACTIVE },
-        });
-      }
+      const user =
+        updated.user.status === UserStatus.PENDING
+          ? await tx.user.update({
+              where: { id: updated.userId },
+              data: { status: UserStatus.ACTIVE },
+            })
+          : updated.user;
 
       await tx.auditLog.create({
         data: {
@@ -180,7 +181,7 @@ export class UsersService {
         },
       });
 
-      return updated;
+      return { ...updated, user };
     });
 
     return { user: this.serializeMembership(result) };
