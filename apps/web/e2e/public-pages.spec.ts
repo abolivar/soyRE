@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 const pages = [
   {
-    cta: 'Entrar al workspace',
+    cta: 'Entrar al espacio',
     heading: 'SoyPMS',
     name: 'home',
     path: '/',
@@ -15,7 +15,7 @@ const pages = [
   },
   {
     cta: 'Crear',
-    heading: 'Crear organizacion',
+    heading: 'Crear organización',
     name: 'register',
     path: '/register',
   },

@@ -13,6 +13,8 @@
     "check:design-system": "node scripts/check-design-system.mjs",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
+    "test:api-smoke": "pnpm --filter @soyre/api build && tsx --test tests/api-smoke.test.ts",
+    "test:alpha": "pnpm --filter @soyre/api build && tsx --test tests/alpha/*.test.ts",
     "test:e2e": "pnpm --filter @soyre/web test:e2e",
     "playwright:install": "pnpm --filter @soyre/web exec playwright install chromium",
     "format": "prettier --write .",
@@ -23,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.0",
     "eslint": "^10.6.0",
     "prettier": "^3.9.3",
     "tsx": "^4.22.4",
