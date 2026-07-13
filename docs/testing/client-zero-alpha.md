@@ -74,6 +74,18 @@ Resultado ideal:
 Si el comando se ejecuta sin `CLIENT_ZERO_MUTATING=true` o
 `ALPHA_SMOKE_MUTATING=true`, debe omitirse sin crear datos.
 
+## Prueba Manual Detallada De Negocios
+
+El recorrido manual profundo de construccion de negocios para ejecutar con la
+extension de Claude en Chrome esta en:
+
+```text
+docs/testing/business-construction-claude-chrome.md
+```
+
+Ese protocolo cubre venta simple, alquiler avanzado, reserva sin inmueble,
+cesion avanzada, reanudacion de borradores y validaciones negativas.
+
 ## Recorrido Manual
 
 ### 1. Salud Publica
