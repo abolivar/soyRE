@@ -31,3 +31,4 @@ ds-bundle/
 
 # design-sync generated flat stylesheet (regenerated from tokens.css + components.css each sync)
 packages/ui/src/styles/_ds_sync_flat.css
+.vercel
