@@ -18,6 +18,8 @@
 
 - **Backend (`apps/api`)**
   - NestJS REST API, preparada para OpenAPI.
+  - En producción alpha corre como servicio Node separado y puede publicarse detrás
+    de un rewrite same-origin del frontend para preservar cookies httpOnly.
 
 - **Datos (`packages/database`)**
   - PostgreSQL gestionado en Supabase.
