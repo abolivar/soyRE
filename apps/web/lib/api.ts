@@ -141,6 +141,11 @@ export type PlatformAccessResponse = {
   platformAdmin: boolean;
 };
 
+export type PasswordRecoveryResponse = {
+  message: string;
+  ok: boolean;
+};
+
 export type CreatePlatformOrganizationPayload = {
   organizationName: string;
   organizationSlug?: string;

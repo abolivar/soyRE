@@ -13,6 +13,7 @@ import { AuthService } from './auth.service.js';
 import { AUTH_COOKIE_NAME } from './auth.constants.js';
 import type { AuthenticatedUser } from './auth.types.js';
 import { LoginDto } from './dto/login.dto.js';
+import { PasswordRecoveryDto } from './dto/password-recovery.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { Public } from './public.decorator.js';
 
@@ -56,6 +57,13 @@ export class AuthController {
     });
 
     return { ok: true };
+  }
+
+  @Post('password-recovery')
+  @Public()
+  @HttpCode(200)
+  requestPasswordRecovery(@Body() dto: PasswordRecoveryDto) {
+    return this.authService.requestPasswordRecovery(dto);
   }
 
   @Get('me')

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { BrandLogo } from '../../components/brand-logo';
 import { LoginForm } from '../../components/login-form';
+import { PasswordRecoveryForm } from '../../components/password-recovery-form';
 import { resolveLoginRedirectTarget } from '../../lib/auth-routing';
 
 type LoginPageProps = {
@@ -27,6 +28,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </div>
 
         <LoginForm redirectTo={redirectTo} />
+        <PasswordRecoveryForm />
 
         <p className="muted-row">
           <span>¿Sin cuenta?</span>

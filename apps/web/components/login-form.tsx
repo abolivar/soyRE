@@ -63,7 +63,6 @@ export function LoginForm({
         id="login-password"
         label="Contraseña"
         autoComplete="current-password"
-        minLength={10}
         name="password"
         required
       />
