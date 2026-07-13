@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
-import { Button, Input } from '@soyre/ui';
+import { Button, Input, PasswordInput } from '@soyre/ui';
 import { BrandLogo } from '../../components/brand-logo';
-import { apiFetch, AuthUser } from '../../lib/api';
+import { apiFetch, type AuthUser } from '../../lib/api';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export default function RegisterPage() {
       });
       router.push('/dashboard');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Registration failed.');
+      setError(caught instanceof Error ? caught.message : 'No se pudo crear la organización.');
     } finally {
       setIsSubmitting(false);
     }
@@ -79,18 +79,17 @@ export default function RegisterPage() {
           </div>
           <Input
             id="register-email"
-            label="Email"
+            label="Correo"
             name="email"
             required
             type="email"
           />
-          <Input
+          <PasswordInput
             id="register-password"
-            label="Contrasena"
+            label="Contraseña"
             minLength={10}
             name="password"
             required
-            type="password"
           />
           {error ? <p className="form-error">{error}</p> : null}
           <Button disabled={isSubmitting} loading={isSubmitting} type="submit">
@@ -99,7 +98,7 @@ export default function RegisterPage() {
         </form>
 
         <p className="muted-row">
-          <span>Ya tienes cuenta?</span>
+          <span>¿Ya tienes cuenta?</span>
           <Link href="/login">Ingresar</Link>
         </p>
       </section>
