@@ -766,11 +766,11 @@ function parseMrzDate(value: string, mode: 'birth' | 'expiration') {
 
 function validateMrzCheckDigit(value: string, checkDigit: string, fieldLabel: string) {
   if (!/^\d$/.test(checkDigit)) {
-    throw new Error(`La MRZ no tiene digito de verificacion valido para ${fieldLabel}.`);
+    throw new Error(`La MRZ no tiene dígito de verificación válido para ${fieldLabel}.`);
   }
 
   if (calculateMrzCheckDigit(value) !== checkDigit) {
-    throw new Error(`La MRZ tiene digito de verificacion invalido en ${fieldLabel}.`);
+    throw new Error(`La MRZ tiene dígito de verificación inválido en ${fieldLabel}.`);
   }
 }
 

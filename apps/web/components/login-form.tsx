@@ -40,7 +40,11 @@ export function LoginForm({
       });
       router.push(redirectTo);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Login failed.');
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'No se pudo iniciar sesión. Intenta de nuevo.',
+      );
     } finally {
       setIsSubmitting(false);
     }
