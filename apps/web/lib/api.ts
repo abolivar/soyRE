@@ -1,8 +1,44 @@
 import type { BusinessDraftProgress } from '@soyre/shared';
 
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ??
-  'http://localhost:4000';
+  resolveApiUrl(process.env.NEXT_PUBLIC_API_URL, process.env.NODE_ENV);
+
+const API_CONNECTION_ERROR =
+  'No pudimos conectar con el servicio de SoyPMS. Intenta de nuevo en unos minutos.';
+
+const API_NOT_CONFIGURED_ERROR =
+  'El servicio de SoyPMS no está conectado en este entorno. Avísanos para completar la activación.';
+
+export function resolveApiUrl(
+  rawUrl: string | undefined,
+  nodeEnv: string | undefined,
+) {
+  const normalized = rawUrl?.trim().replace(/\/$/, '');
+
+  if (normalized) {
+    if (nodeEnv === 'production' && isLocalhostUrl(normalized)) {
+      return null;
+    }
+
+    return normalized;
+  }
+
+  if (nodeEnv === 'production') {
+    return null;
+  }
+
+  return 'http://localhost:4000';
+}
+
+function isLocalhostUrl(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+
+    return url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
 
 export type AuthMembership = {
   id: string;
@@ -1076,7 +1112,7 @@ export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const response = await fetch(`${API_URL}/api${path}`, {
+  const response = await fetchApi(path, {
     ...init,
     credentials: 'include',
     headers: {
@@ -1101,7 +1137,7 @@ export async function apiFetch<T>(
 }
 
 export async function downloadApiFile(path: string) {
-  const response = await fetch(`${API_URL}/api${path}`, {
+  const response = await fetchApi(path, {
     credentials: 'include',
   });
 
@@ -1119,6 +1155,18 @@ export async function downloadApiFile(path: string) {
     'documento';
 
   return { blob, fileName };
+}
+
+async function fetchApi(path: string, init: RequestInit) {
+  if (!API_URL) {
+    throw new Error(API_NOT_CONFIGURED_ERROR);
+  }
+
+  try {
+    return await fetch(`${API_URL}/api${path}`, init);
+  } catch {
+    throw new Error(API_CONNECTION_ERROR);
+  }
 }
 
 function toUserFacingApiError(message: string, status: number) {
