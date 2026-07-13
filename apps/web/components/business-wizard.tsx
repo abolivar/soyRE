@@ -329,6 +329,7 @@ export function BusinessWizard() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
+  const [isContextRefreshing, setIsContextRefreshing] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [newClient, setNewClient] = useState<NewClientForm>({
@@ -612,6 +613,33 @@ export function BusinessWizard() {
       );
     } finally {
       setIsCalculating(false);
+    }
+  }
+
+  async function refreshContext() {
+    if (!activeOrganizationId) {
+      return;
+    }
+
+    setIsContextRefreshing(true);
+    setFormError(null);
+
+    try {
+      const query = new URLSearchParams({ organizationId: activeOrganizationId });
+      const contextResponse = await apiFetch<BusinessContextResponse>(
+        `/businesses/new/context?${query.toString()}`,
+      );
+
+      setContext(contextResponse);
+      setSuccessMessage('Clientes, inmuebles y agentes actualizados.');
+    } catch (caught) {
+      setFormError(
+        caught instanceof Error
+          ? caught.message
+          : 'No se pudieron actualizar clientes, inmuebles y agentes.',
+      );
+    } finally {
+      setIsContextRefreshing(false);
     }
   }
 
@@ -1066,6 +1094,15 @@ export function BusinessWizard() {
               Guardar
             </Button>
             <Button
+              variant="secondary"
+              disabled={isContextRefreshing}
+              icon={RefreshCcw}
+              loading={isContextRefreshing}
+              onClick={() => void refreshContext()}
+            >
+              Actualizar datos
+            </Button>
+            <Button
               disabled={isPreviewing}
               icon={ClipboardCheck}
               loading={isPreviewing}
@@ -1137,14 +1174,18 @@ export function BusinessWizard() {
               onAddExistingClient={addExistingClient}
               onCreateClient={(event) => void createInlineClient(event)}
               onNewClientChange={setNewClient}
+              onRefreshContext={() => void refreshContext()}
               onRemoveParticipant={removeParticipant}
               onRoleChange={setParticipantRole}
+              isContextRefreshing={isContextRefreshing}
             />
           ) : null}
           {activeStep === 'property' ? (
             <PropertyStep
               data={data}
+              isContextRefreshing={isContextRefreshing}
               onSelectProperty={selectProperty}
+              onRefreshContext={() => void refreshContext()}
               properties={context.properties}
               selectedProperty={selectedProperty}
             />
@@ -1188,12 +1229,14 @@ export function BusinessWizard() {
               onAddAdvancedRule={addSimpleRuleToAdvanced}
               onAddCommissionParticipant={addCommissionParticipant}
               onPrimaryAgentChange={addPrimaryAgent}
+              onRefreshContext={() => void refreshContext()}
               onRemoveRule={removeCommissionRule}
               onRuleChange={updateCommissionRule}
               primaryAgent={primaryAgent}
               setCommParticipantId={setCommParticipantId}
               updateCommissionPlan={updateCommissionPlan}
               updateData={updateData}
+              isContextRefreshing={isContextRefreshing}
             />
           ) : null}
           {activeStep === 'automation' ? (
@@ -1371,20 +1414,24 @@ function ClientsStep({
   clientError,
   clients,
   data,
+  isContextRefreshing,
   newClient,
   onAddExistingClient,
   onCreateClient,
   onNewClientChange,
+  onRefreshContext,
   onRemoveParticipant,
   onRoleChange,
 }: {
   clientError: string | null;
   clients: BusinessContextClient[];
   data: BusinessWizardData;
+  isContextRefreshing: boolean;
   newClient: NewClientForm;
   onAddExistingClient: (clientId: string) => void;
   onCreateClient: (event: FormEvent<HTMLFormElement>) => void;
   onNewClientChange: (value: NewClientForm) => void;
+  onRefreshContext: () => void;
   onRemoveParticipant: (participantKey: string) => void;
   onRoleChange: (participantKey: string, role: BusinessParticipantRole) => void;
 }) {
@@ -1398,8 +1445,25 @@ function ClientsStep({
     <SectionPanel
       title="Cliente y partes"
       description="Puedes buscar un cliente existente o crearlo sin salir del flujo."
+      actions={
+        <Button
+          variant="secondary"
+          icon={RefreshCcw}
+          loading={isContextRefreshing}
+          disabled={isContextRefreshing}
+          onClick={onRefreshContext}
+        >
+          Actualizar clientes
+        </Button>
+      }
     >
       {clientError ? <div className="form-error">{clientError}</div> : null}
+      {clients.length === 0 ? (
+        <div className="business-note">
+          No hay clientes cargados en este borrador. Actualiza la lista o crea un
+          cliente rapido.
+        </div>
+      ) : null}
       <div className="business-inline-actions">
         <label>
           Cliente existente
@@ -1526,12 +1590,16 @@ function ClientsStep({
 
 function PropertyStep({
   data,
+  isContextRefreshing,
   onSelectProperty,
+  onRefreshContext,
   properties,
   selectedProperty,
 }: {
   data: BusinessWizardData;
+  isContextRefreshing: boolean;
   onSelectProperty: (propertyId: string) => void;
+  onRefreshContext: () => void;
   properties: BusinessContextProperty[];
   selectedProperty: BusinessContextProperty | null;
 }) {
@@ -1539,7 +1607,24 @@ function PropertyStep({
     <SectionPanel
       title="Inmueble, proyecto o unidad"
       description="El negocio puede quedar como borrador sin inmueble, pero algunos contratos lo requerirán para confirmar."
+      actions={
+        <Button
+          variant="secondary"
+          icon={RefreshCcw}
+          loading={isContextRefreshing}
+          disabled={isContextRefreshing}
+          onClick={onRefreshContext}
+        >
+          Actualizar inmuebles
+        </Button>
+      }
     >
+      {properties.length === 0 ? (
+        <div className="business-note">
+          No hay inmuebles cargados en este borrador. Actualiza la lista si
+          creaste propiedades en otro modulo.
+        </div>
+      ) : null}
       <label>
         Inmueble
         <select
@@ -1960,10 +2045,12 @@ function CommissionStep({
   calculation,
   commParticipantId,
   data,
+  isContextRefreshing,
   newAgentId,
   onAddAdvancedRule,
   onAddCommissionParticipant,
   onPrimaryAgentChange,
+  onRefreshContext,
   onRemoveRule,
   onRuleChange,
   primaryAgent,
@@ -1975,10 +2062,12 @@ function CommissionStep({
   calculation: CommissionPlanCalculation;
   commParticipantId: string;
   data: BusinessWizardData;
+  isContextRefreshing: boolean;
   newAgentId: string;
   onAddAdvancedRule: () => void;
   onAddCommissionParticipant: (agentId: string, role: BusinessParticipantRole) => void;
   onPrimaryAgentChange: (agentId: string) => void;
+  onRefreshContext: () => void;
   onRemoveRule: (index: number) => void;
   onRuleChange: (index: number, patch: Partial<CommissionRuleDraft>) => void;
   primaryAgent: BusinessParticipantDraft | undefined;
@@ -1997,7 +2086,24 @@ function CommissionStep({
     <SectionPanel
       title="Comisiones"
       description="El modo simple calcula un porcentaje directo. El modo avanzado permite reglas por participante."
+      actions={
+        <Button
+          variant="secondary"
+          icon={RefreshCcw}
+          loading={isContextRefreshing}
+          disabled={isContextRefreshing}
+          onClick={onRefreshContext}
+        >
+          Actualizar agentes
+        </Button>
+      }
     >
+      {agents.length === 0 ? (
+        <div className="business-note">
+          No hay agentes cargados en este borrador. Actualiza la lista si creaste
+          agentes en otro modulo antes de continuar.
+        </div>
+      ) : null}
       <div className="business-form-grid">
         <label>
           Agente principal
