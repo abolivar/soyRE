@@ -21,6 +21,7 @@ export default [
       parserOptions: {
         projectService: {
           allowDefaultProject: [
+            'apps/api/test/*.test.ts',
             'packages/*/prisma.config.ts',
             'packages/shared/src/*.test.ts',
           ],
