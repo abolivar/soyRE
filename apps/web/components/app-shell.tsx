@@ -18,6 +18,7 @@ import {
   Megaphone,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   ScrollText,
   Send,
   Users,
@@ -26,7 +27,7 @@ import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { apiFetch, AuthUser } from '../lib/api';
+import { apiFetch, AuthUser, PlatformAccessResponse } from '../lib/api';
 import { activeMemberships } from './operational-format';
 import { BrandLogo } from './brand-logo';
 import { Button, SearchInput } from '@soyre/ui';
@@ -69,14 +70,28 @@ const adminNavigation: NavigationItem[] = [
   { href: '/audit', label: 'Auditoría', icon: ScrollText, requiresManager: true },
 ];
 
+const platformNavigation: NavigationItem[] = [
+  { href: '/platform', label: 'Backoffice', icon: SlidersHorizontal },
+];
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [canAccessPlatform, setCanAccessPlatform] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     apiFetch<{ user: AuthUser }>('/auth/me')
-      .then((response) => setUser(response.user))
-      .catch(() => setUser(null));
+      .then((response) => {
+        setUser(response.user);
+
+        return apiFetch<PlatformAccessResponse>('/platform/access')
+          .then((access) => setCanAccessPlatform(access.platformAdmin))
+          .catch(() => setCanAccessPlatform(false));
+      })
+      .catch(() => {
+        setUser(null);
+        setCanAccessPlatform(false);
+      });
   }, []);
 
   const activeMembership = useMemo(() => activeMemberships(user)[0] ?? null, [user]);
@@ -110,6 +125,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             label="Finanzas"
             pathname={pathname}
           />
+          {canAccessPlatform ? (
+            <NavSection
+              items={platformNavigation}
+              label="SaaS"
+              pathname={pathname}
+            />
+          ) : null}
           <NavSection
             canManage={isManager}
             items={adminNavigation}

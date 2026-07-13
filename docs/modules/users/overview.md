@@ -12,6 +12,8 @@ Initial identity module for soyRE users and organization membership validation.
 - Validate pending memberships.
 - Suspend memberships.
 - Change membership roles.
+- Administer organizations and users from the internal platform backoffice during
+  alpha.
 
 ## Rules
 
@@ -20,6 +22,8 @@ Initial identity module for soyRE users and organization membership validation.
 - Organization access is evaluated from memberships.
 - Only `OWNER` and `ADMIN` can create, validate, suspend, or change users.
 - `OWNER` membership changes must not leave the organization without an active owner.
+- Platform backoffice access is controlled by `PLATFORM_ADMIN_EMAILS`, not by
+  organization roles.
 
 ## Out of Scope
 
@@ -28,3 +32,4 @@ Initial identity module for soyRE users and organization membership validation.
 - MFA.
 - External identity providers.
 - Fine-grained property permissions.
+- Billing and customer success workflows for the SaaS owner.
