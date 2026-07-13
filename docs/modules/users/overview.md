@@ -19,6 +19,8 @@ Initial identity module for soyRE users and organization membership validation.
 
 - Authentication belongs to the API.
 - Users do not access the product without at least one active membership.
+- Authenticated web routes validate the session before rendering and redirect to
+  `/login` when the session is missing or invalid.
 - Organization access is evaluated from memberships.
 - Only `OWNER` and `ADMIN` can create, validate, suspend, or change users.
 - `OWNER` membership changes must not leave the organization without an active owner.
