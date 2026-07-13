@@ -74,6 +74,12 @@ Resultado ideal:
 Si el comando se ejecuta sin `CLIENT_ZERO_MUTATING=true` o
 `ALPHA_SMOKE_MUTATING=true`, debe omitirse sin crear datos.
 
+## Prueba Avanzada De Negocios
+
+Después de completar este recorrido base, ejecutar
+`docs/testing/client-zero-advanced-business.md` para exprimir planes de pago,
+comisiones compartidas, validaciones negativas y repetición con datos aleatorios.
+
 ## Recorrido Manual
 
 ### 1. Salud Publica
