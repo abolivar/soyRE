@@ -1,10 +1,18 @@
-'use client';
-
 import Link from 'next/link';
 import { BrandLogo } from '../../components/brand-logo';
 import { LoginForm } from '../../components/login-form';
+import { resolveLoginRedirectTarget } from '../../lib/auth-routing';
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams: Promise<{
+    next?: string | string[];
+  }>;
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const redirectTo = resolveLoginRedirectTarget(params.next);
+
   return (
     <main className="auth-shell">
       <section className="auth-panel">
@@ -18,7 +26,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <LoginForm />
+        <LoginForm redirectTo={redirectTo} />
 
         <p className="muted-row">
           <span>¿Sin cuenta?</span>
