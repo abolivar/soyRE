@@ -17,8 +17,12 @@ import { PrismaService } from '../database/prisma.service.js';
 import { ACCESS_TOKEN_EXPIRES_IN, getJwtAccessSecret } from './auth.constants.js';
 import type { AuthenticatedUser, JwtPayload } from './auth.types.js';
 import { LoginDto } from './dto/login.dto.js';
+import { PasswordRecoveryDto } from './dto/password-recovery.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { PasswordService } from './password.service.js';
+
+export const PASSWORD_RECOVERY_RESPONSE_MESSAGE =
+  'Si el correo está registrado, recibimos la solicitud de recuperación.';
 
 type AuthMembershipFromDb = {
   id: string;
@@ -198,6 +202,46 @@ export class AuthService {
     };
 
     return this.createSession(authUser);
+  }
+
+  async requestPasswordRecovery(dto: PasswordRecoveryDto) {
+    const email = normalizeEmail(dto.email);
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      include: {
+        memberships: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    });
+
+    if (user) {
+      const activeMembership =
+        user.memberships.find(
+          (membership: { status: MembershipStatus }) =>
+            membership.status === MembershipStatus.ACTIVE,
+        ) ?? user.memberships[0];
+
+      await this.prisma.auditLog.create({
+        data: {
+          action: 'auth.password_recovery.request',
+          metadata: {
+            email,
+            source: 'login',
+          },
+          organizationId: activeMembership?.organizationId ?? null,
+          targetId: user.id,
+          targetType: 'user',
+        },
+      });
+    }
+
+    return {
+      message: PASSWORD_RECOVERY_RESPONSE_MESSAGE,
+      ok: true,
+    };
   }
 
   createSession(user: AuthenticatedUser) {

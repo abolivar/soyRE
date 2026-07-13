@@ -6,6 +6,8 @@ Initial identity module for soyRE users and organization membership validation.
 
 - Register an organization owner.
 - Login and logout with httpOnly cookies.
+- Request password recovery from the login screen without exposing whether an
+  email exists.
 - Read current authenticated user and organization memberships.
 - List users in the active organization.
 - Create pending or active users in an organization.
@@ -21,6 +23,8 @@ Initial identity module for soyRE users and organization membership validation.
 - Users do not access the product without at least one active membership.
 - Authenticated web routes validate the session before rendering and redirect to
   `/login` when the session is missing or invalid.
+- Password recovery requests return a generic response and only create internal
+  audit records when the user exists.
 - Organization access is evaluated from memberships.
 - Only `OWNER` and `ADMIN` can create, validate, suspend, or change users.
 - `OWNER` membership changes must not leave the organization without an active owner.
@@ -29,8 +33,8 @@ Initial identity module for soyRE users and organization membership validation.
 
 ## Out of Scope
 
-- Email delivery.
-- Password reset flow.
+- Email delivery and reset-link delivery.
+- Self-service password replacement after receiving a recovery token.
 - MFA.
 - External identity providers.
 - Fine-grained property permissions.
