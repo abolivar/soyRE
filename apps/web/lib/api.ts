@@ -1223,37 +1223,160 @@ async function fetchApi(path: string, init: RequestInit) {
   }
 }
 
-function toUserFacingApiError(message: string, status: number) {
+export function toUserFacingApiError(message: string, status: number) {
   const normalized = message.trim();
   const exactMessages: Record<string, string> = {
     'A user with this email already exists.':
       'Ya existe un usuario con ese correo.',
+    'A client with this email already exists in this organization.':
+      'Ya existe un cliente con ese correo en esta organización.',
+    'A property with this internal code already exists in this organization.':
+      'Ya existe un inmueble con ese código interno en esta organización.',
+    'A sale percentage or simple commission percentage is required.':
+      'Define el porcentaje de comisión antes de continuar.',
+    'A workflow stage with this scope and name already exists.':
+      'Ya existe una etapa con ese nombre para este flujo.',
+    'An agent with this email already exists in this organization.':
+      'Ya existe un agente con ese correo en esta organización.',
+    'An organization must keep at least one active owner.':
+      'La organización debe conservar al menos un propietario activo.',
     'An organization with this slug already exists.':
       'Ya existe una organización con ese identificador.',
+    'At least one commercial role is required.':
+      'Selecciona al menos un rol comercial.',
+    'At least one contact method is required for the agent.':
+      'Agrega al menos un método de contacto para el agente.',
+    'At least one contact method is required for the client.':
+      'Agrega al menos un método de contacto para el cliente.',
+    'At least one document relation is required.':
+      'Relaciona el documento con al menos un recurso.',
+    'At least one property operation is required.':
+      'Selecciona al menos una operación para el inmueble.',
     'Authentication is required.': 'Inicia sesión para continuar.',
+    'Authentication context is required.': 'Inicia sesión para continuar.',
+    'Business cannot be committed with blocking validation errors.':
+      'Corrige los errores obligatorios antes de confirmar el negocio.',
+    'Business contract must belong to this organization.':
+      'El contrato seleccionado no pertenece a esta organización.',
     'Business draft has changed. Reload before committing.':
       'El borrador cambió en otra sesión. Recarga antes de confirmar.',
     'Business draft has changed. Reload before saving.':
       'El borrador cambió en otra sesión. Recarga antes de guardar.',
     'Business draft was not found.': 'No encontramos ese borrador.',
+    'Business must belong to this organization.':
+      'El negocio seleccionado no pertenece a esta organización.',
     'Business was not found in this organization.':
       'No encontramos ese negocio en la organización activa.',
+    'Client must belong to this organization.':
+      'El cliente seleccionado no pertenece a esta organización.',
+    'Client name is required.': 'Ingresa el nombre del cliente.',
+    'Client participant does not belong to this organization.':
+      'El cliente participante no pertenece a esta organización.',
     'Client was not found in this organization.':
       'No encontramos ese cliente en la organización activa.',
+    'Closing date cannot be before signature date.':
+      'La fecha de cierre no puede ser anterior a la firma.',
+    'Commission deductions exceed gross commission.':
+      'Las deducciones superan la comisión bruta.',
+    'Commission label is required.': 'Ingresa el nombre de la comisión.',
+    'Company name is required.': 'Ingresa el nombre de la empresa.',
+    'Currency must be a valid ISO-like 3 letter code.':
+      'Usa una moneda válida de tres letras.',
+    'Currency must use a three-letter code.':
+      'Usa una moneda válida de tres letras.',
+    'Document contract must belong to the selected business.':
+      'El contrato del documento no pertenece al negocio seleccionado.',
+    'Document name is required.': 'Ingresa el nombre del documento.',
+    'Document type is required.': 'Selecciona el tipo de documento.',
+    'Due day must be between 1 and 31.':
+      'El día de vencimiento debe estar entre 1 y 31.',
+    'Identity document file is not valid base64.':
+      'El archivo de identidad no tiene un formato válido.',
+    'Identity document file must be between 1 byte and 5 MB.':
+      'El archivo de identidad debe pesar hasta 5 MB.',
+    'Identity document file name is required.':
+      'Ingresa el nombre del archivo de identidad.',
+    'Identity document file size does not match.':
+      'El tamaño del archivo de identidad no coincide.',
+    'Identity document must be a JPEG, PNG, or WebP image.':
+      'El documento de identidad debe ser una imagen JPEG, PNG o WebP.',
+    'Identity document was not found in this organization.':
+      'No encontramos ese documento de identidad en la organización activa.',
+    'Installment count must be greater than zero.':
+      'La cantidad de cuotas debe ser mayor que cero.',
     'Invalid authentication token.': 'La sesión venció. Inicia sesión nuevamente.',
+    'Invalid commission amount.': 'Revisa el monto de la comisión.',
     'Invalid email or password.': 'Correo o contraseña incorrectos.',
+    'Invalid total amount.': 'Revisa el monto total.',
+    'Line percentage must be greater than zero and up to 100%.':
+      'El porcentaje de la línea debe ser mayor que cero y hasta 100%.',
+    'Listing mandate must belong to the selected property.':
+      'El mandato seleccionado no pertenece al inmueble elegido.',
+    'Mandate end date cannot be before start date.':
+      'La fecha final del mandato no puede ser anterior al inicio.',
+    'Mandate must belong to this organization.':
+      'El mandato seleccionado no pertenece a esta organización.',
+    'Membership was not found.': 'No encontramos esa membresía.',
+    'Minimum area cannot exceed maximum area.':
+      'El área mínima no puede superar el área máxima.',
+    'Minimum budget cannot exceed maximum budget.':
+      'El presupuesto mínimo no puede superar el presupuesto máximo.',
     'No active membership for this organization.':
       'No tienes acceso activo a esta organización.',
+    'Organization is archived.': 'La organización está archivada.',
+    'Organization slug is required.':
+      'Ingresa el identificador de la organización.',
+    'Organization was not found.': 'No encontramos esa organización.',
     'Only draft businesses can be committed.':
       'Solo se pueden confirmar negocios en borrador.',
     'Only draft businesses can be edited.':
       'Solo se pueden editar negocios en borrador.',
+    'Owner client must belong to this organization.':
+      'El propietario seleccionado no pertenece a esta organización.',
+    'Owner user is not active.': 'El usuario propietario no está activo.',
+    'Participant display name is required.':
+      'Ingresa el nombre visible del participante.',
+    'Payment line label is required.': 'Ingresa el nombre de la línea de pago.',
+    'Payment schedule contains zero amount lines.':
+      'El plan de pagos contiene líneas con monto cero.',
+    'Payment schedule does not match the payable amount.':
+      'El plan de pagos no coincide con el monto a pagar.',
     'Platform administrator access is required.':
       'Este usuario no tiene acceso al backoffice interno.',
+    'Property is already withdrawn.': 'El inmueble ya fue retirado.',
+    'Property must belong to this organization.':
+      'El inmueble seleccionado no pertenece a esta organización.',
+    'Property title is required.': 'Ingresa el título del inmueble.',
+    'Property type is required.': 'Selecciona el tipo de inmueble.',
     'Property was not found in this organization.':
       'No encontramos ese inmueble en la organización activa.',
+    'Real estate agent must be active in this organization.':
+      'El agente inmobiliario debe estar activo en esta organización.',
+    'Real estate agent was not found in this organization.':
+      'No encontramos ese agente en la organización activa.',
+    'Rent price is required for rental properties.':
+      'Ingresa el precio de alquiler del inmueble.',
     'Request failed.': 'No se pudo completar la solicitud.',
     'Required role is missing.': 'Tu rol no permite realizar esta acción.',
+    'Sale price is required for sale properties.':
+      'Ingresa el precio de venta del inmueble.',
+    'Simple commission mode requires exactly one allocation.':
+      'La comisión simple necesita exactamente una asignación.',
+    'Stage name is required.': 'Ingresa el nombre de la etapa.',
+    'Task was not found in this organization.':
+      'No encontramos esa tarea en la organización activa.',
+    'This property already has an active exclusive mandate.':
+      'Este inmueble ya tiene un mandato exclusivo activo.',
+    'Total commission is greater than the calculation base.':
+      'La comisión total supera la base de cálculo.',
+    'Unsupported commission calculation type.':
+      'El tipo de cálculo de comisión no está disponible.',
+    'Unsupported payment frequency.':
+      'La frecuencia de pago seleccionada no está disponible.',
+    'Unsupported payment plan preset.':
+      'El plan de pagos seleccionado no está disponible.',
+    'User already belongs to this organization.':
+      'El usuario ya pertenece a esta organización.',
     'User has no active memberships.':
       'Tu usuario no tiene una organización activa.',
     'User is not active.': 'Tu usuario no está activo.',
@@ -1263,16 +1386,80 @@ function toUserFacingApiError(message: string, status: number) {
     return exactMessages[normalized];
   }
 
-  if (/is required\.?$/i.test(normalized)) {
-    return 'Completa los campos requeridos.';
-  }
-
   if (/permission is required\.?$/i.test(normalized)) {
     return 'Tu rol no permite realizar esta acción.';
   }
 
+  if (/^(.+) must belong to this organization\.?$/i.test(normalized)) {
+    return 'El recurso seleccionado no pertenece a esta organización.';
+  }
+
+  if (/^(.+) must be active in this organization\.?$/i.test(normalized)) {
+    return 'El recurso seleccionado debe estar activo en esta organización.';
+  }
+
+  if (/^(.+) does not belong to this organization\.?$/i.test(normalized)) {
+    return 'El recurso seleccionado no pertenece a esta organización.';
+  }
+
+  if (/^(.+) already exists in this organization\.?$/i.test(normalized)) {
+    return 'Ya existe un registro con esos datos en esta organización.';
+  }
+
+  if (/^Duplicate commission allocation for .+\.?$/i.test(normalized)) {
+    return 'Hay una asignación de comisión duplicada.';
+  }
+
+  if (/^(.+) exceeds the gross commission\.?$/i.test(normalized)) {
+    return 'Una asignación supera la comisión bruta.';
+  }
+
+  if (/^(.+) requires a future custom engine\.?$/i.test(normalized)) {
+    return 'Ese tipo de cálculo todavía no está disponible.';
+  }
+
+  if (/^(.+) percentage must be greater than 0 and up to 100%\.?$/i.test(normalized)) {
+    return 'El porcentaje debe ser mayor que cero y hasta 100%.';
+  }
+
+  if (/^(.+) percentage must be greater than zero and up to 100%\.?$/i.test(normalized)) {
+    return 'El porcentaje debe ser mayor que cero y hasta 100%.';
+  }
+
+  if (/^(.+) must be integer cents\.?$/i.test(normalized)) {
+    return 'Ingresa un monto válido.';
+  }
+
+  if (/^(.+) cannot be negative\.?$/i.test(normalized)) {
+    return 'El monto no puede ser negativo.';
+  }
+
+  if (/^(.+) must be a non-negative integer\.?$/i.test(normalized)) {
+    return 'Ingresa un número válido mayor o igual a cero.';
+  }
+
+  if (/^(.+) is invalid\.?$/i.test(normalized)) {
+    return 'Revisa el valor ingresado.';
+  }
+
+  if (/^(.+) is required\.?$/i.test(normalized)) {
+    return 'Completa los campos requeridos.';
+  }
+
   if (/not found/i.test(normalized)) {
     return 'No encontramos el registro solicitado.';
+  }
+
+  if (looksLikeEnglishApiError(normalized)) {
+    return fallbackApiErrorByStatus(status);
+  }
+
+  return normalized || fallbackApiErrorByStatus(status);
+}
+
+function fallbackApiErrorByStatus(status: number) {
+  if (status === 400) {
+    return 'Revisa los datos e intenta de nuevo.';
   }
 
   if (status === 401) {
@@ -1283,9 +1470,23 @@ function toUserFacingApiError(message: string, status: number) {
     return 'Tu rol no permite realizar esta acción.';
   }
 
+  if (status === 404) {
+    return 'No encontramos el registro solicitado.';
+  }
+
+  if (status === 409) {
+    return 'Hay un conflicto con datos actualizados. Recarga e intenta de nuevo.';
+  }
+
   if (status >= 500) {
     return 'El servicio no respondió correctamente. Intenta de nuevo.';
   }
 
-  return normalized || 'No se pudo completar la solicitud.';
+  return 'No se pudo completar la solicitud.';
+}
+
+function looksLikeEnglishApiError(message: string) {
+  return /\b(active|already|amount|authentication|belong|business|cannot|client|commission|conflict|currency|document|duplicate|email|error|exceed|failed|internal|invalid|membership|missing|not found|organization|payment|permission|property|required|role|server|unsupported|user)\b/i.test(
+    message,
+  );
 }
