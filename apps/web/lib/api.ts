@@ -101,6 +101,55 @@ export type UserDetailResponse = {
   user: OrganizationUser;
 };
 
+export type PlatformOrganizationOwner = {
+  email: string;
+  firstName: string;
+  id: string;
+  lastName: string | null;
+  membershipId: string;
+  status: MembershipStatus;
+};
+
+export type PlatformOrganization = {
+  businessCount: number;
+  clientCount: number;
+  createdAt: string;
+  id: string;
+  memberCount: number;
+  name: string;
+  owners: PlatformOrganizationOwner[];
+  propertyCount: number;
+  slug: string;
+  status: OrganizationStatus;
+  updatedAt: string;
+};
+
+export type PlatformOrganizationsResponse = {
+  organizations: PlatformOrganization[];
+};
+
+export type PlatformOrganizationDetailResponse = {
+  organization: PlatformOrganization;
+  owner: OrganizationUser;
+};
+
+export type PlatformUsersResponse = {
+  users: OrganizationUser[];
+};
+
+export type PlatformAccessResponse = {
+  platformAdmin: boolean;
+};
+
+export type CreatePlatformOrganizationPayload = {
+  organizationName: string;
+  organizationSlug?: string;
+  ownerEmail: string;
+  ownerFirstName: string;
+  ownerLastName?: string;
+  ownerPassword: string;
+};
+
 export type CreateUserPayload = {
   organizationId?: string;
   firstName: string;
@@ -1194,6 +1243,8 @@ function toUserFacingApiError(message: string, status: number) {
       'Solo se pueden confirmar negocios en borrador.',
     'Only draft businesses can be edited.':
       'Solo se pueden editar negocios en borrador.',
+    'Platform administrator access is required.':
+      'Este usuario no tiene acceso al backoffice interno.',
     'Property was not found in this organization.':
       'No encontramos ese inmueble en la organización activa.',
     'Request failed.': 'No se pudo completar la solicitud.',
