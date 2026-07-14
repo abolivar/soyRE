@@ -42,10 +42,12 @@ import {
 import {
   calculateBusinessDraftProgress,
   calculateCommissionPlan,
+  calculateNegotiationAdjustments,
   calculatePaymentPlan,
   centsToString,
   toCents,
   type CommissionPlanInput,
+  type NegotiationAdjustmentInput,
   type PaymentPlanInput,
   type PaymentPlanPreset,
 } from '@soyre/shared';
@@ -597,6 +599,7 @@ export class BusinessesService {
       title: cleanText(dto.title),
       participants: [],
       clauses: [],
+      negotiationAdjustments: [],
       paymentPlan: {
         preset: 'CASH',
         totalAmountCents: '0',
@@ -928,10 +931,15 @@ export class BusinessesService {
   ) {
     const paymentPlan = this.calculatePaymentPlanFromData(data);
     const commissionPlan = this.calculateCommissionPlanFromData(data);
+    const negotiationAdjustments = calculateNegotiationAdjustments({
+      adjustments: negotiationAdjustmentDraftsFromData(data),
+      currency: normalizeCurrency(stringValue(data.currency)),
+    });
     const validation = await this.validateData(business, data, {
       forCommit: options.forCommit,
       paymentPlan,
       commissionPlan,
+      negotiationAdjustments,
       tx: options.tx,
     });
     const participants = participantDraftsFromData(data);
@@ -965,6 +973,7 @@ export class BusinessesService {
       ],
       paymentPlan,
       commissionPlan,
+      negotiationAdjustments,
       validation,
     };
   }
@@ -976,6 +985,7 @@ export class BusinessesService {
       forCommit: boolean;
       paymentPlan?: ReturnType<typeof calculatePaymentPlan>;
       commissionPlan?: ReturnType<typeof calculateCommissionPlan>;
+      negotiationAdjustments?: ReturnType<typeof calculateNegotiationAdjustments>;
       tx?: Prisma.TransactionClient;
     },
   ): Promise<ValidationItem[]> {
@@ -984,6 +994,12 @@ export class BusinessesService {
       options.paymentPlan ?? this.calculatePaymentPlanFromData(data);
     const commissionPlan =
       options.commissionPlan ?? this.calculateCommissionPlanFromData(data);
+    const negotiationAdjustments =
+      options.negotiationAdjustments ??
+      calculateNegotiationAdjustments({
+        adjustments: negotiationAdjustmentDraftsFromData(data),
+        currency: normalizeCurrency(stringValue(data.currency)),
+      });
     const participants = participantDraftsFromData(data);
     const clientRoles: BusinessParticipantRole[] = [
         BusinessParticipantRole.BUYER,
@@ -1070,6 +1086,22 @@ export class BusinessesService {
       validation.push({
         level: 'WARNING',
         code: 'commission_warning',
+        message: warning,
+      });
+    }
+
+    for (const error of negotiationAdjustments.errors) {
+      validation.push({
+        level: 'ERROR',
+        code: 'negotiation_adjustment_error',
+        message: error,
+      });
+    }
+
+    for (const warning of negotiationAdjustments.warnings) {
+      validation.push({
+        level: 'INFO',
+        code: 'negotiation_adjustment_reference',
         message: warning,
       });
     }
@@ -1469,12 +1501,19 @@ export class BusinessesService {
 
     const contractData = objectValue(data.contract);
     const clauses = clauseDraftsFromData(data);
+    const negotiationAdjustments = calculateNegotiationAdjustments({
+      adjustments: negotiationAdjustmentDraftsFromData(data),
+      currency: normalizeCurrency(stringValue(data.currency)),
+    });
     const contract = await tx.businessContract.create({
       data: {
         businessId: business.id,
         contractTypeId,
         createdByUserId: business.createdByUserId,
-        customConditions: sanitizeJson(contractData.customConditions ?? {}),
+        customConditions: sanitizeJson({
+          ...objectValue(contractData.customConditions),
+          negotiationAdjustments: negotiationAdjustments.items,
+        }),
         legalNotes: cleanText(stringValue(contractData.legalNotes)),
         selectedClauses: sanitizeJson(clauses),
         status: BusinessContractStatus.DRAFT,
@@ -2161,6 +2200,20 @@ function clauseDraftsFromData(data: Record<string, unknown>) {
   const clauses = [...arrayValue(data.clauses), ...arrayValue(contract.clauses)];
 
   return clauses.map((item) => objectValue(item) as DraftClause);
+}
+
+function negotiationAdjustmentDraftsFromData(
+  data: Record<string, unknown>,
+): NegotiationAdjustmentInput[] {
+  const contract = objectValue(data.contract);
+  const adjustments = [
+    ...arrayValue(data.negotiationAdjustments),
+    ...arrayValue(contract.negotiationAdjustments),
+  ];
+
+  return adjustments.map(
+    (item) => objectValue(item) as unknown as NegotiationAdjustmentInput,
+  );
 }
 
 function centsString(value: bigint | number | null | undefined) {

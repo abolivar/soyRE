@@ -117,6 +117,28 @@ En `Montos`, cargar:
 Resultado ideal: el resumen del paso muestra los importes en USD y la base de
 comisión coincide con el monto negociado.
 
+### 3.1 Ajustes Referenciales De Negociación
+
+Sin cambiar los cinco montos anteriores, agregar:
+
+| Categoría | Concepto | Sentido | Aplica a | Monto |
+| --- | --- | --- | --- | --- |
+| Materiales | Diferencia de acabados importados | Incremento | Comprador | `8,750.00` |
+| Mejoras | Crédito por cocina no instalada | Descuento | Comprador | `2,250.00` |
+
+Resultado ideal:
+
+- Incrementos referenciales: `8,750.00 USD`.
+- Descuentos referenciales: `2,250.00 USD`.
+- Neto referencial: `6,500.00 USD`.
+- Total contractual, monto pagable y base de comisión permanecen en
+  `462,500.00 USD`.
+- El plan de pagos no incorpora automáticamente los `6,500.00 USD`.
+- Al cambiar de paso, recargar y reabrir el borrador se conservan ambos ajustes.
+- La revisión muestra un aviso informativo de que los ajustes son referenciales.
+- Después de confirmar, la vista previa conserva los dos ajustes y su efecto
+  `REFERENCE_ONLY`.
+
 ### 4. Plan De Pagos Personalizado
 
 En `Pagos`:
