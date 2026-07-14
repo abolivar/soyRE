@@ -695,8 +695,11 @@ export type CommissionAllocationCalculation = {
   recipientType: string;
   label: string;
   calculationType: string;
+  percentageBasisPoints?: number;
+  fixedAmountCents?: string;
   payableAmountCents: string;
   releaseTrigger: string;
+  status: 'PENDING';
 };
 
 export type CommissionPlanCalculation = {

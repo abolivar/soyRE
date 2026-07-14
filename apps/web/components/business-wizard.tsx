@@ -37,6 +37,7 @@ import {
   BusinessContextClient,
   BusinessContextProperty,
   BusinessContextResponse,
+  BusinessContextUser,
   BusinessDraftResponse,
   BusinessMode,
   BusinessOperationType,
@@ -74,12 +75,14 @@ type WizardStepId =
 type BusinessParticipantDraft = {
   participantKey: string;
   clientId?: string;
+  userId?: string;
   realEstateAgentId?: string;
   displayName: string;
   email?: string | null;
   phone?: string | null;
   documentId?: string | null;
   role: BusinessParticipantRole;
+  roles?: BusinessParticipantRole[];
   isPrimary?: boolean;
   commissionEligible?: boolean;
 };
@@ -753,6 +756,7 @@ export function BusinessWizard() {
           participantKey: client.id,
           phone: client.phone,
           role,
+          roles: [role],
         },
       ],
     });
@@ -826,7 +830,22 @@ export function BusinessWizard() {
     updateData({
       participants: data.participants.map((participant) =>
         participant.participantKey === participantKey
-          ? { ...participant, role }
+          ? {
+              ...participant,
+              role,
+              roles: Array.from(
+                new Set([
+                  role,
+                  ...(participant.roles ?? []).filter(
+                    (item) =>
+                      item !== participant.role ||
+                      ['PRIMARY_AGENT', 'CO_AGENT', 'REFERRER', 'BROKER'].includes(
+                        item,
+                      ),
+                  ),
+                ]),
+              ),
+            }
           : participant,
       ),
     });
@@ -920,35 +939,133 @@ export function BusinessWizard() {
       return;
     }
 
-    const nextParticipants = data.participants.filter(
-      (participant) => participant.role !== 'PRIMARY_AGENT',
+    const selected = data.participants.find(
+      (participant) =>
+        participant.realEstateAgentId === agent.id ||
+        samePersonEmail(participant.email, agent.email),
     );
+    const nextParticipants = data.participants
+      .filter((participant) => participant.participantKey !== selected?.participantKey)
+      .map<BusinessParticipantDraft>((participant) => {
+        if (participant.role !== 'PRIMARY_AGENT') {
+          return participant;
+        }
+
+        const roles = (participant.roles ?? [participant.role]).filter(
+          (role) => role !== 'PRIMARY_AGENT',
+        );
+
+        return {
+          ...participant,
+          isPrimary: false,
+          role: roles[0] ?? 'CO_AGENT',
+          roles: roles.length > 0 ? roles : ['CO_AGENT' as const],
+        };
+      });
+    const primaryParticipant = selected
+      ? {
+          ...selected,
+          commissionEligible: true,
+          email: selected.email ?? agent.email,
+          isPrimary: true,
+          phone: selected.phone ?? agent.phone,
+          realEstateAgentId: agent.id,
+          role: 'PRIMARY_AGENT' as const,
+          roles: Array.from(
+            new Set(['PRIMARY_AGENT' as const, ...(selected.roles ?? [selected.role])]),
+          ),
+        }
+      : agentParticipant(agent, 'PRIMARY_AGENT');
 
     updateData({
-      participants: [
-        ...nextParticipants,
-        agentParticipant(agent, 'PRIMARY_AGENT'),
-      ],
+      participants: [...nextParticipants, primaryParticipant],
     });
     setNewAgentId(agentId);
   }
 
-  function addCommissionParticipant(agentId: string, role: BusinessParticipantRole) {
-    const agent = context?.agents.find((item) => item.id === agentId);
+  function addCommissionRecipient(candidateKey: string) {
+    const [kind, id] = candidateKey.split(':');
+    const client = kind === 'CLIENT' ? context?.clients.find((item) => item.id === id) : null;
+    const user = kind === 'USER' ? context?.users.find((item) => item.id === id) : null;
+    const agent = kind === 'AGENT' ? context?.agents.find((item) => item.id === id) : null;
+    const candidateEmail = client?.email ?? user?.email ?? agent?.email;
+    const existing = data.participants.find((participant) =>
+      kind === 'CLIENT'
+        ? participant.clientId === id || samePersonEmail(participant.email, candidateEmail)
+        : kind === 'USER'
+          ? participant.userId === id || samePersonEmail(participant.email, candidateEmail)
+          : participant.realEstateAgentId === id ||
+            samePersonEmail(participant.email, candidateEmail),
+    );
 
-    if (!agent) {
+    if (!existing && !client && !user && !agent) {
+      setFormError('Selecciona una persona registrada como receptor.');
       return;
     }
 
-    const key = `${agent.id}:${role}`;
-
-    if (data.participants.some((item) => item.participantKey === key)) {
-      return;
-    }
+    const participant: BusinessParticipantDraft = existing
+      ? {
+          ...existing,
+          clientId: existing.clientId ?? client?.id,
+          commissionEligible: true,
+          realEstateAgentId: existing.realEstateAgentId ?? agent?.id,
+          roles: Array.from(new Set([...(existing.roles ?? [existing.role]), 'REFERRER'])),
+          userId: existing.userId ?? user?.id,
+        }
+      : client
+        ? {
+            clientId: client.id,
+            commissionEligible: true,
+            displayName: client.displayName,
+            documentId: client.legalId,
+            email: client.email,
+            participantKey: client.id,
+            phone: client.phone,
+            role: 'REFERRER',
+            roles: ['REFERRER'],
+          }
+        : user
+          ? {
+              commissionEligible: true,
+              displayName: [user.firstName, user.lastName].filter(Boolean).join(' '),
+              email: user.email,
+              participantKey: `USER:${user.id}`,
+              role: 'REFERRER',
+              roles: ['REFERRER'],
+              userId: user.id,
+            }
+          : agentParticipant(agent as BusinessContextAgent, 'REFERRER');
+    const participants = existing
+      ? data.participants.map((item) =>
+          item.participantKey === existing.participantKey ? participant : item,
+        )
+      : [...data.participants, participant];
+    const alreadyAssigned = data.commissionPlan.rules.some(
+      (rule) =>
+        rule.participantKey === participant.participantKey &&
+        rule.recipientType === 'REFERRER',
+    );
 
     updateData({
-      participants: [...data.participants, agentParticipant(agent, role, key)],
+      participants,
+      commissionPlan: {
+        ...data.commissionPlan,
+        rules: alreadyAssigned
+          ? data.commissionPlan.rules
+          : [
+              ...data.commissionPlan.rules,
+              {
+                calculationType: 'PERCENTAGE_OF_COMMISSION',
+                label: participant.displayName,
+                participantKey: participant.participantKey,
+                percentageBasisPoints: 0,
+                recipientType: 'REFERRER',
+                releaseTrigger: data.commissionPlan.releaseTrigger,
+              },
+            ],
+      },
     });
+    setCommParticipantId('');
   }
 
   function addSimpleRuleToAdvanced() {
@@ -1222,12 +1339,13 @@ export function BusinessWizard() {
           {activeStep === 'commissions' ? (
             <CommissionStep
               agents={context.agents}
+              clients={context.clients}
               calculation={visibleCommissionCalculation}
               commParticipantId={commParticipantId}
               data={data}
               newAgentId={newAgentId}
               onAddAdvancedRule={addSimpleRuleToAdvanced}
-              onAddCommissionParticipant={addCommissionParticipant}
+              onAddCommissionRecipient={addCommissionRecipient}
               onPrimaryAgentChange={addPrimaryAgent}
               onRefreshContext={() => void refreshContext()}
               onRemoveRule={removeCommissionRule}
@@ -1236,6 +1354,7 @@ export function BusinessWizard() {
               setCommParticipantId={setCommParticipantId}
               updateCommissionPlan={updateCommissionPlan}
               updateData={updateData}
+              users={context.users}
               isContextRefreshing={isContextRefreshing}
             />
           ) : null}
@@ -1501,6 +1620,9 @@ function ClientsStep({
                 <strong>{participant.displayName}</strong>
                 <span className="meta-row">
                   {participant.email ?? 'Sin email'} · {participant.phone ?? 'Sin teléfono'}
+                </span>
+                <span className="meta-row">
+                  Roles: {participantRoleLabels(participant).join(', ')}
                 </span>
               </div>
               <select
@@ -2043,12 +2165,13 @@ function PaymentPlanStep({
 function CommissionStep({
   agents,
   calculation,
+  clients,
   commParticipantId,
   data,
   isContextRefreshing,
   newAgentId,
   onAddAdvancedRule,
-  onAddCommissionParticipant,
+  onAddCommissionRecipient,
   onPrimaryAgentChange,
   onRefreshContext,
   onRemoveRule,
@@ -2057,15 +2180,17 @@ function CommissionStep({
   setCommParticipantId,
   updateCommissionPlan,
   updateData,
+  users,
 }: {
   agents: BusinessContextAgent[];
   calculation: CommissionPlanCalculation;
+  clients: BusinessContextClient[];
   commParticipantId: string;
   data: BusinessWizardData;
   isContextRefreshing: boolean;
   newAgentId: string;
   onAddAdvancedRule: () => void;
-  onAddCommissionParticipant: (agentId: string, role: BusinessParticipantRole) => void;
+  onAddCommissionRecipient: (candidateKey: string) => void;
   onPrimaryAgentChange: (agentId: string) => void;
   onRefreshContext: () => void;
   onRemoveRule: (index: number) => void;
@@ -2077,15 +2202,28 @@ function CommissionStep({
     value: BusinessWizardData['commissionPlan'][keyof BusinessWizardData['commissionPlan']],
   ) => void;
   updateData: (patch: Partial<BusinessWizardData>) => void;
+  users: BusinessContextUser[];
 }) {
-  const commissionParticipants = data.participants.filter((participant) =>
-    ['PRIMARY_AGENT', 'CO_AGENT', 'REFERRER', 'BROKER'].includes(participant.role),
-  );
+  const commissionParticipants = data.participants;
+  const registeredCandidates = [
+    ...clients.map((client) => ({
+      key: `CLIENT:${client.id}`,
+      label: `${client.displayName} · Cliente`,
+    })),
+    ...agents.map((agent) => ({
+      key: `AGENT:${agent.id}`,
+      label: `${agent.displayName} · Agente`,
+    })),
+    ...users.map((user) => ({
+      key: `USER:${user.id}`,
+      label: `${[user.firstName, user.lastName].filter(Boolean).join(' ')} · Usuario`,
+    })),
+  ];
 
   return (
     <SectionPanel
       title="Comisiones"
-      description="El modo simple calcula un porcentaje directo. El modo avanzado permite reglas por participante."
+      description="Cada fila debe enlazarse a una persona registrada. Una misma persona conserva todos sus roles dentro del negocio."
       actions={
         <Button
           variant="secondary"
@@ -2170,10 +2308,10 @@ function CommissionStep({
               value={commParticipantId}
               onChange={(event) => setCommParticipantId(event.target.value)}
             >
-              <option value="">Agregar co-agente / referido</option>
-              {agents.map((agent) => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.displayName} · {agent.category}
+              <option value="">Seleccionar receptor registrado</option>
+              {registeredCandidates.map((candidate) => (
+                <option key={candidate.key} value={candidate.key}>
+                  {candidate.label}
                 </option>
               ))}
             </select>
@@ -2181,23 +2319,9 @@ function CommissionStep({
               variant="secondary"
               disabled={!commParticipantId}
               icon={Plus}
-              onClick={() => {
-                onAddCommissionParticipant(commParticipantId, 'CO_AGENT');
-                setCommParticipantId('');
-              }}
+              onClick={() => onAddCommissionRecipient(commParticipantId)}
             >
-              Co-agente
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={!commParticipantId}
-              icon={Plus}
-              onClick={() => {
-                onAddCommissionParticipant(commParticipantId, 'REFERRER');
-                setCommParticipantId('');
-              }}
-            >
-              Referido
+              Agregar receptor
             </Button>
             <Button variant="secondary" icon={HandCoins} onClick={onAddAdvancedRule}>
               Regla base
@@ -2209,18 +2333,38 @@ function CommissionStep({
               <div className="commission-rule-row" key={`${rule.participantKey}-${index}`}>
                 <select
                   value={rule.participantKey}
-                  onChange={(event) =>
-                    onRuleChange(index, { participantKey: event.target.value })
-                  }
+                  onChange={(event) => {
+                    const participant = commissionParticipants.find(
+                      (item) => item.participantKey === event.target.value,
+                    );
+                    onRuleChange(index, {
+                      label: participant?.displayName ?? rule.label,
+                      participantKey: event.target.value,
+                    });
+                  }}
                 >
                   {commissionParticipants.map((participant) => (
                     <option
                       key={participant.participantKey}
                       value={participant.participantKey}
                     >
-                      {participant.displayName} · {participant.role}
+                      {participant.displayName} ·{' '}
+                      {participantRoleLabels(participant).join(', ')}
                     </option>
                   ))}
+                </select>
+                <select
+                  value={rule.recipientType}
+                  onChange={(event) =>
+                    onRuleChange(index, { recipientType: event.target.value })
+                  }
+                >
+                  <option value="AGENT">Agente</option>
+                  <option value="CO_AGENT">Co-agente</option>
+                  <option value="REFERRER">Referido</option>
+                  <option value="BROKER">Broker</option>
+                  <option value="COMPANY">Empresa</option>
+                  <option value="OTHER">Otro</option>
                 </select>
                 <select
                   value={rule.calculationType}
@@ -2282,7 +2426,11 @@ function CommissionStep({
       )}
 
       <CalculationMessages calculation={calculation} />
-      <CommissionBreakdown calculation={calculation} currency={data.currency} />
+      <CommissionBreakdown
+        calculation={calculation}
+        currency={data.currency}
+        participants={data.participants}
+      />
 
       <div className="business-inline-actions">
         <Button
@@ -2453,6 +2601,7 @@ function ReviewStep({
       <CommissionBreakdown
         calculation={commissionCalculation}
         currency={data.currency}
+        participants={data.participants}
       />
 
       <div className="business-confirm-bar">
@@ -2693,9 +2842,11 @@ function PaymentPlanTable({
 function CommissionBreakdown({
   calculation,
   currency,
+  participants,
 }: {
   calculation: CommissionPlanCalculation;
   currency: string;
+  participants: BusinessParticipantDraft[];
 }) {
   if (calculation.allocations.length === 0) {
     return (
@@ -2711,21 +2862,42 @@ function CommissionBreakdown({
       <table className="data-table">
         <thead>
           <tr>
-            <th>Participante</th>
-            <th>Tipo</th>
-            <th>Trigger</th>
+            <th>Receptor registrado</th>
+            <th>Roles</th>
+            <th>Base</th>
+            <th>Cálculo</th>
+            <th>Valor</th>
             <th>Monto</th>
+            <th>Liberación</th>
+            <th>Estado</th>
           </tr>
         </thead>
         <tbody>
-          {calculation.allocations.map((allocation) => (
-            <tr key={`${allocation.participantKey}-${allocation.label}`}>
-              <td>{allocation.label}</td>
-              <td>{allocation.calculationType}</td>
-              <td>{releaseTriggerLabels[allocation.releaseTrigger] ?? allocation.releaseTrigger}</td>
-              <td>{formatMoney(allocation.payableAmountCents, currency)}</td>
-            </tr>
-          ))}
+          {calculation.allocations.map((allocation) => {
+            const participant = participants.find(
+              (item) => item.participantKey === allocation.participantKey,
+            );
+
+            return (
+              <tr key={`${allocation.participantKey}-${allocation.label}`}>
+                <td>{allocation.label}</td>
+                <td>
+                  {participant
+                    ? participantRoleLabels(participant).join(', ')
+                    : 'No registrado'}
+                </td>
+                <td>{formatMoney(calculation.baseAmountCents, currency)}</td>
+                <td>{commissionCalculationLabel(allocation.calculationType)}</td>
+                <td>{commissionRuleValue(allocation, currency)}</td>
+                <td>{formatMoney(allocation.payableAmountCents, currency)}</td>
+                <td>
+                  {releaseTriggerLabels[allocation.releaseTrigger] ??
+                    allocation.releaseTrigger}
+                </td>
+                <td>{allocation.status === 'PENDING' ? 'Pendiente' : allocation.status}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -2885,8 +3057,72 @@ function agentParticipant(
     phone: agent.phone,
     realEstateAgentId: agent.id,
     role,
+    roles: [role],
     isPrimary: role === 'PRIMARY_AGENT',
   };
+}
+
+function participantRoleLabels(participant: BusinessParticipantDraft) {
+  const labels: Record<BusinessParticipantRole, string> = {
+    BANK: 'Banco',
+    BROKER: 'Broker',
+    BUYER: 'Comprador',
+    CO_AGENT: 'Co-agente',
+    DEVELOPER: 'Promotor',
+    GUARANTOR: 'Garante',
+    LANDLORD: 'Arrendador',
+    LAWYER: 'Abogado',
+    LEGAL_REPRESENTATIVE: 'Representante legal',
+    NOTARY: 'Notario',
+    OTHER: 'Otro',
+    PRIMARY_AGENT: 'Agente principal',
+    REFERRER: 'Referido',
+    SELLER: 'Vendedor',
+    TENANT: 'Arrendatario',
+    WITNESS: 'Testigo',
+  };
+
+  return Array.from(new Set(participant.roles ?? [participant.role])).map(
+    (role) => labels[role],
+  );
+}
+
+function commissionCalculationLabel(calculationType: string) {
+  return (
+    {
+      CAPPED: 'Con tope',
+      CUSTOM: 'Personalizado',
+      FIXED_AMOUNT: 'Monto fijo',
+      PERCENTAGE_OF_COMMISSION: '% comisión',
+      PERCENTAGE_OF_SALE: '% venta',
+      SLIDING_SCALE: 'Escala móvil',
+      TIERED: 'Por tramos',
+    }[calculationType] ?? calculationType
+  );
+}
+
+function commissionRuleValue(
+  allocation: CommissionPlanCalculation['allocations'][number],
+  currency: string,
+) {
+  if (allocation.fixedAmountCents !== undefined) {
+    return formatMoney(allocation.fixedAmountCents, currency);
+  }
+
+  if (allocation.percentageBasisPoints !== undefined) {
+    return `${basisPointsToPercent(allocation.percentageBasisPoints)}%`;
+  }
+
+  return '—';
+}
+
+function samePersonEmail(
+  left: string | null | undefined,
+  right: string | null | undefined,
+) {
+  return Boolean(
+    left && right && left.trim().toLowerCase() === right.trim().toLowerCase(),
+  );
 }
 
 function allMoneyZero(values: string[]) {

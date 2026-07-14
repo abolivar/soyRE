@@ -1,6 +1,7 @@
 import {
   BusinessMode,
   BusinessOperationType,
+  BusinessParticipantRole,
   CommissionBase,
   CommissionCalculationType,
   CommissionRecipientType,
@@ -106,6 +107,12 @@ export class BusinessParticipantDraftDto {
   @IsString()
   @MaxLength(40)
   role!: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsEnum(BusinessParticipantRole, { each: true })
+  roles?: BusinessParticipantRole[];
 
   @IsOptional()
   @IsBoolean()
