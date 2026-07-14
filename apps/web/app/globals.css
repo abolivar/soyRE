@@ -1338,6 +1338,20 @@ label {
   padding-top: 18px;
 }
 
+.inline-identity-intake {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.inline-identity-intake > label:not(.passport-upload) {
+  display: grid;
+  gap: 8px;
+}
+
 .property-availability,
 .warning-banner,
 .success-banner,

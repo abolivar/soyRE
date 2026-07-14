@@ -12,6 +12,8 @@ import {
   FileText,
   HandCoins,
   Home,
+  IdCard,
+  Keyboard,
   Loader2,
   Plus,
   RefreshCcw,
@@ -20,11 +22,19 @@ import {
   Sparkles,
   UserRoundPlus,
   Users,
+  Upload,
   Workflow,
   X,
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   calculateBusinessDraftProgress,
   type BusinessDraftProgress,
@@ -50,6 +60,17 @@ import {
   OrganizationClient,
   PaymentPlanCalculation,
 } from '../lib/api';
+import {
+  fileToIdentityDocumentPayload,
+  IdentityDocumentPayload,
+  isSupportedIdentityFile,
+} from '../lib/identity-document-file';
+import {
+  NationalIdCountry,
+  nationalIdCountries,
+  parseNationalIdOcr,
+} from '../lib/national-id-ocr';
+import { extractPassportMrz, parsePassportMrz } from '../lib/passport-mrz';
 import {
   Button,
   ErrorState,
@@ -176,6 +197,9 @@ type NewClientForm = {
   phone: string;
   legalId: string;
 };
+
+type InlineIdentityMode = 'manual' | 'passport' | 'national_id';
+type InlineIdentityStatus = 'idle' | 'reading' | 'ready' | 'error';
 
 const steps: Array<{
   id: WizardStepId;
@@ -339,6 +363,19 @@ export function BusinessWizard() {
     legalId: '',
     phone: '',
   });
+  const [clientIdentityMode, setClientIdentityMode] =
+    useState<InlineIdentityMode>('manual');
+  const [clientIdentityCountry, setClientIdentityCountry] =
+    useState<NationalIdCountry>('CO');
+  const [clientIdentityPayload, setClientIdentityPayload] =
+    useState<IdentityDocumentPayload | null>(null);
+  const [clientIdentityStatus, setClientIdentityStatus] =
+    useState<InlineIdentityStatus>('idle');
+  const [clientIdentityError, setClientIdentityError] = useState<string | null>(null);
+  const [clientIdentityFileName, setClientIdentityFileName] = useState<string | null>(
+    null,
+  );
+  const [clientPassportMrz, setClientPassportMrz] = useState('');
   const [newAgentId, setNewAgentId] = useState('');
   const [commParticipantId, setCommParticipantId] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -769,7 +806,25 @@ export function BusinessWizard() {
     setClientError(null);
 
     try {
-      const role = data.operationType === 'RENT' ? 'LESSEE' : 'BUYER';
+      if (clientIdentityStatus === 'reading') {
+        throw new Error('Espera a que termine la lectura del documento.');
+      }
+
+      if (clientIdentityMode !== 'manual' && !clientIdentityPayload) {
+        throw new Error('Carga el documento de identidad antes de crear el cliente.');
+      }
+
+      const clientRole: ClientRole = data.operationType === 'RENT' ? 'LESSEE' : 'BUYER';
+      const correctedIdentityDocument = clientIdentityPayload
+        ? {
+            ...clientIdentityPayload,
+            documentNumber:
+              cleanText(newClient.legalId) ?? clientIdentityPayload.documentNumber,
+            firstName:
+              nameCase(newClient.firstName) ?? clientIdentityPayload.firstName,
+            lastName: nameCase(newClient.lastName) ?? clientIdentityPayload.lastName,
+          }
+        : null;
       const payload: CreateClientPayload = {
         dataConsent: true,
         email: cleanText(newClient.email) ?? undefined,
@@ -778,9 +833,12 @@ export function BusinessWizard() {
         legalId: cleanText(newClient.legalId) ?? undefined,
         organizationId: activeOrganizationId,
         phone: cleanText(newClient.phone) ?? undefined,
-        roles: [role as ClientRole],
+        roles: [clientRole],
         status: 'ACTIVE',
         type: 'PERSON',
+        ...(correctedIdentityDocument
+          ? { identityDocument: correctedIdentityDocument }
+          : {}),
       };
       const response = await apiFetch<{ client: OrganizationClient }>('/clients', {
         body: JSON.stringify(payload),
@@ -804,7 +862,21 @@ export function BusinessWizard() {
             }
           : current,
       );
-      addExistingClient(client.id);
+      updateData({
+        participants: [
+          ...data.participants,
+          {
+            clientId: client.id,
+            displayName: client.displayName,
+            documentId: client.legalId,
+            email: client.email,
+            isPrimary: !data.participants.some((item) => item.clientId),
+            participantKey: client.id,
+            phone: client.phone,
+            role: defaultClientRole(data.operationType),
+          },
+        ],
+      });
       setNewClient({
         email: '',
         firstName: '',
@@ -812,9 +884,159 @@ export function BusinessWizard() {
         legalId: '',
         phone: '',
       });
+      resetInlineIdentity();
     } catch (caught) {
       setClientError(
         caught instanceof Error ? caught.message : 'No se pudo crear el cliente.',
+      );
+    }
+  }
+
+  function resetInlineIdentity(mode: InlineIdentityMode = 'manual') {
+    setClientIdentityMode(mode);
+    setClientIdentityCountry('CO');
+    setClientIdentityPayload(null);
+    setClientIdentityStatus('idle');
+    setClientIdentityError(null);
+    setClientIdentityFileName(null);
+    setClientPassportMrz('');
+  }
+
+  function changeInlineIdentityMode(mode: InlineIdentityMode) {
+    resetInlineIdentity(mode);
+  }
+
+  function changeInlineIdentityCountry(country: NationalIdCountry) {
+    setClientIdentityCountry(country);
+    setClientIdentityPayload(null);
+    setClientIdentityStatus('idle');
+    setClientIdentityError(null);
+    setClientIdentityFileName(null);
+  }
+
+  async function processInlineIdentityFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    if (!isSupportedIdentityFile(file)) {
+      setClientIdentityStatus('error');
+      setClientIdentityError('El documento debe ser una imagen JPEG, PNG o WebP.');
+      return;
+    }
+
+    const documentType =
+      clientIdentityMode === 'passport' ? 'PASSPORT' : 'NATIONAL_ID';
+    setClientIdentityStatus('reading');
+    setClientIdentityError(null);
+    setClientIdentityFileName(file.name);
+
+    try {
+      const basePayload = await fileToIdentityDocumentPayload(file, documentType);
+      setClientIdentityPayload(basePayload);
+      const { createWorker } = await import('tesseract.js');
+      const worker = await createWorker('eng');
+
+      try {
+        if (documentType === 'PASSPORT') {
+          await worker.setParameters({
+            preserve_interword_spaces: '1',
+            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
+          });
+        }
+
+        const {
+          data: { text },
+        } = await worker.recognize(file, { rotateAuto: true });
+
+        if (documentType === 'PASSPORT') {
+          const mrz = extractPassportMrz(text);
+          setClientIdentityPayload({ ...basePayload, ocrText: text });
+
+          if (!mrz) {
+            throw new Error(
+              'No se detectó la MRZ. Puedes pegarla o corregirla manualmente.',
+            );
+          }
+
+          setClientPassportMrz(mrz);
+          applyInlinePassportMrz(mrz, { ...basePayload, ocrText: text });
+        } else {
+          const parsed = parseNationalIdOcr(text, clientIdentityCountry);
+          const country = nationalIdCountries.find(
+            (item) => item.value === clientIdentityCountry,
+          );
+          setClientIdentityPayload({
+            ...basePayload,
+            documentNumber: parsed.documentNumber ?? undefined,
+            issuingCountry: country?.issuingCountry,
+            firstName: nameCase(parsed.firstName),
+            lastName: nameCase(parsed.lastName),
+            ocrText: parsed.rawText,
+            extractedData: {
+              country: clientIdentityCountry,
+              parser: `national-id-ocr-${clientIdentityCountry.toLocaleLowerCase()}`,
+            },
+          });
+          setNewClient((current) => ({
+            ...current,
+            firstName: nameCase(parsed.firstName) ?? current.firstName,
+            lastName: nameCase(parsed.lastName) ?? current.lastName,
+            legalId: parsed.documentNumber ?? current.legalId,
+          }));
+          setClientIdentityStatus('ready');
+        }
+      } finally {
+        await worker.terminate();
+      }
+    } catch (caught) {
+      setClientIdentityStatus('error');
+      setClientIdentityError(
+        caught instanceof Error ? caught.message : 'No se pudo leer el documento.',
+      );
+    }
+  }
+
+  function applyInlinePassportMrz(
+    mrz = clientPassportMrz,
+    basePayload = clientIdentityPayload,
+  ) {
+    try {
+      const parsed = parsePassportMrz(mrz);
+
+      if (basePayload) {
+        setClientIdentityPayload({
+          ...basePayload,
+          type: 'PASSPORT',
+          documentNumber: parsed.documentNumber,
+          issuingCountry: parsed.issuingCountry,
+          firstName: nameCase(parsed.firstName),
+          lastName: nameCase(parsed.lastName),
+          birthDate: parsed.birthDate ?? undefined,
+          expirationDate: parsed.expirationDate ?? undefined,
+          extractedData: {
+            mrz: parsed.mrz,
+            parser: 'td3-mrz',
+            sex: parsed.sex,
+          },
+        });
+      }
+
+      setNewClient((current) => ({
+        ...current,
+        firstName: nameCase(parsed.firstName) ?? current.firstName,
+        lastName: nameCase(parsed.lastName) ?? current.lastName,
+        legalId: parsed.documentNumber,
+      }));
+      setClientIdentityError(null);
+      setClientIdentityStatus('ready');
+    } catch (caught) {
+      setClientIdentityStatus('error');
+      setClientIdentityError(
+        caught instanceof Error ? caught.message : 'La MRZ no pudo interpretarse.',
       );
     }
   }
@@ -1167,11 +1389,23 @@ export function BusinessWizard() {
           ) : null}
           {activeStep === 'clients' ? (
             <ClientsStep
+              clientIdentityCountry={clientIdentityCountry}
+              clientIdentityError={clientIdentityError}
+              clientIdentityFileName={clientIdentityFileName}
+              clientIdentityMode={clientIdentityMode}
+              clientIdentityPayload={clientIdentityPayload}
+              clientIdentityStatus={clientIdentityStatus}
+              clientPassportMrz={clientPassportMrz}
               clientError={clientError}
               clients={context.clients}
               data={data}
               newClient={newClient}
               onAddExistingClient={addExistingClient}
+              onApplyPassportMrz={() => applyInlinePassportMrz()}
+              onIdentityCountryChange={changeInlineIdentityCountry}
+              onIdentityFileChange={(event) => void processInlineIdentityFile(event)}
+              onIdentityModeChange={changeInlineIdentityMode}
+              onPassportMrzChange={setClientPassportMrz}
               onCreateClient={(event) => void createInlineClient(event)}
               onNewClientChange={setNewClient}
               onRefreshContext={() => void refreshContext()}
@@ -1411,24 +1645,48 @@ function ModeStep({
 }
 
 function ClientsStep({
+  clientIdentityCountry,
+  clientIdentityError,
+  clientIdentityFileName,
+  clientIdentityMode,
+  clientIdentityPayload,
+  clientIdentityStatus,
+  clientPassportMrz,
   clientError,
   clients,
   data,
   isContextRefreshing,
   newClient,
   onAddExistingClient,
+  onApplyPassportMrz,
+  onIdentityCountryChange,
+  onIdentityFileChange,
+  onIdentityModeChange,
+  onPassportMrzChange,
   onCreateClient,
   onNewClientChange,
   onRefreshContext,
   onRemoveParticipant,
   onRoleChange,
 }: {
+  clientIdentityCountry: NationalIdCountry;
+  clientIdentityError: string | null;
+  clientIdentityFileName: string | null;
+  clientIdentityMode: InlineIdentityMode;
+  clientIdentityPayload: IdentityDocumentPayload | null;
+  clientIdentityStatus: InlineIdentityStatus;
+  clientPassportMrz: string;
   clientError: string | null;
   clients: BusinessContextClient[];
   data: BusinessWizardData;
   isContextRefreshing: boolean;
   newClient: NewClientForm;
   onAddExistingClient: (clientId: string) => void;
+  onApplyPassportMrz: () => void;
+  onIdentityCountryChange: (country: NationalIdCountry) => void;
+  onIdentityFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onIdentityModeChange: (mode: InlineIdentityMode) => void;
+  onPassportMrzChange: (value: string) => void;
   onCreateClient: (event: FormEvent<HTMLFormElement>) => void;
   onNewClientChange: (value: NewClientForm) => void;
   onRefreshContext: () => void;
@@ -1532,7 +1790,94 @@ function ClientsStep({
       </div>
 
       <form className="inline-create-form" onSubmit={onCreateClient}>
-        <strong>Crear cliente rapido</strong>
+        <strong>Crear cliente rápido</strong>
+        <div className="intake-mode-toggle" aria-label="Método de alta rápida">
+          <button
+            className={clientIdentityMode === 'manual' ? 'mode-button active' : 'mode-button'}
+            onClick={() => onIdentityModeChange('manual')}
+            type="button"
+          >
+            <Keyboard size={17} /> Manual
+          </button>
+          <button
+            className={clientIdentityMode === 'passport' ? 'mode-button active' : 'mode-button'}
+            onClick={() => onIdentityModeChange('passport')}
+            type="button"
+          >
+            <FileText size={17} /> Pasaporte
+          </button>
+          <button
+            className={clientIdentityMode === 'national_id' ? 'mode-button active' : 'mode-button'}
+            onClick={() => onIdentityModeChange('national_id')}
+            type="button"
+          >
+            <IdCard size={17} /> Cédula
+          </button>
+        </div>
+
+        {clientIdentityMode !== 'manual' ? (
+          <div className="inline-identity-intake">
+            {clientIdentityMode === 'national_id' ? (
+              <label>
+                País de la cédula
+                <select
+                  onChange={(event) =>
+                    onIdentityCountryChange(event.target.value as NationalIdCountry)
+                  }
+                  value={clientIdentityCountry}
+                >
+                  {nationalIdCountries.map((country) => (
+                    <option key={country.value} value={country.value}>
+                      {country.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <label className="passport-upload">
+              <Upload size={18} />
+              <span>
+                <strong>Seleccionar imagen</strong>
+                <small>{clientIdentityFileName ?? 'JPG, PNG o WebP'}</small>
+              </span>
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                disabled={clientIdentityStatus === 'reading'}
+                onChange={onIdentityFileChange}
+                type="file"
+              />
+            </label>
+            {clientIdentityMode === 'passport' ? (
+              <label>
+                MRZ detectada
+                <textarea
+                  className="mrz-textarea"
+                  onChange={(event) => onPassportMrzChange(event.target.value)}
+                  placeholder="P&lt;COLAPELLIDO&lt;&lt;NOMBRES..."
+                  value={clientPassportMrz}
+                />
+                <Button
+                  variant="secondary"
+                  disabled={!clientPassportMrz.trim() || clientIdentityStatus === 'reading'}
+                  onClick={onApplyPassportMrz}
+                  type="button"
+                >
+                  Aplicar datos
+                </Button>
+              </label>
+            ) : null}
+            <div className="passport-status" aria-live="polite">
+              {clientIdentityStatus === 'reading'
+                ? 'Leyendo documento...'
+                : clientIdentityPayload
+                  ? `Documento listo: ${clientIdentityPayload.documentNumber ?? 'revisar número'}`
+                  : 'La imagen se procesa localmente y no constituye KYC.'}
+            </div>
+            {clientIdentityError ? (
+              <p className="form-error">{clientIdentityError}</p>
+            ) : null}
+          </div>
+        ) : null}
         <div className="business-form-grid compact">
           <label>
             Nombre
@@ -2956,6 +3301,20 @@ function cleanText(value: string) {
   const normalized = value.trim();
 
   return normalized ? normalized : null;
+}
+
+function nameCase(value?: string | null) {
+  const normalized = value?.trim();
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  return normalized
+    .toLocaleLowerCase('es-PA')
+    .replace(/(^|[\s'-])(\p{L})/gu, (_match, prefix: string, letter: string) =>
+      `${prefix}${letter.toLocaleUpperCase('es-PA')}`,
+    );
 }
 
 function initials(value: string) {

@@ -1,9 +1,21 @@
 export type NationalIdOcrData = {
+  country: NationalIdCountry;
   documentNumber: string | null;
   firstName: string | null;
   lastName: string | null;
   rawText: string;
 };
+
+export type NationalIdCountry = 'CO' | 'PA';
+
+export const nationalIdCountries: Array<{
+  value: NationalIdCountry;
+  label: string;
+  issuingCountry: string;
+}> = [
+  { value: 'CO', label: 'Colombia', issuingCountry: 'COL' },
+  { value: 'PA', label: 'Panamá', issuingCountry: 'PAN' },
+];
 
 const DOCUMENT_NUMBER_LABELS = [
   'CEDULA',
@@ -39,11 +51,15 @@ const LETTER_REPAIRS: Record<string, string> = {
   '8': 'B',
 };
 
-export function parseNationalIdOcr(text: string): NationalIdOcrData {
+export function parseNationalIdOcr(
+  text: string,
+  country: NationalIdCountry,
+): NationalIdOcrData {
   const lines = normalizeLines(text);
 
   return {
-    documentNumber: findDocumentNumber(lines),
+    country,
+    documentNumber: findDocumentNumber(lines, country),
     firstName: findLabeledValue(lines, [
       'NOMBRES',
       'NOMBRE',
@@ -63,33 +79,36 @@ export function parseNationalIdOcr(text: string): NationalIdOcrData {
 }
 
 function normalizeLines(text: string) {
-  return text
-    .split(/\r?\n/)
-    .map(normalizeOcrLine)
-    .filter(Boolean);
+  return text.split(/\r?\n/).map(normalizeOcrLine).filter(Boolean);
 }
 
-function findDocumentNumber(lines: string[]) {
+function findDocumentNumber(lines: string[], country: NationalIdCountry) {
   const labeledCandidates = lines.flatMap((line, index) => {
     if (!hasAnyLabel(line, DOCUMENT_NUMBER_LABELS)) {
       return [];
     }
 
-    return [line, lines[index + 1], lines[index + 2]].filter(Boolean) as string[];
+    return [line, lines[index + 1], lines[index + 2]].filter(
+      Boolean,
+    ) as string[];
   });
 
   for (const candidate of labeledCandidates) {
-    const documentNumber = extractDocumentNumber(candidate);
+    const documentNumber = extractDocumentNumber(candidate, country);
 
     if (documentNumber) {
       return documentNumber;
     }
   }
 
-  return extractDocumentNumber(lines.join(' '));
+  return extractDocumentNumber(lines.join(' '), country);
 }
 
-function extractDocumentNumber(value: string) {
+function extractDocumentNumber(value: string, country: NationalIdCountry) {
+  if (country === 'CO') {
+    return extractColombianDocumentNumber(value);
+  }
+
   const tokens = normalizeOcrLine(value)
     .split(/[^A-Z0-9]+/)
     .filter(Boolean)
@@ -113,9 +132,31 @@ function extractDocumentNumber(value: string) {
   const repaired = Array.from(new Set(candidates))
     .map(repairDocumentNumber)
     .filter((candidate): candidate is string => Boolean(candidate))
-    .sort((left, right) => scoreDocumentNumber(right) - scoreDocumentNumber(left));
+    .sort(
+      (left, right) => scoreDocumentNumber(right) - scoreDocumentNumber(left),
+    );
 
   return repaired[0] ?? null;
+}
+
+function extractColombianDocumentNumber(value: string) {
+  const normalized = normalizeOcrLine(value)
+    .replace(
+      /(?:CEDULA|CIUDADANIA|IDENTIFICACION|DOCUMENTO|NUMERO|NO|NUIP)/g,
+      ' ',
+    )
+    .replace(/[OQ]/g, '0')
+    .replace(/[IL]/g, '1')
+    .replace(/S/g, '5')
+    .replace(/B/g, '8');
+  const candidates = normalized
+    .match(/(?:\d[\s.-]*){6,10}/g)
+    ?.map((candidate) => candidate.replace(/\D/g, ''))
+    .filter((candidate) => /^\d{6,10}$/.test(candidate));
+
+  return (
+    candidates?.sort((left, right) => right.length - left.length)[0] ?? null
+  );
 }
 
 function findLabeledValue(lines: string[], labels: string[]) {
@@ -255,7 +296,9 @@ function repairDigits(value = '') {
   return value
     .split('')
     .map((character) =>
-      /\d/.test(character) ? character : DIGIT_REPAIRS[character] ?? character,
+      /\d/.test(character)
+        ? character
+        : (DIGIT_REPAIRS[character] ?? character),
     )
     .join('');
 }
@@ -294,7 +337,10 @@ function cleanName(value: string) {
     .map((character) => LETTER_REPAIRS[character] ?? character)
     .join('')
     .replace(/[^A-Z\s]/g, '')
-    .replace(/\b(?:NOMBRES?|APELLIDOS?|SURNAME|SURNAMES|NAME|GIVEN|LAST)\b/g, '')
+    .replace(
+      /\b(?:NOMBRES?|APELLIDOS?|SURNAME|SURNAMES|NAME|GIVEN|LAST)\b/g,
+      '',
+    )
     .replace(/\s+/g, ' ')
     .trim();
 }
