@@ -72,6 +72,10 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this.prismaClient.commissionPlan;
   }
 
+  get compensationApplication() {
+    return this.prismaClient.compensationApplication;
+  }
+
   get contractType() {
     return this.prismaClient.contractType;
   }
@@ -82,6 +86,14 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
 
   get paymentScheduleLine() {
     return this.prismaClient.paymentScheduleLine;
+  }
+
+  get payoutMethod() {
+    return this.prismaClient.payoutMethod;
+  }
+
+  get payoutProfile() {
+    return this.prismaClient.payoutProfile;
   }
 
   get property() {
@@ -98,6 +110,10 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
 
   get scheduledAction() {
     return this.prismaClient.scheduledAction;
+  }
+
+  get disbursement() {
+    return this.prismaClient.disbursement;
   }
 
   get showing() {
