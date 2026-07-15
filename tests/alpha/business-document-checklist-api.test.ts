@@ -1,0 +1,443 @@
+import assert from 'node:assert/strict';
+import { after, before, test } from 'node:test';
+import {
+  BusinessOperationType,
+  BusinessParticipantRole,
+  BusinessPartyType,
+  createPrismaClient,
+} from '@soyre/database';
+import { ensureApiServer, type ApiServer } from '../helpers/api-server.ts';
+import {
+  assertStatus,
+  extractSessionCookie,
+  requestJson,
+} from '../helpers/http.ts';
+
+type RegisteredUser = {
+  memberships: Array<{ organizationId: string }>;
+};
+
+type TemplateResponse = {
+  template: { id: string; version: number };
+};
+
+type ChecklistResponse = {
+  created: boolean;
+  checklist: {
+    id: string;
+    templateVersion: number;
+    requirements: Array<{
+      id: string;
+      name: string;
+      category: string;
+      clientId: string | null;
+      propertyId: string | null;
+      businessContractId: string | null;
+      participantId: string | null;
+    }>;
+    summary: {
+      total: number;
+      completed: number;
+      pending: number;
+      blockers: Array<{ id: string }>;
+      progressPercentage: number;
+    };
+  };
+};
+
+const enabled = process.env.BUSINESS_DOCUMENT_CHECKLIST_API_MUTATING === 'true';
+const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const prisma = createPrismaClient();
+let server: ApiServer | null = null;
+
+before(async () => {
+  if (enabled) server = await ensureApiServer();
+});
+
+after(async () => {
+  await server?.stop();
+  await prisma.$disconnect();
+});
+
+test(
+  'business document checklist is idempotent, isolated and keeps snapshots',
+  { skip: !enabled },
+  async () => {
+    assert.ok(server);
+    const ownerA = await register(
+      server.baseUrl,
+      `checklist-a-${runId}@example.com`,
+      `checklist-a-${runId}`,
+    );
+    const ownerB = await register(
+      server.baseUrl,
+      `checklist-b-${runId}@example.com`,
+      `checklist-b-${runId}`,
+    );
+    const contextA = await createBusinessContext(ownerA.organizationId, 'A');
+    const contextB = await createBusinessContext(ownerB.organizationId, 'B');
+    const templateA = await createTemplate(
+      server.baseUrl,
+      ownerA.cookie,
+      ownerA.organizationId,
+      `sale-pa-${runId}`,
+    );
+    const templateB = await createTemplate(
+      server.baseUrl,
+      ownerB.cookie,
+      ownerB.organizationId,
+      `sale-pa-b-${runId}`,
+    );
+
+    const crossOrganizationBusiness = await requestJson(
+      server.baseUrl,
+      `/businesses/${contextB.businessId}/document-checklists`,
+      {
+        cookie: ownerA.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          templateId: templateA.id,
+        },
+      },
+    );
+    assertStatus(crossOrganizationBusiness, 404);
+
+    const crossOrganizationTemplate = await requestJson(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists`,
+      {
+        cookie: ownerA.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          templateId: templateB.id,
+        },
+      },
+    );
+    assertStatus(crossOrganizationTemplate, 404);
+
+    const instantiated = await requestJson<ChecklistResponse>(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists`,
+      {
+        cookie: ownerA.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          templateId: templateA.id,
+        },
+      },
+    );
+    assertStatus(instantiated, 201);
+    assert.equal(instantiated.body.created, true);
+    assert.equal(instantiated.body.checklist.templateVersion, 1);
+    assert.equal(instantiated.body.checklist.summary.total, 2);
+    assert.equal(instantiated.body.checklist.summary.pending, 1);
+    assert.equal(instantiated.body.checklist.summary.blockers.length, 1);
+    assert.equal(instantiated.body.checklist.summary.progressPercentage, 0);
+
+    const repeated = await requestJson<ChecklistResponse>(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists`,
+      {
+        cookie: ownerA.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          templateId: templateA.id,
+        },
+      },
+    );
+    assertStatus(repeated, 201);
+    assert.equal(repeated.body.created, false);
+    assert.equal(repeated.body.checklist.id, instantiated.body.checklist.id);
+
+    const custom = await requestJson<{
+      created: boolean;
+      requirement: ChecklistResponse['checklist']['requirements'][number];
+    }>(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements`,
+      {
+        cookie: ownerA.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          name: 'Comprobante extraordinario',
+          category: 'COMPROBANTE_ESPECIAL',
+          reason: 'Documento pertinente acordado por las partes.',
+          clientId: contextA.clientId,
+          propertyId: contextA.propertyId,
+          businessContractId: contextA.contractId,
+          participantId: contextA.participantId,
+        },
+      },
+    );
+    assertStatus(custom, 201);
+    assert.equal(custom.body.created, true);
+    assert.equal(custom.body.requirement.clientId, contextA.clientId);
+    assert.equal(custom.body.requirement.propertyId, contextA.propertyId);
+    assert.equal(
+      custom.body.requirement.businessContractId,
+      contextA.contractId,
+    );
+    assert.equal(custom.body.requirement.participantId, contextA.participantId);
+
+    for (const relation of [
+      { clientId: contextB.clientId },
+      { propertyId: contextB.propertyId },
+      { businessContractId: contextB.contractId },
+      { participantId: contextB.participantId },
+    ]) {
+      const rejected = await requestJson(
+        server.baseUrl,
+        `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements`,
+        {
+          cookie: ownerA.cookie,
+          method: 'POST',
+          body: {
+            organizationId: ownerA.organizationId,
+            name: 'Relación inválida',
+            category: 'OTRO',
+            reason: 'Debe rechazarse por aislamiento.',
+            ...relation,
+          },
+        },
+      );
+      assertStatus(rejected, 400);
+    }
+
+    const versioned = await requestJson<TemplateResponse>(
+      server.baseUrl,
+      `/document-checklist-templates/${templateA.id}`,
+      {
+        cookie: ownerA.cookie,
+        method: 'PATCH',
+        body: {
+          organizationId: ownerA.organizationId,
+          name: 'Plantilla modificada después del expediente',
+          items: [
+            {
+              key: 'reservation',
+              name: 'Reserva reemplazada en plantilla',
+              category: 'RESERVA',
+            },
+          ],
+        },
+      },
+    );
+    assertStatus(versioned, 200);
+    assert.equal(versioned.body.template.version, 2);
+
+    const listed = await requestJson<{
+      summary: ChecklistResponse['checklist']['summary'];
+      checklists: ChecklistResponse['checklist'][];
+    }>(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists?organizationId=${ownerA.organizationId}`,
+      { cookie: ownerA.cookie },
+    );
+    assertStatus(listed, 200);
+    assert.equal(listed.body.checklists.length, 1);
+    assert.equal(listed.body.checklists[0]?.templateVersion, 1);
+    assert.deepEqual(
+      listed.body.checklists[0]?.requirements.map((item) => item.name),
+      ['Reserva firmada', 'Adenda o anexo', 'Comprobante extraordinario'],
+    );
+    assert.equal(listed.body.summary.total, 3);
+    assert.equal(listed.body.summary.pending, 1);
+
+    const readonlyPassword = `Readonly-${runId}!`;
+    const readonlyCreated = await requestJson<{ user: { email: string } }>(
+      server.baseUrl,
+      '/users',
+      {
+        cookie: ownerA.cookie,
+        method: 'POST',
+        body: {
+          firstName: 'Solo',
+          lastName: 'Lectura',
+          email: `checklist-readonly-${runId}@example.com`,
+          password: readonlyPassword,
+          role: 'READONLY',
+          startActive: true,
+        },
+      },
+    );
+    assertStatus(readonlyCreated, 201);
+    const readonlyLogin = await requestJson(server.baseUrl, '/auth/login', {
+      method: 'POST',
+      body: {
+        email: readonlyCreated.body.user.email,
+        password: readonlyPassword,
+      },
+    });
+    assertStatus(readonlyLogin, 200);
+    const readonlyCookie = extractSessionCookie(readonlyLogin.headers);
+
+    const readonlyList = await requestJson<{
+      summary: { total: number };
+    }>(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists?organizationId=${ownerA.organizationId}`,
+      { cookie: readonlyCookie },
+    );
+    assertStatus(readonlyList, 200);
+    assert.equal(readonlyList.body.summary.total, 1);
+
+    const readonlyWrite = await requestJson(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists`,
+      {
+        cookie: readonlyCookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          templateId: templateA.id,
+        },
+      },
+    );
+    assertStatus(readonlyWrite, 403);
+  },
+);
+
+async function createTemplate(
+  baseUrl: string,
+  cookie: string,
+  organizationId: string,
+  familyKey: string,
+) {
+  const created = await requestJson<TemplateResponse>(
+    baseUrl,
+    '/document-checklist-templates',
+    {
+      cookie,
+      method: 'POST',
+      body: {
+        organizationId,
+        familyKey,
+        name: `Expediente ${familyKey}`,
+        isActive: true,
+        operationTypes: ['SALE'],
+        countries: ['PA'],
+        propertyTypes: ['APARTMENT'],
+        items: [
+          {
+            key: 'reservation',
+            name: 'Reserva firmada',
+            category: 'RESERVA',
+            required: true,
+            blocksTransition: true,
+            dueDaysAfterInstantiation: 3,
+            readRoles: [
+              'OWNER',
+              'ADMIN',
+              'BROKER',
+              'OPERATIONS',
+              'AGENT',
+              'READONLY',
+            ],
+          },
+          {
+            key: 'addendum',
+            name: 'Adenda o anexo',
+            category: 'ADENDA',
+            required: false,
+            allowsMultipleFiles: true,
+          },
+        ],
+      },
+    },
+  );
+  assertStatus(created, 201);
+  return created.body.template;
+}
+
+async function createBusinessContext(organizationId: string, suffix: string) {
+  const client = await prisma.client.create({
+    data: {
+      organizationId,
+      displayName: `Cliente ${suffix} ${runId}`,
+      email: `client-${suffix}-${runId}@example.com`,
+    },
+  });
+  const property = await prisma.property.create({
+    data: {
+      organizationId,
+      title: `Propiedad ${suffix} ${runId}`,
+      type: 'APARTMENT',
+      operations: ['SALE'],
+      salePrice: 250_000,
+      country: 'PA',
+      city: 'Panamá',
+      zone: 'Prueba',
+    },
+  });
+  const contractType = await prisma.contractType.create({
+    data: {
+      organizationId,
+      name: `Compraventa ${suffix} ${runId}`,
+      operationType: BusinessOperationType.SALE,
+    },
+  });
+  const business = await prisma.business.create({
+    data: {
+      organizationId,
+      operationType: BusinessOperationType.SALE,
+      propertyId: property.id,
+      primaryClientId: client.id,
+      contractTypeId: contractType.id,
+    },
+  });
+  const participant = await prisma.businessParticipant.create({
+    data: {
+      organizationId,
+      businessId: business.id,
+      partyType: BusinessPartyType.CLIENT,
+      clientId: client.id,
+      displayName: client.displayName,
+      role: BusinessParticipantRole.BUYER,
+      isPrimary: true,
+    },
+  });
+  const contract = await prisma.businessContract.create({
+    data: {
+      businessId: business.id,
+      contractTypeId: contractType.id,
+      contractNumber: `CTR-${suffix}-${runId}`,
+    },
+  });
+  return {
+    businessId: business.id,
+    clientId: client.id,
+    propertyId: property.id,
+    participantId: participant.id,
+    contractId: contract.id,
+  };
+}
+
+async function register(baseUrl: string, email: string, slug: string) {
+  const response = await requestJson<{ user: RegisteredUser }>(
+    baseUrl,
+    '/auth/register',
+    {
+      method: 'POST',
+      body: {
+        organizationName: `Checklist ${slug}`,
+        organizationSlug: slug,
+        firstName: 'Docs',
+        lastName: 'Owner',
+        email,
+        password: `Checklist-${runId}!`,
+      },
+    },
+  );
+  assertStatus(response, 201);
+  const organizationId = response.body.user.memberships[0]?.organizationId;
+  assert.ok(organizationId);
+  return {
+    cookie: extractSessionCookie(response.headers),
+    organizationId,
+  };
+}

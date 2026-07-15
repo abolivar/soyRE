@@ -110,6 +110,34 @@ cuando el usuario tenga un rol administrativo en otra organización. Cada
 creación, edición, versión, activación y desactivación genera una entrada de
 auditoría.
 
+## API Del Expediente Del Negocio
+
+El expediente se opera dentro del negocio:
+
+- `GET /api/businesses/:businessId/document-checklists`: devuelve los
+  checklists instanciados, requisitos visibles para el rol y un resumen de
+  avance, pendientes obligatorios y bloqueantes.
+- `POST /api/businesses/:businessId/document-checklists`: instancia una
+  plantilla activa aplicable. Repetir la solicitud para la misma familia es
+  idempotente y devuelve el snapshot existente.
+- `POST /api/businesses/:businessId/document-checklists/:checklistId/requirements`:
+  agrega un requisito libre con nombre, categoría abierta y motivo obligatorio.
+
+La instanciación copia versión, criterios y requisitos, calcula las fechas
+relativas y nunca reescribe el expediente cuando cambia la plantilla. La
+aplicabilidad se valida contra operación, estado, contrato, país y tipo de
+propiedad del negocio.
+
+Un requisito libre puede relacionarse con el cliente participante, la propiedad
+del negocio, un contrato del negocio o un participante registrado. La API valida
+esas relaciones y la base las protege con claves compuestas de organización y/o
+negocio. IDs ajenos se rechazan y no producen registros parciales.
+
+El porcentaje de avance se calcula sobre requisitos obligatorios visibles. Los
+requisitos opcionales permanecen en el total y pueden completarse sin impedir
+que los obligatorios alcancen cien por ciento. La ejecución efectiva de bloqueos
+en transiciones se completa en el lote de estados documentales.
+
 ## Documentos No Previstos
 
 Un usuario con permiso puede agregar al expediente un requisito o documento que
