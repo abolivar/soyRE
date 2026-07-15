@@ -12,6 +12,8 @@ import {
   FileText,
   HandCoins,
   Home,
+  IdCard,
+  Keyboard,
   Loader2,
   Plus,
   RefreshCcw,
@@ -20,13 +22,22 @@ import {
   Sparkles,
   UserRoundPlus,
   Users,
+  Upload,
   Workflow,
   X,
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   calculateBusinessDraftProgress,
+  calculateNegotiationAdjustments,
   type BusinessDraftProgress,
 } from '@soyre/shared';
 import {
@@ -37,6 +48,7 @@ import {
   BusinessContextClient,
   BusinessContextProperty,
   BusinessContextResponse,
+  BusinessContextUser,
   BusinessDraftResponse,
   BusinessMode,
   BusinessOperationType,
@@ -48,8 +60,20 @@ import {
   CommissionPlanCalculation,
   CreateClientPayload,
   OrganizationClient,
+  NegotiationAdjustmentCalculation,
   PaymentPlanCalculation,
 } from '../lib/api';
+import {
+  fileToIdentityDocumentPayload,
+  IdentityDocumentPayload,
+  isSupportedIdentityFile,
+} from '../lib/identity-document-file';
+import {
+  NationalIdCountry,
+  nationalIdCountries,
+  parseNationalIdOcr,
+} from '../lib/national-id-ocr';
+import { extractPassportMrz, parsePassportMrz } from '../lib/passport-mrz';
 import {
   Button,
   ErrorState,
@@ -74,12 +98,14 @@ type WizardStepId =
 type BusinessParticipantDraft = {
   participantKey: string;
   clientId?: string;
+  userId?: string;
   realEstateAgentId?: string;
   displayName: string;
   email?: string | null;
   phone?: string | null;
   documentId?: string | null;
   role: BusinessParticipantRole;
+  roles?: BusinessParticipantRole[];
   isPrimary?: boolean;
   commissionEligible?: boolean;
 };
@@ -119,6 +145,16 @@ type PaymentSpecialLineDraft = {
   dueDate: string;
 };
 
+type NegotiationAdjustmentDraft = {
+  id: string;
+  category: 'MATERIALS' | 'IMPROVEMENTS' | 'ASSIGNMENT' | 'OTHER';
+  label: string;
+  amountCents: string;
+  direction: 'INCREASE' | 'DECREASE';
+  appliesTo: string;
+  notes: string;
+};
+
 type CommissionRuleDraft = {
   participantKey: string;
   recipientType: string;
@@ -153,6 +189,7 @@ type BusinessWizardData = {
     payableAmountCents: string;
     commissionBaseAmountCents: string;
   };
+  negotiationAdjustments: NegotiationAdjustmentDraft[];
   paymentPlan: PaymentPlanDraft;
   commissionPlan: {
     commissionBase: string;
@@ -176,6 +213,9 @@ type NewClientForm = {
   phone: string;
   legalId: string;
 };
+
+type InlineIdentityMode = 'manual' | 'passport' | 'national_id';
+type InlineIdentityStatus = 'idle' | 'reading' | 'ready' | 'error';
 
 const steps: Array<{
   id: WizardStepId;
@@ -252,6 +292,7 @@ const defaultWizardData: BusinessWizardData = {
     payableAmountCents: '0',
     commissionBaseAmountCents: '0',
   },
+  negotiationAdjustments: [],
   paymentPlan: {
     preset: 'CASH',
     totalAmountCents: '0',
@@ -339,6 +380,19 @@ export function BusinessWizard() {
     legalId: '',
     phone: '',
   });
+  const [clientIdentityMode, setClientIdentityMode] =
+    useState<InlineIdentityMode>('manual');
+  const [clientIdentityCountry, setClientIdentityCountry] =
+    useState<NationalIdCountry>('CO');
+  const [clientIdentityPayload, setClientIdentityPayload] =
+    useState<IdentityDocumentPayload | null>(null);
+  const [clientIdentityStatus, setClientIdentityStatus] =
+    useState<InlineIdentityStatus>('idle');
+  const [clientIdentityError, setClientIdentityError] = useState<string | null>(null);
+  const [clientIdentityFileName, setClientIdentityFileName] = useState<string | null>(
+    null,
+  );
+  const [clientPassportMrz, setClientPassportMrz] = useState('');
   const [newAgentId, setNewAgentId] = useState('');
   const [commParticipantId, setCommParticipantId] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -454,6 +508,14 @@ export function BusinessWizard() {
     () => calculateBusinessDraftProgress(data),
     [data],
   );
+  const localNegotiationCalculation = useMemo(
+    () =>
+      calculateNegotiationAdjustments({
+        adjustments: data.negotiationAdjustments,
+        currency: data.currency,
+      }),
+    [data.currency, data.negotiationAdjustments],
+  );
   const selectedProperty = useMemo(
     () =>
       context?.properties.find((property) => property.id === data.propertyId) ??
@@ -480,6 +542,8 @@ export function BusinessWizard() {
   const visiblePaymentCalculation = paymentCalculation ?? emptyPaymentCalculation;
   const visibleCommissionCalculation =
     commissionCalculation ?? emptyCommissionCalculation;
+  const visibleNegotiationCalculation =
+    preview?.negotiationAdjustments ?? localNegotiationCalculation;
 
   function updateData(patch: Partial<BusinessWizardData>) {
     setData((current) => {
@@ -512,6 +576,42 @@ export function BusinessWizard() {
         ...data.paymentPlan,
         [key]: value,
       },
+    });
+  }
+
+  function addNegotiationAdjustment() {
+    updateData({
+      negotiationAdjustments: [
+        ...data.negotiationAdjustments,
+        {
+          amountCents: '0',
+          appliesTo: 'BUYER',
+          category: 'MATERIALS',
+          direction: 'INCREASE',
+          id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
+          label: '',
+          notes: '',
+        },
+      ],
+    });
+  }
+
+  function updateNegotiationAdjustment(
+    index: number,
+    patch: Partial<NegotiationAdjustmentDraft>,
+  ) {
+    updateData({
+      negotiationAdjustments: data.negotiationAdjustments.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...patch } : item,
+      ),
+    });
+  }
+
+  function removeNegotiationAdjustment(index: number) {
+    updateData({
+      negotiationAdjustments: data.negotiationAdjustments.filter(
+        (_, itemIndex) => itemIndex !== index,
+      ),
     });
   }
 
@@ -753,6 +853,7 @@ export function BusinessWizard() {
           participantKey: client.id,
           phone: client.phone,
           role,
+          roles: [role],
         },
       ],
     });
@@ -769,7 +870,25 @@ export function BusinessWizard() {
     setClientError(null);
 
     try {
-      const role = data.operationType === 'RENT' ? 'LESSEE' : 'BUYER';
+      if (clientIdentityStatus === 'reading') {
+        throw new Error('Espera a que termine la lectura del documento.');
+      }
+
+      if (clientIdentityMode !== 'manual' && !clientIdentityPayload) {
+        throw new Error('Carga el documento de identidad antes de crear el cliente.');
+      }
+
+      const clientRole: ClientRole = data.operationType === 'RENT' ? 'LESSEE' : 'BUYER';
+      const correctedIdentityDocument = clientIdentityPayload
+        ? {
+            ...clientIdentityPayload,
+            documentNumber:
+              cleanText(newClient.legalId) ?? clientIdentityPayload.documentNumber,
+            firstName:
+              nameCase(newClient.firstName) ?? clientIdentityPayload.firstName,
+            lastName: nameCase(newClient.lastName) ?? clientIdentityPayload.lastName,
+          }
+        : null;
       const payload: CreateClientPayload = {
         dataConsent: true,
         email: cleanText(newClient.email) ?? undefined,
@@ -778,9 +897,12 @@ export function BusinessWizard() {
         legalId: cleanText(newClient.legalId) ?? undefined,
         organizationId: activeOrganizationId,
         phone: cleanText(newClient.phone) ?? undefined,
-        roles: [role as ClientRole],
+        roles: [clientRole],
         status: 'ACTIVE',
         type: 'PERSON',
+        ...(correctedIdentityDocument
+          ? { identityDocument: correctedIdentityDocument }
+          : {}),
       };
       const response = await apiFetch<{ client: OrganizationClient }>('/clients', {
         body: JSON.stringify(payload),
@@ -804,7 +926,21 @@ export function BusinessWizard() {
             }
           : current,
       );
-      addExistingClient(client.id);
+      updateData({
+        participants: [
+          ...data.participants,
+          {
+            clientId: client.id,
+            displayName: client.displayName,
+            documentId: client.legalId,
+            email: client.email,
+            isPrimary: !data.participants.some((item) => item.clientId),
+            participantKey: client.id,
+            phone: client.phone,
+            role: defaultClientRole(data.operationType),
+          },
+        ],
+      });
       setNewClient({
         email: '',
         firstName: '',
@@ -812,9 +948,159 @@ export function BusinessWizard() {
         legalId: '',
         phone: '',
       });
+      resetInlineIdentity();
     } catch (caught) {
       setClientError(
         caught instanceof Error ? caught.message : 'No se pudo crear el cliente.',
+      );
+    }
+  }
+
+  function resetInlineIdentity(mode: InlineIdentityMode = 'manual') {
+    setClientIdentityMode(mode);
+    setClientIdentityCountry('CO');
+    setClientIdentityPayload(null);
+    setClientIdentityStatus('idle');
+    setClientIdentityError(null);
+    setClientIdentityFileName(null);
+    setClientPassportMrz('');
+  }
+
+  function changeInlineIdentityMode(mode: InlineIdentityMode) {
+    resetInlineIdentity(mode);
+  }
+
+  function changeInlineIdentityCountry(country: NationalIdCountry) {
+    setClientIdentityCountry(country);
+    setClientIdentityPayload(null);
+    setClientIdentityStatus('idle');
+    setClientIdentityError(null);
+    setClientIdentityFileName(null);
+  }
+
+  async function processInlineIdentityFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    if (!isSupportedIdentityFile(file)) {
+      setClientIdentityStatus('error');
+      setClientIdentityError('El documento debe ser una imagen JPEG, PNG o WebP.');
+      return;
+    }
+
+    const documentType =
+      clientIdentityMode === 'passport' ? 'PASSPORT' : 'NATIONAL_ID';
+    setClientIdentityStatus('reading');
+    setClientIdentityError(null);
+    setClientIdentityFileName(file.name);
+
+    try {
+      const basePayload = await fileToIdentityDocumentPayload(file, documentType);
+      setClientIdentityPayload(basePayload);
+      const { createWorker } = await import('tesseract.js');
+      const worker = await createWorker('eng');
+
+      try {
+        if (documentType === 'PASSPORT') {
+          await worker.setParameters({
+            preserve_interword_spaces: '1',
+            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
+          });
+        }
+
+        const {
+          data: { text },
+        } = await worker.recognize(file, { rotateAuto: true });
+
+        if (documentType === 'PASSPORT') {
+          const mrz = extractPassportMrz(text);
+          setClientIdentityPayload({ ...basePayload, ocrText: text });
+
+          if (!mrz) {
+            throw new Error(
+              'No se detectó la MRZ. Puedes pegarla o corregirla manualmente.',
+            );
+          }
+
+          setClientPassportMrz(mrz);
+          applyInlinePassportMrz(mrz, { ...basePayload, ocrText: text });
+        } else {
+          const parsed = parseNationalIdOcr(text, clientIdentityCountry);
+          const country = nationalIdCountries.find(
+            (item) => item.value === clientIdentityCountry,
+          );
+          setClientIdentityPayload({
+            ...basePayload,
+            documentNumber: parsed.documentNumber ?? undefined,
+            issuingCountry: country?.issuingCountry,
+            firstName: nameCase(parsed.firstName),
+            lastName: nameCase(parsed.lastName),
+            ocrText: parsed.rawText,
+            extractedData: {
+              country: clientIdentityCountry,
+              parser: `national-id-ocr-${clientIdentityCountry.toLocaleLowerCase()}`,
+            },
+          });
+          setNewClient((current) => ({
+            ...current,
+            firstName: nameCase(parsed.firstName) ?? current.firstName,
+            lastName: nameCase(parsed.lastName) ?? current.lastName,
+            legalId: parsed.documentNumber ?? current.legalId,
+          }));
+          setClientIdentityStatus('ready');
+        }
+      } finally {
+        await worker.terminate();
+      }
+    } catch (caught) {
+      setClientIdentityStatus('error');
+      setClientIdentityError(
+        caught instanceof Error ? caught.message : 'No se pudo leer el documento.',
+      );
+    }
+  }
+
+  function applyInlinePassportMrz(
+    mrz = clientPassportMrz,
+    basePayload = clientIdentityPayload,
+  ) {
+    try {
+      const parsed = parsePassportMrz(mrz);
+
+      if (basePayload) {
+        setClientIdentityPayload({
+          ...basePayload,
+          type: 'PASSPORT',
+          documentNumber: parsed.documentNumber,
+          issuingCountry: parsed.issuingCountry,
+          firstName: nameCase(parsed.firstName),
+          lastName: nameCase(parsed.lastName),
+          birthDate: parsed.birthDate ?? undefined,
+          expirationDate: parsed.expirationDate ?? undefined,
+          extractedData: {
+            mrz: parsed.mrz,
+            parser: 'td3-mrz',
+            sex: parsed.sex,
+          },
+        });
+      }
+
+      setNewClient((current) => ({
+        ...current,
+        firstName: nameCase(parsed.firstName) ?? current.firstName,
+        lastName: nameCase(parsed.lastName) ?? current.lastName,
+        legalId: parsed.documentNumber,
+      }));
+      setClientIdentityError(null);
+      setClientIdentityStatus('ready');
+    } catch (caught) {
+      setClientIdentityStatus('error');
+      setClientIdentityError(
+        caught instanceof Error ? caught.message : 'La MRZ no pudo interpretarse.',
       );
     }
   }
@@ -826,7 +1112,22 @@ export function BusinessWizard() {
     updateData({
       participants: data.participants.map((participant) =>
         participant.participantKey === participantKey
-          ? { ...participant, role }
+          ? {
+              ...participant,
+              role,
+              roles: Array.from(
+                new Set([
+                  role,
+                  ...(participant.roles ?? []).filter(
+                    (item) =>
+                      item !== participant.role ||
+                      ['PRIMARY_AGENT', 'CO_AGENT', 'REFERRER', 'BROKER'].includes(
+                        item,
+                      ),
+                  ),
+                ]),
+              ),
+            }
           : participant,
       ),
     });
@@ -920,35 +1221,133 @@ export function BusinessWizard() {
       return;
     }
 
-    const nextParticipants = data.participants.filter(
-      (participant) => participant.role !== 'PRIMARY_AGENT',
+    const selected = data.participants.find(
+      (participant) =>
+        participant.realEstateAgentId === agent.id ||
+        samePersonEmail(participant.email, agent.email),
     );
+    const nextParticipants = data.participants
+      .filter((participant) => participant.participantKey !== selected?.participantKey)
+      .map<BusinessParticipantDraft>((participant) => {
+        if (participant.role !== 'PRIMARY_AGENT') {
+          return participant;
+        }
+
+        const roles = (participant.roles ?? [participant.role]).filter(
+          (role) => role !== 'PRIMARY_AGENT',
+        );
+
+        return {
+          ...participant,
+          isPrimary: false,
+          role: roles[0] ?? 'CO_AGENT',
+          roles: roles.length > 0 ? roles : ['CO_AGENT' as const],
+        };
+      });
+    const primaryParticipant = selected
+      ? {
+          ...selected,
+          commissionEligible: true,
+          email: selected.email ?? agent.email,
+          isPrimary: true,
+          phone: selected.phone ?? agent.phone,
+          realEstateAgentId: agent.id,
+          role: 'PRIMARY_AGENT' as const,
+          roles: Array.from(
+            new Set(['PRIMARY_AGENT' as const, ...(selected.roles ?? [selected.role])]),
+          ),
+        }
+      : agentParticipant(agent, 'PRIMARY_AGENT');
 
     updateData({
-      participants: [
-        ...nextParticipants,
-        agentParticipant(agent, 'PRIMARY_AGENT'),
-      ],
+      participants: [...nextParticipants, primaryParticipant],
     });
     setNewAgentId(agentId);
   }
 
-  function addCommissionParticipant(agentId: string, role: BusinessParticipantRole) {
-    const agent = context?.agents.find((item) => item.id === agentId);
+  function addCommissionRecipient(candidateKey: string) {
+    const [kind, id] = candidateKey.split(':');
+    const client = kind === 'CLIENT' ? context?.clients.find((item) => item.id === id) : null;
+    const user = kind === 'USER' ? context?.users.find((item) => item.id === id) : null;
+    const agent = kind === 'AGENT' ? context?.agents.find((item) => item.id === id) : null;
+    const candidateEmail = client?.email ?? user?.email ?? agent?.email;
+    const existing = data.participants.find((participant) =>
+      kind === 'CLIENT'
+        ? participant.clientId === id || samePersonEmail(participant.email, candidateEmail)
+        : kind === 'USER'
+          ? participant.userId === id || samePersonEmail(participant.email, candidateEmail)
+          : participant.realEstateAgentId === id ||
+            samePersonEmail(participant.email, candidateEmail),
+    );
 
-    if (!agent) {
+    if (!existing && !client && !user && !agent) {
+      setFormError('Selecciona una persona registrada como receptor.');
       return;
     }
 
-    const key = `${agent.id}:${role}`;
-
-    if (data.participants.some((item) => item.participantKey === key)) {
-      return;
-    }
+    const participant: BusinessParticipantDraft = existing
+      ? {
+          ...existing,
+          clientId: existing.clientId ?? client?.id,
+          commissionEligible: true,
+          realEstateAgentId: existing.realEstateAgentId ?? agent?.id,
+          roles: Array.from(new Set([...(existing.roles ?? [existing.role]), 'REFERRER'])),
+          userId: existing.userId ?? user?.id,
+        }
+      : client
+        ? {
+            clientId: client.id,
+            commissionEligible: true,
+            displayName: client.displayName,
+            documentId: client.legalId,
+            email: client.email,
+            participantKey: client.id,
+            phone: client.phone,
+            role: 'REFERRER',
+            roles: ['REFERRER'],
+          }
+        : user
+          ? {
+              commissionEligible: true,
+              displayName: [user.firstName, user.lastName].filter(Boolean).join(' '),
+              email: user.email,
+              participantKey: `USER:${user.id}`,
+              role: 'REFERRER',
+              roles: ['REFERRER'],
+              userId: user.id,
+            }
+          : agentParticipant(agent as BusinessContextAgent, 'REFERRER');
+    const participants = existing
+      ? data.participants.map((item) =>
+          item.participantKey === existing.participantKey ? participant : item,
+        )
+      : [...data.participants, participant];
+    const alreadyAssigned = data.commissionPlan.rules.some(
+      (rule) =>
+        rule.participantKey === participant.participantKey &&
+        rule.recipientType === 'REFERRER',
+    );
 
     updateData({
-      participants: [...data.participants, agentParticipant(agent, role, key)],
+      participants,
+      commissionPlan: {
+        ...data.commissionPlan,
+        rules: alreadyAssigned
+          ? data.commissionPlan.rules
+          : [
+              ...data.commissionPlan.rules,
+              {
+                calculationType: 'PERCENTAGE_OF_COMMISSION',
+                label: participant.displayName,
+                participantKey: participant.participantKey,
+                percentageBasisPoints: 0,
+                recipientType: 'REFERRER',
+                releaseTrigger: data.commissionPlan.releaseTrigger,
+              },
+            ],
+      },
     });
+    setCommParticipantId('');
   }
 
   function addSimpleRuleToAdvanced() {
@@ -1167,11 +1566,23 @@ export function BusinessWizard() {
           ) : null}
           {activeStep === 'clients' ? (
             <ClientsStep
+              clientIdentityCountry={clientIdentityCountry}
+              clientIdentityError={clientIdentityError}
+              clientIdentityFileName={clientIdentityFileName}
+              clientIdentityMode={clientIdentityMode}
+              clientIdentityPayload={clientIdentityPayload}
+              clientIdentityStatus={clientIdentityStatus}
+              clientPassportMrz={clientPassportMrz}
               clientError={clientError}
               clients={context.clients}
               data={data}
               newClient={newClient}
               onAddExistingClient={addExistingClient}
+              onApplyPassportMrz={() => applyInlinePassportMrz()}
+              onIdentityCountryChange={changeInlineIdentityCountry}
+              onIdentityFileChange={(event) => void processInlineIdentityFile(event)}
+              onIdentityModeChange={changeInlineIdentityMode}
+              onPassportMrzChange={setClientPassportMrz}
               onCreateClient={(event) => void createInlineClient(event)}
               onNewClientChange={setNewClient}
               onRefreshContext={() => void refreshContext()}
@@ -1203,7 +1614,11 @@ export function BusinessWizard() {
           ) : null}
           {activeStep === 'financial' ? (
             <FinancialStep
+              calculation={visibleNegotiationCalculation}
               data={data}
+              onAddAdjustment={addNegotiationAdjustment}
+              onAdjustmentChange={updateNegotiationAdjustment}
+              onRemoveAdjustment={removeNegotiationAdjustment}
               onSyncTotals={syncFinancialTotals}
               updateFinancial={updateFinancial}
             />
@@ -1222,12 +1637,13 @@ export function BusinessWizard() {
           {activeStep === 'commissions' ? (
             <CommissionStep
               agents={context.agents}
+              clients={context.clients}
               calculation={visibleCommissionCalculation}
               commParticipantId={commParticipantId}
               data={data}
               newAgentId={newAgentId}
               onAddAdvancedRule={addSimpleRuleToAdvanced}
-              onAddCommissionParticipant={addCommissionParticipant}
+              onAddCommissionRecipient={addCommissionRecipient}
               onPrimaryAgentChange={addPrimaryAgent}
               onRefreshContext={() => void refreshContext()}
               onRemoveRule={removeCommissionRule}
@@ -1236,6 +1652,7 @@ export function BusinessWizard() {
               setCommParticipantId={setCommParticipantId}
               updateCommissionPlan={updateCommissionPlan}
               updateData={updateData}
+              users={context.users}
               isContextRefreshing={isContextRefreshing}
             />
           ) : null}
@@ -1249,6 +1666,7 @@ export function BusinessWizard() {
               data={data}
               isCommitting={isCommitting}
               isPreviewing={isPreviewing}
+              negotiationCalculation={visibleNegotiationCalculation}
               onCommit={() => void commitBusiness()}
               onRefreshPreview={() => void refreshPreview()}
               paymentCalculation={visiblePaymentCalculation}
@@ -1281,6 +1699,7 @@ export function BusinessWizard() {
           commissionCalculation={visibleCommissionCalculation}
           data={data}
           draft={draft}
+          negotiationCalculation={visibleNegotiationCalculation}
           paymentCalculation={visiblePaymentCalculation}
           selectedContractType={selectedContractType}
           selectedProperty={selectedProperty}
@@ -1411,24 +1830,48 @@ function ModeStep({
 }
 
 function ClientsStep({
+  clientIdentityCountry,
+  clientIdentityError,
+  clientIdentityFileName,
+  clientIdentityMode,
+  clientIdentityPayload,
+  clientIdentityStatus,
+  clientPassportMrz,
   clientError,
   clients,
   data,
   isContextRefreshing,
   newClient,
   onAddExistingClient,
+  onApplyPassportMrz,
+  onIdentityCountryChange,
+  onIdentityFileChange,
+  onIdentityModeChange,
+  onPassportMrzChange,
   onCreateClient,
   onNewClientChange,
   onRefreshContext,
   onRemoveParticipant,
   onRoleChange,
 }: {
+  clientIdentityCountry: NationalIdCountry;
+  clientIdentityError: string | null;
+  clientIdentityFileName: string | null;
+  clientIdentityMode: InlineIdentityMode;
+  clientIdentityPayload: IdentityDocumentPayload | null;
+  clientIdentityStatus: InlineIdentityStatus;
+  clientPassportMrz: string;
   clientError: string | null;
   clients: BusinessContextClient[];
   data: BusinessWizardData;
   isContextRefreshing: boolean;
   newClient: NewClientForm;
   onAddExistingClient: (clientId: string) => void;
+  onApplyPassportMrz: () => void;
+  onIdentityCountryChange: (country: NationalIdCountry) => void;
+  onIdentityFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onIdentityModeChange: (mode: InlineIdentityMode) => void;
+  onPassportMrzChange: (value: string) => void;
   onCreateClient: (event: FormEvent<HTMLFormElement>) => void;
   onNewClientChange: (value: NewClientForm) => void;
   onRefreshContext: () => void;
@@ -1502,6 +1945,9 @@ function ClientsStep({
                 <span className="meta-row">
                   {participant.email ?? 'Sin email'} · {participant.phone ?? 'Sin teléfono'}
                 </span>
+                <span className="meta-row">
+                  Roles: {participantRoleLabels(participant).join(', ')}
+                </span>
               </div>
               <select
                 value={participant.role}
@@ -1532,7 +1978,94 @@ function ClientsStep({
       </div>
 
       <form className="inline-create-form" onSubmit={onCreateClient}>
-        <strong>Crear cliente rapido</strong>
+        <strong>Crear cliente rápido</strong>
+        <div className="intake-mode-toggle" aria-label="Método de alta rápida">
+          <button
+            className={clientIdentityMode === 'manual' ? 'mode-button active' : 'mode-button'}
+            onClick={() => onIdentityModeChange('manual')}
+            type="button"
+          >
+            <Keyboard size={17} /> Manual
+          </button>
+          <button
+            className={clientIdentityMode === 'passport' ? 'mode-button active' : 'mode-button'}
+            onClick={() => onIdentityModeChange('passport')}
+            type="button"
+          >
+            <FileText size={17} /> Pasaporte
+          </button>
+          <button
+            className={clientIdentityMode === 'national_id' ? 'mode-button active' : 'mode-button'}
+            onClick={() => onIdentityModeChange('national_id')}
+            type="button"
+          >
+            <IdCard size={17} /> Cédula
+          </button>
+        </div>
+
+        {clientIdentityMode !== 'manual' ? (
+          <div className="inline-identity-intake">
+            {clientIdentityMode === 'national_id' ? (
+              <label>
+                País de la cédula
+                <select
+                  onChange={(event) =>
+                    onIdentityCountryChange(event.target.value as NationalIdCountry)
+                  }
+                  value={clientIdentityCountry}
+                >
+                  {nationalIdCountries.map((country) => (
+                    <option key={country.value} value={country.value}>
+                      {country.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <label className="passport-upload">
+              <Upload size={18} />
+              <span>
+                <strong>Seleccionar imagen</strong>
+                <small>{clientIdentityFileName ?? 'JPG, PNG o WebP'}</small>
+              </span>
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                disabled={clientIdentityStatus === 'reading'}
+                onChange={onIdentityFileChange}
+                type="file"
+              />
+            </label>
+            {clientIdentityMode === 'passport' ? (
+              <label>
+                MRZ detectada
+                <textarea
+                  className="mrz-textarea"
+                  onChange={(event) => onPassportMrzChange(event.target.value)}
+                  placeholder="P&lt;COLAPELLIDO&lt;&lt;NOMBRES..."
+                  value={clientPassportMrz}
+                />
+                <Button
+                  variant="secondary"
+                  disabled={!clientPassportMrz.trim() || clientIdentityStatus === 'reading'}
+                  onClick={onApplyPassportMrz}
+                  type="button"
+                >
+                  Aplicar datos
+                </Button>
+              </label>
+            ) : null}
+            <div className="passport-status" aria-live="polite">
+              {clientIdentityStatus === 'reading'
+                ? 'Leyendo documento...'
+                : clientIdentityPayload
+                  ? `Documento listo: ${clientIdentityPayload.documentNumber ?? 'revisar número'}`
+                  : 'La imagen se procesa localmente y no constituye KYC.'}
+            </div>
+            {clientIdentityError ? (
+              <p className="form-error">{clientIdentityError}</p>
+            ) : null}
+          </div>
+        ) : null}
         <div className="business-form-grid compact">
           <label>
             Nombre
@@ -1788,11 +2321,22 @@ function ContractStep({
 }
 
 function FinancialStep({
+  calculation,
   data,
+  onAddAdjustment,
+  onAdjustmentChange,
+  onRemoveAdjustment,
   onSyncTotals,
   updateFinancial,
 }: {
+  calculation: NegotiationAdjustmentCalculation;
   data: BusinessWizardData;
+  onAddAdjustment: () => void;
+  onAdjustmentChange: (
+    index: number,
+    patch: Partial<NegotiationAdjustmentDraft>,
+  ) => void;
+  onRemoveAdjustment: (index: number) => void;
   onSyncTotals: (source: keyof BusinessWizardData['financial']) => void;
   updateFinancial: (key: keyof BusinessWizardData['financial'], value: string) => void;
 }) {
@@ -1858,6 +2402,133 @@ function FinancialStep({
           <strong>
             {formatMoney(data.financial.commissionBaseAmountCents, data.currency)}
           </strong>
+        </span>
+      </div>
+
+      <div className="negotiation-adjustments-header">
+        <div>
+          <strong>Ajustes referenciales de negociación</strong>
+          <p>
+            Registra diferencias de materiales, mejoras, cesiones u otros acuerdos.
+            No cambian automáticamente el contrato ni el plan de pagos.
+          </p>
+        </div>
+        <Button variant="secondary" icon={Plus} onClick={onAddAdjustment}>
+          Agregar ajuste
+        </Button>
+      </div>
+
+      {data.negotiationAdjustments.length > 0 ? (
+        <div className="business-list">
+          {data.negotiationAdjustments.map((adjustment, index) => (
+            <div className="negotiation-adjustment-row" key={adjustment.id}>
+              <div className="business-form-grid">
+                <label>
+                  Categoría
+                  <select
+                    value={adjustment.category}
+                    onChange={(event) =>
+                      onAdjustmentChange(index, {
+                        category: event.target
+                          .value as NegotiationAdjustmentDraft['category'],
+                      })
+                    }
+                  >
+                    <option value="MATERIALS">Materiales</option>
+                    <option value="IMPROVEMENTS">Mejoras</option>
+                    <option value="ASSIGNMENT">Cesión</option>
+                    <option value="OTHER">Otro</option>
+                  </select>
+                </label>
+                <label>
+                  Concepto
+                  <input
+                    value={adjustment.label}
+                    onChange={(event) =>
+                      onAdjustmentChange(index, { label: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Sentido
+                  <select
+                    value={adjustment.direction}
+                    onChange={(event) =>
+                      onAdjustmentChange(index, {
+                        direction: event.target
+                          .value as NegotiationAdjustmentDraft['direction'],
+                      })
+                    }
+                  >
+                    <option value="INCREASE">Incremento referencial</option>
+                    <option value="DECREASE">Descuento referencial</option>
+                  </select>
+                </label>
+                <MoneyField
+                  label="Monto referencial"
+                  value={adjustment.amountCents}
+                  onChange={(value) =>
+                    onAdjustmentChange(index, { amountCents: moneyToCents(value) })
+                  }
+                />
+                <label>
+                  Aplica a
+                  <select
+                    value={adjustment.appliesTo}
+                    onChange={(event) =>
+                      onAdjustmentChange(index, { appliesTo: event.target.value })
+                    }
+                  >
+                    <option value="BUYER">Comprador</option>
+                    <option value="SELLER">Vendedor</option>
+                    <option value="TENANT">Arrendatario</option>
+                    <option value="LANDLORD">Arrendador</option>
+                    <option value="OTHER">Otro</option>
+                  </select>
+                </label>
+                <label>
+                  Notas
+                  <input
+                    value={adjustment.notes}
+                    onChange={(event) =>
+                      onAdjustmentChange(index, { notes: event.target.value })
+                    }
+                  />
+                </label>
+              </div>
+              <Button
+                variant="ghost"
+                icon={X}
+                onClick={() => onRemoveAdjustment(index)}
+              >
+                Quitar
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="business-empty-row">
+          <Banknote size={18} />
+          No hay diferencias referenciales registradas.
+        </div>
+      )}
+
+      <div className="financial-breakdown">
+        <span>
+          Incrementos referenciales
+          <strong>{formatMoney(calculation.increaseTotalCents, data.currency)}</strong>
+        </span>
+        <span>
+          Descuentos referenciales
+          <strong>{formatMoney(calculation.decreaseTotalCents, data.currency)}</strong>
+        </span>
+        <span>
+          Neto referencial
+          <strong>{formatMoney(calculation.netReferenceCents, data.currency)}</strong>
+        </span>
+        <span>
+          Efecto automático
+          <strong>Ninguno</strong>
         </span>
       </div>
     </SectionPanel>
@@ -2043,12 +2714,13 @@ function PaymentPlanStep({
 function CommissionStep({
   agents,
   calculation,
+  clients,
   commParticipantId,
   data,
   isContextRefreshing,
   newAgentId,
   onAddAdvancedRule,
-  onAddCommissionParticipant,
+  onAddCommissionRecipient,
   onPrimaryAgentChange,
   onRefreshContext,
   onRemoveRule,
@@ -2057,15 +2729,17 @@ function CommissionStep({
   setCommParticipantId,
   updateCommissionPlan,
   updateData,
+  users,
 }: {
   agents: BusinessContextAgent[];
   calculation: CommissionPlanCalculation;
+  clients: BusinessContextClient[];
   commParticipantId: string;
   data: BusinessWizardData;
   isContextRefreshing: boolean;
   newAgentId: string;
   onAddAdvancedRule: () => void;
-  onAddCommissionParticipant: (agentId: string, role: BusinessParticipantRole) => void;
+  onAddCommissionRecipient: (candidateKey: string) => void;
   onPrimaryAgentChange: (agentId: string) => void;
   onRefreshContext: () => void;
   onRemoveRule: (index: number) => void;
@@ -2077,15 +2751,28 @@ function CommissionStep({
     value: BusinessWizardData['commissionPlan'][keyof BusinessWizardData['commissionPlan']],
   ) => void;
   updateData: (patch: Partial<BusinessWizardData>) => void;
+  users: BusinessContextUser[];
 }) {
-  const commissionParticipants = data.participants.filter((participant) =>
-    ['PRIMARY_AGENT', 'CO_AGENT', 'REFERRER', 'BROKER'].includes(participant.role),
-  );
+  const commissionParticipants = data.participants;
+  const registeredCandidates = [
+    ...clients.map((client) => ({
+      key: `CLIENT:${client.id}`,
+      label: `${client.displayName} · Cliente`,
+    })),
+    ...agents.map((agent) => ({
+      key: `AGENT:${agent.id}`,
+      label: `${agent.displayName} · Agente`,
+    })),
+    ...users.map((user) => ({
+      key: `USER:${user.id}`,
+      label: `${[user.firstName, user.lastName].filter(Boolean).join(' ')} · Usuario`,
+    })),
+  ];
 
   return (
     <SectionPanel
       title="Comisiones"
-      description="El modo simple calcula un porcentaje directo. El modo avanzado permite reglas por participante."
+      description="Cada fila debe enlazarse a una persona registrada. Una misma persona conserva todos sus roles dentro del negocio."
       actions={
         <Button
           variant="secondary"
@@ -2170,10 +2857,10 @@ function CommissionStep({
               value={commParticipantId}
               onChange={(event) => setCommParticipantId(event.target.value)}
             >
-              <option value="">Agregar co-agente / referido</option>
-              {agents.map((agent) => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.displayName} · {agent.category}
+              <option value="">Seleccionar receptor registrado</option>
+              {registeredCandidates.map((candidate) => (
+                <option key={candidate.key} value={candidate.key}>
+                  {candidate.label}
                 </option>
               ))}
             </select>
@@ -2181,23 +2868,9 @@ function CommissionStep({
               variant="secondary"
               disabled={!commParticipantId}
               icon={Plus}
-              onClick={() => {
-                onAddCommissionParticipant(commParticipantId, 'CO_AGENT');
-                setCommParticipantId('');
-              }}
+              onClick={() => onAddCommissionRecipient(commParticipantId)}
             >
-              Co-agente
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={!commParticipantId}
-              icon={Plus}
-              onClick={() => {
-                onAddCommissionParticipant(commParticipantId, 'REFERRER');
-                setCommParticipantId('');
-              }}
-            >
-              Referido
+              Agregar receptor
             </Button>
             <Button variant="secondary" icon={HandCoins} onClick={onAddAdvancedRule}>
               Regla base
@@ -2209,18 +2882,38 @@ function CommissionStep({
               <div className="commission-rule-row" key={`${rule.participantKey}-${index}`}>
                 <select
                   value={rule.participantKey}
-                  onChange={(event) =>
-                    onRuleChange(index, { participantKey: event.target.value })
-                  }
+                  onChange={(event) => {
+                    const participant = commissionParticipants.find(
+                      (item) => item.participantKey === event.target.value,
+                    );
+                    onRuleChange(index, {
+                      label: participant?.displayName ?? rule.label,
+                      participantKey: event.target.value,
+                    });
+                  }}
                 >
                   {commissionParticipants.map((participant) => (
                     <option
                       key={participant.participantKey}
                       value={participant.participantKey}
                     >
-                      {participant.displayName} · {participant.role}
+                      {participant.displayName} ·{' '}
+                      {participantRoleLabels(participant).join(', ')}
                     </option>
                   ))}
+                </select>
+                <select
+                  value={rule.recipientType}
+                  onChange={(event) =>
+                    onRuleChange(index, { recipientType: event.target.value })
+                  }
+                >
+                  <option value="AGENT">Agente</option>
+                  <option value="CO_AGENT">Co-agente</option>
+                  <option value="REFERRER">Referido</option>
+                  <option value="BROKER">Broker</option>
+                  <option value="COMPANY">Empresa</option>
+                  <option value="OTHER">Otro</option>
                 </select>
                 <select
                   value={rule.calculationType}
@@ -2282,7 +2975,11 @@ function CommissionStep({
       )}
 
       <CalculationMessages calculation={calculation} />
-      <CommissionBreakdown calculation={calculation} currency={data.currency} />
+      <CommissionBreakdown
+        calculation={calculation}
+        currency={data.currency}
+        participants={data.participants}
+      />
 
       <div className="business-inline-actions">
         <Button
@@ -2372,6 +3069,7 @@ function ReviewStep({
   data,
   isCommitting,
   isPreviewing,
+  negotiationCalculation,
   onCommit,
   onRefreshPreview,
   paymentCalculation,
@@ -2383,6 +3081,7 @@ function ReviewStep({
   data: BusinessWizardData;
   isCommitting: boolean;
   isPreviewing: boolean;
+  negotiationCalculation: NegotiationAdjustmentCalculation;
   onCommit: () => void;
   onRefreshPreview: () => void;
   paymentCalculation: PaymentPlanCalculation;
@@ -2429,6 +3128,17 @@ function ReviewStep({
             data.currency,
           )}
         />
+        <ReviewBlock
+          label="Neto referencial"
+          value={formatMoney(
+            negotiationCalculation.netReferenceCents,
+            data.currency,
+          )}
+        />
+        <ReviewBlock
+          label="Ajustes referenciales"
+          value={`${negotiationCalculation.items.length}`}
+        />
       </div>
 
       <ValidationList validation={validation} />
@@ -2453,6 +3163,7 @@ function ReviewStep({
       <CommissionBreakdown
         calculation={commissionCalculation}
         currency={data.currency}
+        participants={data.participants}
       />
 
       <div className="business-confirm-bar">
@@ -2480,6 +3191,7 @@ function BusinessSummary({
   data,
   draft,
   draftProgress,
+  negotiationCalculation,
   paymentCalculation,
   selectedContractType,
   selectedProperty,
@@ -2490,6 +3202,7 @@ function BusinessSummary({
   data: BusinessWizardData;
   draft: BusinessRecord;
   draftProgress: BusinessDraftProgress;
+  negotiationCalculation: NegotiationAdjustmentCalculation;
   paymentCalculation: PaymentPlanCalculation;
   selectedContractType: BusinessContextResponse['contractTypes'][number] | null;
   selectedProperty: BusinessContextProperty | null;
@@ -2544,6 +3257,12 @@ function BusinessSummary({
               commissionCalculation.totalCommissionAmountCents,
               data.currency,
             )}
+          </dd>
+        </div>
+        <div>
+          <dt>Neto referencial</dt>
+          <dd>
+            {formatMoney(negotiationCalculation.netReferenceCents, data.currency)}
           </dd>
         </div>
       </dl>
@@ -2693,9 +3412,11 @@ function PaymentPlanTable({
 function CommissionBreakdown({
   calculation,
   currency,
+  participants,
 }: {
   calculation: CommissionPlanCalculation;
   currency: string;
+  participants: BusinessParticipantDraft[];
 }) {
   if (calculation.allocations.length === 0) {
     return (
@@ -2711,21 +3432,42 @@ function CommissionBreakdown({
       <table className="data-table">
         <thead>
           <tr>
-            <th>Participante</th>
-            <th>Tipo</th>
-            <th>Trigger</th>
+            <th>Receptor registrado</th>
+            <th>Roles</th>
+            <th>Base</th>
+            <th>Cálculo</th>
+            <th>Valor</th>
             <th>Monto</th>
+            <th>Liberación</th>
+            <th>Estado</th>
           </tr>
         </thead>
         <tbody>
-          {calculation.allocations.map((allocation) => (
-            <tr key={`${allocation.participantKey}-${allocation.label}`}>
-              <td>{allocation.label}</td>
-              <td>{allocation.calculationType}</td>
-              <td>{releaseTriggerLabels[allocation.releaseTrigger] ?? allocation.releaseTrigger}</td>
-              <td>{formatMoney(allocation.payableAmountCents, currency)}</td>
-            </tr>
-          ))}
+          {calculation.allocations.map((allocation) => {
+            const participant = participants.find(
+              (item) => item.participantKey === allocation.participantKey,
+            );
+
+            return (
+              <tr key={`${allocation.participantKey}-${allocation.label}`}>
+                <td>{allocation.label}</td>
+                <td>
+                  {participant
+                    ? participantRoleLabels(participant).join(', ')
+                    : 'No registrado'}
+                </td>
+                <td>{formatMoney(calculation.baseAmountCents, currency)}</td>
+                <td>{commissionCalculationLabel(allocation.calculationType)}</td>
+                <td>{commissionRuleValue(allocation, currency)}</td>
+                <td>{formatMoney(allocation.payableAmountCents, currency)}</td>
+                <td>
+                  {releaseTriggerLabels[allocation.releaseTrigger] ??
+                    allocation.releaseTrigger}
+                </td>
+                <td>{allocation.status === 'PENDING' ? 'Pendiente' : allocation.status}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -2885,8 +3627,72 @@ function agentParticipant(
     phone: agent.phone,
     realEstateAgentId: agent.id,
     role,
+    roles: [role],
     isPrimary: role === 'PRIMARY_AGENT',
   };
+}
+
+function participantRoleLabels(participant: BusinessParticipantDraft) {
+  const labels: Record<BusinessParticipantRole, string> = {
+    BANK: 'Banco',
+    BROKER: 'Broker',
+    BUYER: 'Comprador',
+    CO_AGENT: 'Co-agente',
+    DEVELOPER: 'Promotor',
+    GUARANTOR: 'Garante',
+    LANDLORD: 'Arrendador',
+    LAWYER: 'Abogado',
+    LEGAL_REPRESENTATIVE: 'Representante legal',
+    NOTARY: 'Notario',
+    OTHER: 'Otro',
+    PRIMARY_AGENT: 'Agente principal',
+    REFERRER: 'Referido',
+    SELLER: 'Vendedor',
+    TENANT: 'Arrendatario',
+    WITNESS: 'Testigo',
+  };
+
+  return Array.from(new Set(participant.roles ?? [participant.role])).map(
+    (role) => labels[role],
+  );
+}
+
+function commissionCalculationLabel(calculationType: string) {
+  return (
+    {
+      CAPPED: 'Con tope',
+      CUSTOM: 'Personalizado',
+      FIXED_AMOUNT: 'Monto fijo',
+      PERCENTAGE_OF_COMMISSION: '% comisión',
+      PERCENTAGE_OF_SALE: '% venta',
+      SLIDING_SCALE: 'Escala móvil',
+      TIERED: 'Por tramos',
+    }[calculationType] ?? calculationType
+  );
+}
+
+function commissionRuleValue(
+  allocation: CommissionPlanCalculation['allocations'][number],
+  currency: string,
+) {
+  if (allocation.fixedAmountCents !== undefined) {
+    return formatMoney(allocation.fixedAmountCents, currency);
+  }
+
+  if (allocation.percentageBasisPoints !== undefined) {
+    return `${basisPointsToPercent(allocation.percentageBasisPoints)}%`;
+  }
+
+  return '—';
+}
+
+function samePersonEmail(
+  left: string | null | undefined,
+  right: string | null | undefined,
+) {
+  return Boolean(
+    left && right && left.trim().toLowerCase() === right.trim().toLowerCase(),
+  );
 }
 
 function allMoneyZero(values: string[]) {
@@ -2956,6 +3762,20 @@ function cleanText(value: string) {
   const normalized = value.trim();
 
   return normalized ? normalized : null;
+}
+
+function nameCase(value?: string | null) {
+  const normalized = value?.trim();
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  return normalized
+    .toLocaleLowerCase('es-PA')
+    .replace(/(^|[\s'-])(\p{L})/gu, (_match, prefix: string, letter: string) =>
+      `${prefix}${letter.toLocaleUpperCase('es-PA')}`,
+    );
 }
 
 function initials(value: string) {

@@ -42,10 +42,12 @@ import {
 import {
   calculateBusinessDraftProgress,
   calculateCommissionPlan,
+  calculateNegotiationAdjustments,
   calculatePaymentPlan,
   centsToString,
   toCents,
   type CommissionPlanInput,
+  type NegotiationAdjustmentInput,
   type PaymentPlanInput,
   type PaymentPlanPreset,
 } from '@soyre/shared';
@@ -71,6 +73,12 @@ const BUSINESS_READ_ROLES = READ_ROLES;
 const BUSINESS_WRITE_ROLES = WRITE_ROLES;
 const BUSINESS_COMMIT_ROLES = COMMIT_ROLES;
 const BUSINESS_COMMISSION_ROLES = COMMISSION_ROLES;
+const COMMISSION_PARTICIPANT_ROLES = new Set<BusinessParticipantRole>([
+  BusinessParticipantRole.PRIMARY_AGENT,
+  BusinessParticipantRole.CO_AGENT,
+  BusinessParticipantRole.REFERRER,
+  BusinessParticipantRole.BROKER,
+]);
 
 const BUSINESS_DETAIL_INCLUDE = {
   contractType: true,
@@ -318,6 +326,7 @@ type DraftParticipant = {
   phone?: string;
   documentId?: string;
   role?: string;
+  roles?: string[];
   partyType?: string;
   isPrimary?: boolean;
   ownershipPercentageBps?: number;
@@ -597,6 +606,7 @@ export class BusinessesService {
       title: cleanText(dto.title),
       participants: [],
       clauses: [],
+      negotiationAdjustments: [],
       paymentPlan: {
         preset: 'CASH',
         totalAmountCents: '0',
@@ -928,10 +938,15 @@ export class BusinessesService {
   ) {
     const paymentPlan = this.calculatePaymentPlanFromData(data);
     const commissionPlan = this.calculateCommissionPlanFromData(data);
+    const negotiationAdjustments = calculateNegotiationAdjustments({
+      adjustments: negotiationAdjustmentDraftsFromData(data),
+      currency: normalizeCurrency(stringValue(data.currency)),
+    });
     const validation = await this.validateData(business, data, {
       forCommit: options.forCommit,
       paymentPlan,
       commissionPlan,
+      negotiationAdjustments,
       tx: options.tx,
     });
     const participants = participantDraftsFromData(data);
@@ -965,6 +980,7 @@ export class BusinessesService {
       ],
       paymentPlan,
       commissionPlan,
+      negotiationAdjustments,
       validation,
     };
   }
@@ -976,6 +992,7 @@ export class BusinessesService {
       forCommit: boolean;
       paymentPlan?: ReturnType<typeof calculatePaymentPlan>;
       commissionPlan?: ReturnType<typeof calculateCommissionPlan>;
+      negotiationAdjustments?: ReturnType<typeof calculateNegotiationAdjustments>;
       tx?: Prisma.TransactionClient;
     },
   ): Promise<ValidationItem[]> {
@@ -984,7 +1001,20 @@ export class BusinessesService {
       options.paymentPlan ?? this.calculatePaymentPlanFromData(data);
     const commissionPlan =
       options.commissionPlan ?? this.calculateCommissionPlanFromData(data);
+    const negotiationAdjustments =
+      options.negotiationAdjustments ??
+      calculateNegotiationAdjustments({
+        adjustments: negotiationAdjustmentDraftsFromData(data),
+        currency: normalizeCurrency(stringValue(data.currency)),
+      });
     const participants = participantDraftsFromData(data);
+    const participantsByKey = new Map(
+      participants.map((participant, index) => [
+        participantKey(participant, index),
+        participant,
+      ]),
+    );
+    const participantIdentities = new Set<string>();
     const clientRoles: BusinessParticipantRole[] = [
         BusinessParticipantRole.BUYER,
         BusinessParticipantRole.TENANT,
@@ -996,6 +1026,20 @@ export class BusinessesService {
         enumValue(BusinessParticipantRole, participant.role, BusinessParticipantRole.OTHER),
       ),
     );
+
+    for (const participant of participants) {
+      const identity = participantIdentityKey(participant);
+
+      if (participantIdentities.has(identity)) {
+        validation.push({
+          level: 'ERROR',
+          code: 'duplicate_business_participant',
+          message: `La persona ${participant.displayName ?? 'sin nombre'} está duplicada en el negocio. Agrega sus roles a un solo registro.`,
+        });
+      }
+
+      participantIdentities.add(identity);
+    }
     const currency = normalizeCurrency(stringValue(data.currency));
     const contractTypeId = cleanText(stringValue(data.contractTypeId));
     const propertyId = cleanText(stringValue(data.propertyId));
@@ -1072,6 +1116,38 @@ export class BusinessesService {
         code: 'commission_warning',
         message: warning,
       });
+    }
+
+    for (const error of negotiationAdjustments.errors) {
+      validation.push({
+        level: 'ERROR',
+        code: 'negotiation_adjustment_error',
+        message: error,
+      });
+    }
+
+    for (const warning of negotiationAdjustments.warnings) {
+      validation.push({
+        level: 'INFO',
+        code: 'negotiation_adjustment_reference',
+        message: warning,
+      });
+    }
+
+    for (const allocation of commissionPlan.allocations) {
+      const recipient = participantsByKey.get(allocation.participantKey);
+
+      if (
+        !recipient?.clientId &&
+        !recipient?.userId &&
+        !recipient?.realEstateAgentId
+      ) {
+        validation.push({
+          level: 'ERROR',
+          code: 'commission_recipient_not_registered',
+          message: `El receptor ${allocation.label} debe estar registrado como participante del negocio.`,
+        });
+      }
     }
 
     const expectedSignatureDate = stringValue(data.expectedSignatureDate);
@@ -1311,7 +1387,10 @@ export class BusinessesService {
           documentId: hydrated.documentId,
           email: hydrated.email,
           isPrimary: hydrated.isPrimary,
-          metadata: sanitizeJson(hydrated.metadata),
+          metadata: sanitizeJson({
+            ...objectValue(hydrated.metadata),
+            roles: hydrated.roles,
+          }),
           organizationId: business.organizationId,
           ownershipPercentageBps: hydrated.ownershipPercentageBps,
           partyType: hydrated.partyType,
@@ -1339,6 +1418,7 @@ export class BusinessesService {
       participant.role,
       BusinessParticipantRole.OTHER,
     );
+    const roles = participantRoles(participant, role);
     let partyType = enumValue(
       BusinessPartyType,
       participant.partyType,
@@ -1434,12 +1514,7 @@ export class BusinessesService {
       clientId: cleanText(participant.clientId),
       commissionEligible:
         participant.commissionEligible ??
-        ([
-          BusinessParticipantRole.PRIMARY_AGENT,
-          BusinessParticipantRole.CO_AGENT,
-          BusinessParticipantRole.REFERRER,
-          BusinessParticipantRole.BROKER,
-        ] as BusinessParticipantRole[]).includes(role),
+        roles.some((item) => COMMISSION_PARTICIPANT_ROLES.has(item)),
       displayName,
       documentId: cleanText(participant.documentId),
       email,
@@ -1452,6 +1527,7 @@ export class BusinessesService {
       realEstateAgentId: cleanText(participant.realEstateAgentId),
       receivesNotifications: participant.receivesNotifications ?? true,
       role,
+      roles,
       userId: cleanText(participant.userId),
     };
   }
@@ -1469,12 +1545,19 @@ export class BusinessesService {
 
     const contractData = objectValue(data.contract);
     const clauses = clauseDraftsFromData(data);
+    const negotiationAdjustments = calculateNegotiationAdjustments({
+      adjustments: negotiationAdjustmentDraftsFromData(data),
+      currency: normalizeCurrency(stringValue(data.currency)),
+    });
     const contract = await tx.businessContract.create({
       data: {
         businessId: business.id,
         contractTypeId,
         createdByUserId: business.createdByUserId,
-        customConditions: sanitizeJson(contractData.customConditions ?? {}),
+        customConditions: sanitizeJson({
+          ...objectValue(contractData.customConditions),
+          negotiationAdjustments: negotiationAdjustments.items,
+        }),
         legalNotes: cleanText(stringValue(contractData.legalNotes)),
         selectedClauses: sanitizeJson(clauses),
         status: BusinessContractStatus.DRAFT,
@@ -1643,6 +1726,14 @@ export class BusinessesService {
           item.calculationType === allocation.calculationType,
       );
 
+      const participantId = participantIds.get(allocation.participantKey);
+
+      if (!participantId) {
+        throw new BadRequestException(
+          `El receptor de comisión ${allocation.label} no está registrado como participante del negocio.`,
+        );
+      }
+
       await tx.commissionAllocation.create({
         data: {
           appliesAfterDeductions: rule?.appliesAfterDeductions ?? false,
@@ -1658,7 +1749,7 @@ export class BusinessesService {
           label: allocation.label,
           metadata: sanitizeJson({ participantKey: allocation.participantKey }),
           paidAmountCents: 0n,
-          participantId: participantIds.get(allocation.participantKey) ?? null,
+          participantId,
           payableAmountCents: toCents(allocation.payableAmountCents),
           percentageBps: numberValue(rule?.percentageBasisPoints),
           priority: index,
@@ -2163,6 +2254,20 @@ function clauseDraftsFromData(data: Record<string, unknown>) {
   return clauses.map((item) => objectValue(item) as DraftClause);
 }
 
+function negotiationAdjustmentDraftsFromData(
+  data: Record<string, unknown>,
+): NegotiationAdjustmentInput[] {
+  const contract = objectValue(data.contract);
+  const adjustments = [
+    ...arrayValue(data.negotiationAdjustments),
+    ...arrayValue(contract.negotiationAdjustments),
+  ];
+
+  return adjustments.map(
+    (item) => objectValue(item) as unknown as NegotiationAdjustmentInput,
+  );
+}
+
 function centsString(value: bigint | number | null | undefined) {
   if (value === null || value === undefined) {
     return '0';
@@ -2260,6 +2365,28 @@ function duplicateParticipantKeys(participants: DraftParticipant[]) {
   });
 
   return Array.from(duplicates);
+}
+
+function participantIdentityKey(participant: DraftParticipant) {
+  return (
+    normalizeEmail(participant.email) ??
+    cleanText(participant.clientId) ??
+    cleanText(participant.userId) ??
+    cleanText(participant.realEstateAgentId) ??
+    cleanText(participant.displayName)?.toLocaleLowerCase('es-PA') ??
+    'unregistered-participant'
+  );
+}
+
+function participantRoles(
+  participant: DraftParticipant,
+  primaryRole: BusinessParticipantRole,
+) {
+  const roles = (participant.roles ?? []).map((role) =>
+    enumValue(BusinessParticipantRole, role, BusinessParticipantRole.OTHER),
+  );
+
+  return Array.from(new Set([primaryRole, ...roles]));
 }
 
 function participantKey(participant: DraftParticipant, index: number) {

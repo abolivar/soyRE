@@ -695,8 +695,11 @@ export type CommissionAllocationCalculation = {
   recipientType: string;
   label: string;
   calculationType: string;
+  percentageBasisPoints?: number;
+  fixedAmountCents?: string;
   payableAmountCents: string;
   releaseTrigger: string;
+  status: 'PENDING';
 };
 
 export type CommissionPlanCalculation = {
@@ -709,11 +712,32 @@ export type CommissionPlanCalculation = {
   errors: string[];
 };
 
+export type NegotiationAdjustmentCalculation = {
+  currency: string;
+  items: Array<{
+    id: string;
+    category: 'MATERIALS' | 'IMPROVEMENTS' | 'ASSIGNMENT' | 'OTHER';
+    label: string;
+    amountCents: string;
+    currency: string;
+    direction: 'INCREASE' | 'DECREASE';
+    appliesTo?: string;
+    notes?: string;
+    effect: 'REFERENCE_ONLY';
+  }>;
+  increaseTotalCents: string;
+  decreaseTotalCents: string;
+  netReferenceCents: string;
+  warnings: string[];
+  errors: string[];
+};
+
 export type BusinessPreview = {
   entitiesToCreate: Array<{ entity: string; count: number }>;
   impactReports: string[];
   paymentPlan: PaymentPlanCalculation;
   commissionPlan: CommissionPlanCalculation;
+  negotiationAdjustments: NegotiationAdjustmentCalculation;
   validation: BusinessValidationItem[];
 };
 

@@ -99,6 +99,59 @@ describe('calculateCommissionPlan', () => {
       simpleCommissionBasisPoints: 300,
     });
 
-    assert.ok(result.errors.some((error) => error.includes('Duplicate')));
+    assert.ok(result.errors.some((error) => error.includes('duplicada')));
+  });
+
+  it('supports a registered client as a commission recipient', () => {
+    const result = calculateCommissionPlan({
+      baseAmountCents: '10000000',
+      commissionBase: 'NEGOTIATED_PRICE',
+      currency: 'USD',
+      mode: 'ADVANCED',
+      rules: [
+        {
+          calculationType: 'PERCENTAGE_OF_COMMISSION',
+          label: 'Cliente referido',
+          participantKey: 'client-1',
+          percentageBasisPoints: 2000,
+          recipientType: 'REFERRER',
+          releaseTrigger: 'ON_COLLECTION',
+        },
+      ],
+      simpleCommissionBasisPoints: 300,
+    });
+
+    assert.equal(result.errors.length, 0);
+    assert.equal(result.allocations[0]?.participantKey, 'client-1');
+    assert.equal(result.allocations[0]?.percentageBasisPoints, 2000);
+    assert.equal(result.allocations[0]?.payableAmountCents, '60000');
+    assert.equal(result.allocations[0]?.status, 'PENDING');
+  });
+
+  it('rejects duplicate recipients even when calculation types differ', () => {
+    const result = calculateCommissionPlan({
+      baseAmountCents: '10000000',
+      commissionBase: 'NEGOTIATED_PRICE',
+      mode: 'ADVANCED',
+      rules: [
+        {
+          calculationType: 'PERCENTAGE_OF_COMMISSION',
+          label: 'Cliente referido',
+          participantKey: 'client-1',
+          percentageBasisPoints: 1000,
+          recipientType: 'REFERRER',
+        },
+        {
+          calculationType: 'FIXED_AMOUNT',
+          fixedAmountCents: '25000',
+          label: 'Cliente referido duplicado',
+          participantKey: 'client-1',
+          recipientType: 'REFERRER',
+        },
+      ],
+      simpleCommissionBasisPoints: 300,
+    });
+
+    assert.match(result.errors.join(' '), /duplicada/);
   });
 });

@@ -23,6 +23,7 @@ import {
   CreateClientIdentityDocumentDto,
 } from './dto/create-client.dto.js';
 import { ListClientsQueryDto } from './dto/list-clients-query.dto.js';
+import { validateNationalId } from './identity-document-validation.js';
 
 const IDENTITY_DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
 const IDENTITY_DOCUMENT_MIME_TYPES = new Set([
@@ -659,10 +660,19 @@ export class ClientsService {
       throw new BadRequestException('Identity document file size does not match.');
     }
 
+    const nationalId =
+      dto.type === ClientIdentityDocumentType.NATIONAL_ID
+        ? validateNationalId(dto.issuingCountry, dto.documentNumber)
+        : null;
+
+    if (nationalId && !nationalId.valid) {
+      throw new BadRequestException(nationalId.message);
+    }
+
     return {
       type: dto.type,
-      documentNumber: cleanText(dto.documentNumber),
-      issuingCountry: cleanText(dto.issuingCountry),
+      documentNumber: nationalId?.documentNumber ?? cleanText(dto.documentNumber),
+      issuingCountry: nationalId?.issuingCountry ?? cleanText(dto.issuingCountry),
       firstName: cleanPersonName(dto.firstName),
       lastName: cleanPersonName(dto.lastName),
       birthDate: toDate(dto.birthDate),

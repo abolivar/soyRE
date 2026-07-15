@@ -117,6 +117,28 @@ En `Montos`, cargar:
 Resultado ideal: el resumen del paso muestra los importes en USD y la base de
 comisión coincide con el monto negociado.
 
+### 3.1 Ajustes Referenciales De Negociación
+
+Sin cambiar los cinco montos anteriores, agregar:
+
+| Categoría | Concepto | Sentido | Aplica a | Monto |
+| --- | --- | --- | --- | --- |
+| Materiales | Diferencia de acabados importados | Incremento | Comprador | `8,750.00` |
+| Mejoras | Crédito por cocina no instalada | Descuento | Comprador | `2,250.00` |
+
+Resultado ideal:
+
+- Incrementos referenciales: `8,750.00 USD`.
+- Descuentos referenciales: `2,250.00 USD`.
+- Neto referencial: `6,500.00 USD`.
+- Total contractual, monto pagable y base de comisión permanecen en
+  `462,500.00 USD`.
+- El plan de pagos no incorpora automáticamente los `6,500.00 USD`.
+- Al cambiar de paso, recargar y reabrir el borrador se conservan ambos ajustes.
+- La revisión muestra un aviso informativo de que los ajustes son referenciales.
+- Después de confirmar, la vista previa conserva los dos ajustes y su efecto
+  `REFERENCE_ONLY`.
+
 ### 4. Plan De Pagos Personalizado
 
 En `Pagos`:
@@ -154,14 +176,15 @@ En `Comisiones`:
 4. Base de cálculo: `Precio negociado`.
 5. Trigger general: `Al cierre`.
 6. Agregar co-agente.
-7. Agregar referido.
+7. Seleccionar al cliente comprador ya registrado como receptor y asignarle el rol
+   de referido. No crear una segunda persona para el mismo cliente.
 8. Crear tres reglas:
 
 | Participante | Tipo de cálculo | Valor | Trigger | Resultado esperado |
 | --- | --- | --- | --- | --- |
 | Agente principal | `% venta` | `1.5` | Al cierre | `6,937.50 USD` |
 | Co-agente | `% comisión` | `30` | Contra cobro | `4,162.50 USD` |
-| Referido | `% comisión` | `20` | A la firma | `2,775.00 USD` |
+| Cliente comprador (Comprador + Referido) | `% comisión` | `20` | A la firma | `2,775.00 USD` |
 
 Resultado ideal:
 
@@ -170,6 +193,9 @@ Resultado ideal:
 - El desglose muestra tres asignaciones.
 - Cada asignación identifica al participante correcto; si todas quedan con el
   nombre del agente principal, registrar P1.
+- El cliente comprador aparece una sola vez como persona y muestra los roles
+  `Comprador, Referido`.
+- La tabla muestra receptor, roles, base, cálculo, valor, monto, liberación y estado.
 - No hay asignaciones duplicadas.
 - No hay errores visibles en inglés.
 

@@ -153,6 +153,12 @@ permiso.
 
 Evidencia: ficha del cliente, resultado de busqueda y descarga del documento.
 
+Repetir el alta con los tres métodos disponibles: pasaporte, cédula de Colombia
+y cédula de Panamá. Confirmar que Colombia aparece primero en el selector, que
+el número colombiano se guarda sin separadores y que el formato panameño
+conserva sus guiones y prefijos válidos. Los datos OCR deben poder corregirse
+antes de guardar.
+
 ### 8. Propiedades
 
 Accion: crear una propiedad con operaciones `SALE` y `RENT`, propietario, zona,
@@ -229,6 +235,11 @@ Resultado ideal: aparecen tipos de contrato, clientes, propiedades, agentes,
 usuarios activos, presets de pago, defaults de comision y permisos de commit.
 
 Evidencia: captura o payload del contexto.
+
+Desde el paso Clientes, crear una persona sin salir del wizard usando pasaporte
+y repetir con cédula para cada país habilitado. Confirmar que el cliente queda en
+el módulo central, el documento se puede consultar y el participante aparece en
+el borrador inmediatamente después del alta.
 
 ### 16. Borrador De Negocio
 

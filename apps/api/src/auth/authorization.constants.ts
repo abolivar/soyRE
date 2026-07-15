@@ -44,3 +44,16 @@ export const COMMISSION_ROLES = new Set<MembershipRole>([
   MembershipRole.BROKER,
   MembershipRole.FINANCE,
 ]);
+
+export const FINANCE_READ_ROLES = new Set<MembershipRole>([
+  MembershipRole.OWNER,
+  MembershipRole.ADMIN,
+  MembershipRole.BROKER,
+  MembershipRole.FINANCE,
+]);
+
+export const FINANCE_WRITE_ROLES = new Set<MembershipRole>([
+  MembershipRole.OWNER,
+  MembershipRole.ADMIN,
+  MembershipRole.FINANCE,
+]);
