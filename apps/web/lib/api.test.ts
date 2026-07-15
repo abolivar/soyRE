@@ -11,7 +11,10 @@ describe('resolveApiUrl', () => {
   });
 
   it('keeps the local fallback outside production', () => {
-    assert.equal(resolveApiUrl(undefined, 'development'), 'http://localhost:4000');
+    assert.equal(
+      resolveApiUrl(undefined, 'development'),
+      'http://localhost:4000',
+    );
   });
 
   it('does not point production builds to localhost by default', () => {
@@ -55,18 +58,27 @@ describe('toUserFacingApiError', () => {
 
   it('maps dynamic organization ownership errors without leaking raw resources', () => {
     assert.equal(
-      toUserFacingApiError('Listing mandate must belong to this organization.', 400),
+      toUserFacingApiError(
+        'Listing mandate must belong to this organization.',
+        400,
+      ),
       'El recurso seleccionado no pertenece a esta organización.',
     );
     assert.equal(
-      toUserFacingApiError('Agent participant does not belong to this organization.', 400),
+      toUserFacingApiError(
+        'Agent participant does not belong to this organization.',
+        400,
+      ),
       'El recurso seleccionado no pertenece a esta organización.',
     );
   });
 
   it('maps shared money and percentage validation errors', () => {
     assert.equal(
-      toUserFacingApiError('reservationAmountCents must be integer cents.', 400),
+      toUserFacingApiError(
+        'reservationAmountCents must be integer cents.',
+        400,
+      ),
       'Ingresa un monto válido.',
     );
     assert.equal(
@@ -75,6 +87,17 @@ describe('toUserFacingApiError', () => {
         400,
       ),
       'El porcentaje debe ser mayor que cero y hasta 100%.',
+    );
+  });
+
+  it('maps document storage and permission errors', () => {
+    assert.equal(
+      toUserFacingApiError('Document file exceeds the 15 MB limit.', 400),
+      'El archivo supera el límite de 15 MB.',
+    );
+    assert.equal(
+      toUserFacingApiError('Document upload role is not allowed.', 403),
+      'Tu rol no permite cargar archivos para este requisito.',
     );
   });
 

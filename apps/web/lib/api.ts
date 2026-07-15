@@ -1,7 +1,9 @@
 import type { BusinessDraftProgress } from '@soyre/shared';
 
-export const API_URL =
-  resolveApiUrl(process.env.NEXT_PUBLIC_API_URL, process.env.NODE_ENV);
+export const API_URL = resolveApiUrl(
+  process.env.NEXT_PUBLIC_API_URL,
+  process.env.NODE_ENV,
+);
 
 const API_CONNECTION_ERROR =
   'No pudimos conectar con el servicio de SoyPMS. Intenta de nuevo en unos minutos.';
@@ -1036,6 +1038,155 @@ export type DocumentsResponse = {
   documents: OperationalDocument[];
 };
 
+export type DocumentRequirementStatus =
+  | 'REQUIRED'
+  | 'UPLOADED'
+  | 'UNDER_REVIEW'
+  | 'APPROVED'
+  | 'OBSERVED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'NOT_APPLICABLE';
+
+export type BusinessDocumentSummary = {
+  total: number;
+  required: number;
+  completed: number;
+  pending: number;
+  progressPercentage: number;
+  blockers: Array<{
+    id: string;
+    name: string;
+    category: string;
+    status: DocumentRequirementStatus;
+    requiredAtStatus: BusinessStatus | null;
+  }>;
+};
+
+export type BusinessDocumentVersion = {
+  id: string;
+  lineageId: string;
+  version: number;
+  isCurrent: boolean;
+  replacesDocumentId: string | null;
+  replacementReason: string | null;
+  replacedAt: string | null;
+  replacedByUserId: string | null;
+  name: string;
+  documentType: string;
+  status: DocumentStatus;
+  fileName: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  expiresAt: string | null;
+  uploadedByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BusinessDocumentEvent = {
+  id: string;
+  documentId: string | null;
+  fromStatus: DocumentRequirementStatus | null;
+  toStatus: DocumentRequirementStatus;
+  reason: string | null;
+  actorUserId: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+export type BusinessDocumentRequirement = {
+  id: string;
+  checklistId: string;
+  businessId: string;
+  source: 'TEMPLATE' | 'CUSTOM';
+  key: string;
+  name: string;
+  category: string;
+  description: string | null;
+  status: DocumentRequirementStatus;
+  required: boolean;
+  requiresReview: boolean;
+  allowsMultipleFiles: boolean;
+  blocksTransition: boolean;
+  requiredAtStatus: BusinessStatus | null;
+  requiredBy: string | null;
+  expiresAt: string | null;
+  participantRole: string | null;
+  participantId: string | null;
+  clientId: string | null;
+  propertyId: string | null;
+  businessContractId: string | null;
+  readRoles: MembershipRole[];
+  uploadRoles: MembershipRole[];
+  reviewRoles: MembershipRole[];
+  customReason: string | null;
+  businessContract: {
+    id: string;
+    contractNumber: string | null;
+    status: string;
+    version: number;
+  } | null;
+  client: { id: string; displayName: string } | null;
+  participant: {
+    id: string;
+    displayName: string;
+    role: string;
+    isPrimary: boolean;
+  } | null;
+  property: { id: string; title: string; internalCode: string | null } | null;
+  documents: BusinessDocumentVersion[];
+  events: BusinessDocumentEvent[];
+};
+
+export type BusinessDocumentChecklist = {
+  id: string;
+  templateId: string;
+  templateFamilyKey: string;
+  templateName: string;
+  templateVersion: number;
+  instantiatedAt: string;
+  requirements: BusinessDocumentRequirement[];
+  summary: BusinessDocumentSummary;
+};
+
+export type BusinessDocumentChecklistsResponse = {
+  organization: ApiOrganization;
+  business: {
+    id: string;
+    code: string;
+    title: string;
+    status: BusinessStatus;
+    operationType: BusinessOperationType;
+  };
+  summary: BusinessDocumentSummary;
+  checklists: BusinessDocumentChecklist[];
+};
+
+export type DocumentChecklistTemplate = {
+  id: string;
+  familyKey: string;
+  name: string;
+  description: string | null;
+  version: number;
+  isActive: boolean;
+  itemCount?: number;
+};
+
+export type DocumentChecklistTemplatesResponse = {
+  organization: ApiOrganization;
+  templates: DocumentChecklistTemplate[];
+};
+
+export type BusinessDocumentHistoryResponse = {
+  requirement: Pick<
+    BusinessDocumentRequirement,
+    'id' | 'status' | 'name' | 'category' | 'businessContractId'
+  >;
+  documents: BusinessDocumentVersion[];
+  events: BusinessDocumentEvent[];
+};
+
 export type OperationalMandate = {
   id: string;
   organizationId: string;
@@ -1214,6 +1365,30 @@ export async function apiFetch<T>(
   return response.json() as Promise<T>;
 }
 
+export async function apiFetchFormData<T>(
+  path: string,
+  body: FormData,
+): Promise<T> {
+  const response = await fetchApi(path, {
+    body,
+    credentials: 'include',
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const rawMessage =
+      typeof payload?.message === 'string'
+        ? payload.message
+        : Array.isArray(payload?.message)
+          ? payload.message.join(', ')
+          : 'Request failed.';
+    throw new Error(toUserFacingApiError(rawMessage, response.status));
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export async function downloadApiFile(path: string) {
   const response = await fetchApi(path, {
     credentials: 'include',
@@ -1310,8 +1485,32 @@ export function toUserFacingApiError(message: string, status: number) {
       'Usa una moneda válida de tres letras.',
     'Document contract must belong to the selected business.':
       'El contrato del documento no pertenece al negocio seleccionado.',
+    'A non-empty document file is required.':
+      'Selecciona un archivo válido antes de continuar.',
+    'A reason is required for this document transition.':
+      'Escribe el motivo de esta decisión documental.',
+    'A replacement reason is required.':
+      'Escribe el motivo de la nueva versión.',
+    'A requirement with uploaded files cannot be marked not applicable.':
+      'Un requisito con archivos cargados no puede marcarse como no aplicable.',
+    'Document content, MIME type, and extension are not allowed.':
+      'El contenido, tipo o extensión del archivo no está permitido.',
+    'Document file exceeds the 15 MB limit.':
+      'El archivo supera el límite de 15 MB.',
     'Document name is required.': 'Ingresa el nombre del documento.',
+    'Document read role is not allowed.':
+      'Tu rol no permite consultar este documento.',
+    'Document review role is not allowed.':
+      'Tu rol no permite revisar este documento.',
     'Document type is required.': 'Selecciona el tipo de documento.',
+    'Document upload role is not allowed.':
+      'Tu rol no permite cargar archivos para este requisito.',
+    'Document was already replaced. Reload its history.':
+      'El documento ya fue reemplazado. Recarga su historial.',
+    'Document version changed. Reload its history before replacing it.':
+      'La versión cambió. Recarga el historial antes de reemplazarla.',
+    'This requirement already has a file. Use the replacement flow.':
+      'Este requisito ya tiene un archivo. Carga una nueva versión.',
     'Due day must be between 1 and 31.':
       'El día de vencimiento debe estar entre 1 y 31.',
     'Identity document file is not valid base64.':
@@ -1328,7 +1527,8 @@ export function toUserFacingApiError(message: string, status: number) {
       'No encontramos ese documento de identidad en la organización activa.',
     'Installment count must be greater than zero.':
       'La cantidad de cuotas debe ser mayor que cero.',
-    'Invalid authentication token.': 'La sesión venció. Inicia sesión nuevamente.',
+    'Invalid authentication token.':
+      'La sesión venció. Inicia sesión nuevamente.',
     'Invalid commission amount.': 'Revisa el monto de la comisión.',
     'Invalid email or password.': 'Correo o contraseña incorrectos.',
     'Invalid total amount.': 'Revisa el monto total.',
@@ -1442,11 +1642,19 @@ export function toUserFacingApiError(message: string, status: number) {
     return 'Ese tipo de cálculo todavía no está disponible.';
   }
 
-  if (/^(.+) percentage must be greater than 0 and up to 100%\.?$/i.test(normalized)) {
+  if (
+    /^(.+) percentage must be greater than 0 and up to 100%\.?$/i.test(
+      normalized,
+    )
+  ) {
     return 'El porcentaje debe ser mayor que cero y hasta 100%.';
   }
 
-  if (/^(.+) percentage must be greater than zero and up to 100%\.?$/i.test(normalized)) {
+  if (
+    /^(.+) percentage must be greater than zero and up to 100%\.?$/i.test(
+      normalized,
+    )
+  ) {
     return 'El porcentaje debe ser mayor que cero y hasta 100%.';
   }
 

@@ -326,7 +326,7 @@ export function BusinessesWorkspace() {
             const continuationHref =
               business.status === 'DRAFT'
                 ? `/businesses/new?draftId=${business.id}`
-                : null;
+                : `/businesses/${business.id}/documents?organizationId=${business.organizationId}`;
 
             return {
               id: business.id,
@@ -335,16 +335,16 @@ export function BusinessesWorkspace() {
                   business.totalContractAmountCents,
                   business.currency,
                 ),
-                business: continuationHref ? (
+                business: (
                   <Link className="entity-link" href={continuationHref}>
                     <strong className="entity-title">{business.title}</strong>
-                    <span className="meta-row">{business.code} / continuar</span>
+                    <span className="meta-row">
+                      {business.code} /{' '}
+                      {business.status === 'DRAFT'
+                        ? 'continuar'
+                        : 'abrir expediente'}
+                    </span>
                   </Link>
-                ) : (
-                  <span>
-                    <strong className="entity-title">{business.title}</strong>
-                    <span className="meta-row">{business.code}</span>
-                  </span>
                 ),
                 client: business.clientName ?? 'Sin cliente',
                 next: business.nextPayment ? (

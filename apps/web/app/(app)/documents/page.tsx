@@ -1,5 +1,5 @@
-import { AreaWorkspace } from '../../../components/area-workspace';
+import { DocumentHubWorkspace } from '../../../components/document-hub-workspace';
 
 export default function DocumentsPage() {
-  return <AreaWorkspace area="documents" />;
+  return <DocumentHubWorkspace />;
 }
