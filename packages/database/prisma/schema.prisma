@@ -361,6 +361,46 @@ enum CommissionAllocationStatus {
   CANCELLED
 }
 
+enum PayoutProfileStatus {
+  ACTIVE
+  REVIEW_REQUIRED
+  INACTIVE
+}
+
+enum PayoutMethodType {
+  BANK_TRANSFER
+  CHECK
+  CASH
+  EXTERNAL_PROVIDER
+}
+
+enum PayoutMethodStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum DisbursementMode {
+  DIRECT_PAYMENT
+  CREDIT_BALANCE
+}
+
+enum DisbursementStatus {
+  DRAFT
+  APPROVED
+  PROCESSING
+  PAID
+  AVAILABLE_FOR_COMPENSATION
+  PARTIALLY_APPLIED
+  APPLIED
+  CANCELLED
+}
+
+enum CompensationApplicationStatus {
+  PENDING
+  APPLIED
+  REVERSED
+}
+
 enum BusinessFeeType {
   ASSIGNMENT
   MATERIAL_ESCALATION
@@ -510,6 +550,10 @@ model Organization {
   showings                Showing[]
   offers                  Offer[]
   workflowStages          WorkflowStage[]
+  payoutProfiles          PayoutProfile[]
+  payoutMethods           PayoutMethod[]
+  disbursements           Disbursement[]
+  compensationApplications CompensationApplication[]
 
   @@map("organizations")
 }
@@ -547,6 +591,16 @@ model User {
   assignedMandates               Mandate[]                @relation("AssignedMandates")
   assignedShowings               Showing[]                @relation("AssignedShowings")
   assignedOffers                 Offer[]                  @relation("AssignedOffers")
+  createdPayoutProfiles          PayoutProfile[]          @relation("CreatedPayoutProfiles")
+  updatedPayoutProfiles          PayoutProfile[]          @relation("UpdatedPayoutProfiles")
+  createdPayoutMethods           PayoutMethod[]           @relation("CreatedPayoutMethods")
+  updatedPayoutMethods           PayoutMethod[]           @relation("UpdatedPayoutMethods")
+  createdDisbursements           Disbursement[]           @relation("CreatedDisbursements")
+  updatedDisbursements           Disbursement[]           @relation("UpdatedDisbursements")
+  approvedDisbursements          Disbursement[]           @relation("ApprovedDisbursements")
+  appliedCompensations           CompensationApplication[] @relation("AppliedCompensations")
+  reversedCompensations          CompensationApplication[] @relation("ReversedCompensations")
+  payoutProfiles                 PayoutProfile[]          @relation("RecipientPayoutProfiles")
 
   @@map("users")
 }
@@ -641,6 +695,7 @@ model Client {
   ownedMandates           Mandate[]                @relation("MandateOwnerClient")
   showings                Showing[]
   offers                  Offer[]
+  payoutProfiles          PayoutProfile[]
 
   @@unique([organizationId, email])
   @@index([organizationId, status])
@@ -754,6 +809,7 @@ model RealEstateAgent {
   organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   businessParticipants BusinessParticipant[]
   showings       Showing[]
+  payoutProfiles PayoutProfile[]
 
   @@unique([organizationId, email])
   @@index([organizationId, category])
@@ -813,6 +869,8 @@ model Business {
   documents                 Document[]
   showings                  Showing[]
   offers                    Offer[]
+  sourceDisbursements       Disbursement[]              @relation("SourceBusinessDisbursements")
+  destinationCompensations  CompensationApplication[]   @relation("DestinationBusinessCompensations")
 
   @@unique([organizationId, code])
   @@unique([organizationId, idempotencyKey])
@@ -1049,11 +1107,139 @@ model CommissionAllocation {
   participant           BusinessParticipant?       @relation(fields: [participantId], references: [id], onDelete: SetNull)
   parentAllocation      CommissionAllocation?      @relation("CommissionAllocationChildren", fields: [parentAllocationId], references: [id], onDelete: SetNull)
   childAllocations      CommissionAllocation[]     @relation("CommissionAllocationChildren")
+  disbursements         Disbursement[]
 
   @@index([commissionPlanId, status])
   @@index([businessId, recipientType])
   @@index([participantId])
   @@map("commission_allocations")
+}
+
+model PayoutProfile {
+  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId        String              @map("organization_id") @db.Uuid
+  clientId              String?             @map("client_id") @db.Uuid
+  userId                String?             @map("user_id") @db.Uuid
+  realEstateAgentId     String?             @map("real_estate_agent_id") @db.Uuid
+  displayName           String              @map("display_name")
+  taxCountry            String?             @map("tax_country")
+  taxIdLast4            String?             @map("tax_id_last4")
+  status                PayoutProfileStatus @default(REVIEW_REQUIRED)
+  createdByUserId       String              @map("created_by_user_id") @db.Uuid
+  updatedByUserId       String              @map("updated_by_user_id") @db.Uuid
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  organization          Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  client                Client?             @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  user                  User?               @relation("RecipientPayoutProfiles", fields: [userId], references: [id], onDelete: Restrict)
+  realEstateAgent       RealEstateAgent?    @relation(fields: [realEstateAgentId], references: [id], onDelete: Restrict)
+  createdByUser         User                @relation("CreatedPayoutProfiles", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedByUser         User                @relation("UpdatedPayoutProfiles", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  methods               PayoutMethod[]
+  disbursements         Disbursement[]
+
+  @@unique([organizationId, clientId])
+  @@unique([organizationId, userId])
+  @@unique([organizationId, realEstateAgentId])
+  @@index([organizationId, status])
+  @@map("payout_profiles")
+}
+
+model PayoutMethod {
+  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId        String              @map("organization_id") @db.Uuid
+  payoutProfileId       String              @map("payout_profile_id") @db.Uuid
+  type                  PayoutMethodType
+  label                 String
+  bankName              String?             @map("bank_name")
+  accountHolderName     String?             @map("account_holder_name")
+  accountLast4          String?             @map("account_last4")
+  providerReference     String?             @map("provider_reference")
+  currency              String?
+  isDefault             Boolean             @default(false) @map("is_default")
+  status                PayoutMethodStatus  @default(ACTIVE)
+  createdByUserId       String              @map("created_by_user_id") @db.Uuid
+  updatedByUserId       String              @map("updated_by_user_id") @db.Uuid
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  organization          Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  payoutProfile         PayoutProfile       @relation(fields: [payoutProfileId], references: [id], onDelete: Cascade)
+  createdByUser         User                @relation("CreatedPayoutMethods", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedByUser         User                @relation("UpdatedPayoutMethods", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  disbursements         Disbursement[]
+
+  @@index([organizationId, status])
+  @@index([payoutProfileId, isDefault])
+  @@map("payout_methods")
+}
+
+model Disbursement {
+  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId        String              @map("organization_id") @db.Uuid
+  sourceBusinessId      String              @map("source_business_id") @db.Uuid
+  recipientProfileId    String              @map("recipient_profile_id") @db.Uuid
+  payoutMethodId        String?             @map("payout_method_id") @db.Uuid
+  commissionAllocationId String?            @map("commission_allocation_id") @db.Uuid
+  concept               String
+  mode                  DisbursementMode
+  originalAmountCents   BigInt              @map("original_amount_cents")
+  paidAmountCents       BigInt              @default(0) @map("paid_amount_cents")
+  appliedAmountCents    BigInt              @default(0) @map("applied_amount_cents")
+  currency              String
+  status                DisbursementStatus  @default(DRAFT)
+  idempotencyKey        String              @map("idempotency_key")
+  approvedByUserId      String?             @map("approved_by_user_id") @db.Uuid
+  approvedAt            DateTime?           @map("approved_at")
+  executedAt            DateTime?           @map("executed_at")
+  metadata              Json?
+  createdByUserId       String              @map("created_by_user_id") @db.Uuid
+  updatedByUserId       String              @map("updated_by_user_id") @db.Uuid
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  organization          Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  sourceBusiness        Business            @relation("SourceBusinessDisbursements", fields: [sourceBusinessId], references: [id], onDelete: Restrict)
+  recipientProfile      PayoutProfile       @relation(fields: [recipientProfileId], references: [id], onDelete: Restrict)
+  payoutMethod          PayoutMethod?       @relation(fields: [payoutMethodId], references: [id], onDelete: Restrict)
+  commissionAllocation  CommissionAllocation? @relation(fields: [commissionAllocationId], references: [id], onDelete: Restrict)
+  approvedByUser        User?               @relation("ApprovedDisbursements", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  createdByUser         User                @relation("CreatedDisbursements", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedByUser         User                @relation("UpdatedDisbursements", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  applications          CompensationApplication[]
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status])
+  @@index([sourceBusinessId, status])
+  @@index([recipientProfileId, status])
+  @@index([commissionAllocationId])
+  @@map("disbursements")
+}
+
+model CompensationApplication {
+  id                    String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId        String                        @map("organization_id") @db.Uuid
+  disbursementId        String                        @map("disbursement_id") @db.Uuid
+  destinationBusinessId String                        @map("destination_business_id") @db.Uuid
+  amountCents           BigInt                        @map("amount_cents")
+  currency              String
+  status                CompensationApplicationStatus @default(PENDING)
+  idempotencyKey        String                        @map("idempotency_key")
+  appliedByUserId       String?                       @map("applied_by_user_id") @db.Uuid
+  appliedAt             DateTime?                     @map("applied_at")
+  reversedByUserId      String?                       @map("reversed_by_user_id") @db.Uuid
+  reversedAt            DateTime?                     @map("reversed_at")
+  reason                String?
+  createdAt             DateTime                      @default(now()) @map("created_at")
+  updatedAt             DateTime                      @updatedAt @map("updated_at")
+  organization          Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  disbursement          Disbursement                  @relation(fields: [disbursementId], references: [id], onDelete: Restrict)
+  destinationBusiness   Business                      @relation("DestinationBusinessCompensations", fields: [destinationBusinessId], references: [id], onDelete: Restrict)
+  appliedByUser         User?                         @relation("AppliedCompensations", fields: [appliedByUserId], references: [id], onDelete: Restrict)
+  reversedByUser        User?                         @relation("ReversedCompensations", fields: [reversedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([disbursementId, status])
+  @@index([destinationBusinessId, status])
+  @@map("compensation_applications")
 }
 
 model BusinessFee {
