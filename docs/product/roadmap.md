@@ -1,5 +1,9 @@
 # Roadmap
 
+El plan ejecutable para la salida actual es
+`docs/product/public-beta-plan.md`. Este roadmap conserva la evolución de alto
+nivel; los lotes del beta tienen precedencia para el trabajo inmediato.
+
 ## Fase 0 — Bootstrap e identidad
 
 - Crear stack.
@@ -32,6 +36,10 @@ Estado: base inicial implementada.
 - Deals.
 - Comisiones básicas.
 - Auditoría básica.
+
+Estado: implementación parcial. Negocios y finanzas tienen mayor madurez que los
+módulos previos del ciclo. El beta prioriza expediente documental, mandatos,
+listings, visitas, ofertas y cierre funcional antes de ampliar automatización.
 
 ## Fase 3 — Automatización
 
