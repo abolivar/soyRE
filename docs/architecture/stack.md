@@ -54,3 +54,19 @@ Decisión registrada en `docs/decisions/adr-0005-design-system-home.md`.
 - Validar con lint, typecheck, tests y build.
 - No implementar lógica de negocio hasta que el módulo esté documentado.
 - No agregar dependencias sin razón práctica.
+
+## Dependencias de tareas del monorepo
+
+Los paquetes workspace publican sus puntos de entrada desde `dist`. Por eso las
+tareas raíz no pueden asumir que un checkout conserva artefactos de una
+ejecución anterior:
+
+- `typecheck` espera tanto el `build` como el `typecheck` de sus dependencias.
+- `test` espera tanto el `build` como los tests de sus dependencias.
+- `build` continúa encadenando los builds de dependencias mediante `^build`.
+
+Esta relación se declara en `turbo.json`. Así `apps/api` recibe los artefactos
+de `packages/shared` y `packages/database`, y `apps/web` recibe los de
+`packages/shared` y `packages/ui`, incluso después de una instalación limpia.
+Los tres paquetes publican también sus declaraciones TypeScript desde `dist`;
+ningún consumidor depende del cliente Prisma generado dentro de `src`.
