@@ -88,3 +88,8 @@ La migración
 tablas, relaciones, restricciones, índices e RLS. Debe aplicarse al proyecto
 remoto exclusivamente mediante Supabase MCP y verificarse con SQL,
 `list_tables` y los asesores antes de cerrar el ticket.
+
+La migración incremental `20260715133000_finance_foreign_key_indexes` agrega
+los índices de cobertura para las claves foráneas señaladas por Performance
+Advisor. Se mantiene separada para no alterar el checksum de la migración base
+ya aplicada.

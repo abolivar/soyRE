@@ -1142,6 +1142,11 @@ model PayoutProfile {
   @@unique([organizationId, userId])
   @@unique([organizationId, realEstateAgentId])
   @@index([organizationId, status])
+  @@index([clientId])
+  @@index([userId])
+  @@index([realEstateAgentId])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
   @@map("payout_profiles")
 }
 
@@ -1170,6 +1175,8 @@ model PayoutMethod {
 
   @@index([organizationId, status])
   @@index([payoutProfileId, isDefault])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
   @@map("payout_methods")
 }
 
@@ -1211,6 +1218,10 @@ model Disbursement {
   @@index([sourceBusinessId, status])
   @@index([recipientProfileId, status])
   @@index([commissionAllocationId])
+  @@index([payoutMethodId])
+  @@index([approvedByUserId])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
   @@map("disbursements")
 }
 
@@ -1239,6 +1250,8 @@ model CompensationApplication {
   @@unique([organizationId, idempotencyKey])
   @@index([disbursementId, status])
   @@index([destinationBusinessId, status])
+  @@index([appliedByUserId])
+  @@index([reversedByUserId])
   @@map("compensation_applications")
 }
 
