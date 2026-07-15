@@ -39,12 +39,36 @@ La verificación se ejecutó en un worktree limpio con Node 22.22.2:
 - `pnpm build`: 6 tareas aprobadas y 26 páginas generadas.
 - `git diff --check`: aprobado.
 
-## Deudas y bloqueos separados
+## Verificación remota de finanzas
 
-- #85 mantiene la aplicación y verificación remota de la migración financiera
-  mediante Supabase MCP. La integración no aplica migraciones localmente.
+El 15/07/2026 se aplicó la migración
+`20260714212054_payout_profiles_disbursements_compensations` al proyecto remoto
+mediante Supabase MCP. La evidencia saneada confirmó:
+
+- Registro Supabase `20260715131350_payout_profiles_disbursements_compensations`.
+- Registro Prisma con el nombre exacto del directorio local, checksum
+  `922f16bf476440095f491e6c7197207ec45ec424337f05fd2020bd71fd62ad2a`,
+  `finished_at` informado y sin rollback.
+- Cuatro tablas nuevas vacías: `payout_profiles`, `payout_methods`,
+  `disbursements` y `compensation_applications`.
+- Seis enums, restricciones, claves foráneas e índices alineados con el SQL
+  versionado.
+- RLS habilitado en las cuatro tablas, sin políticas públicas y sin privilegios
+  de lectura para `anon` o `authenticated`; el acceso permanece en la API.
+- Prueba remota adversarial aprobada para altas válidas, conservación de montos,
+  transiciones, método predeterminado e idempotencia. Todas las filas temporales
+  fueron eliminadas y los cuatro conteos residuales quedaron en cero.
+
+## Deudas separadas
+
+- #6 conserva la revisión transversal de advisors y la estrategia de RLS para
+  tablas históricas. La verificación detectó siete tablas anteriores con RLS
+  deshabilitado; no se habilitó RLS sin definir antes sus políticas.
+- #91 cubre trece claves foráneas financieras que el Performance Advisor marca
+  sin índice de cobertura. Deben resolverse en una migración incremental, sin
+  modificar la migración ya aplicada.
 - #88 corrigió la gráfica de Turbo y la exportación de tipos de
   `@soyre/database`; su commit está incorporado en esta rama de integración.
 
-Hasta cerrar #85, la integración debe permanecer como PR borrador y no debe
-promoverse a producción.
+Con #85 verificado remotamente, el PR de integración ya no tiene bloqueo de
+base de datos. Su promoción sigue sujeta a revisión y aprobación del PR.
