@@ -9,4 +9,5 @@ export const DOMAIN_TERMS = {
 export * from './commission-plan.js';
 export * from './business-progress.js';
 export * from './money.js';
+export * from './negotiation-adjustments.js';
 export * from './payment-plan.js';

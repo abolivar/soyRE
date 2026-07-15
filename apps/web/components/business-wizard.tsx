@@ -37,6 +37,7 @@ import {
 } from 'react';
 import {
   calculateBusinessDraftProgress,
+  calculateNegotiationAdjustments,
   type BusinessDraftProgress,
 } from '@soyre/shared';
 import {
@@ -58,6 +59,7 @@ import {
   CommissionPlanCalculation,
   CreateClientPayload,
   OrganizationClient,
+  NegotiationAdjustmentCalculation,
   PaymentPlanCalculation,
 } from '../lib/api';
 import {
@@ -140,6 +142,16 @@ type PaymentSpecialLineDraft = {
   dueDate: string;
 };
 
+type NegotiationAdjustmentDraft = {
+  id: string;
+  category: 'MATERIALS' | 'IMPROVEMENTS' | 'ASSIGNMENT' | 'OTHER';
+  label: string;
+  amountCents: string;
+  direction: 'INCREASE' | 'DECREASE';
+  appliesTo: string;
+  notes: string;
+};
+
 type CommissionRuleDraft = {
   participantKey: string;
   recipientType: string;
@@ -174,6 +186,7 @@ type BusinessWizardData = {
     payableAmountCents: string;
     commissionBaseAmountCents: string;
   };
+  negotiationAdjustments: NegotiationAdjustmentDraft[];
   paymentPlan: PaymentPlanDraft;
   commissionPlan: {
     commissionBase: string;
@@ -276,6 +289,7 @@ const defaultWizardData: BusinessWizardData = {
     payableAmountCents: '0',
     commissionBaseAmountCents: '0',
   },
+  negotiationAdjustments: [],
   paymentPlan: {
     preset: 'CASH',
     totalAmountCents: '0',
@@ -491,6 +505,14 @@ export function BusinessWizard() {
     () => calculateBusinessDraftProgress(data),
     [data],
   );
+  const localNegotiationCalculation = useMemo(
+    () =>
+      calculateNegotiationAdjustments({
+        adjustments: data.negotiationAdjustments,
+        currency: data.currency,
+      }),
+    [data.currency, data.negotiationAdjustments],
+  );
   const selectedProperty = useMemo(
     () =>
       context?.properties.find((property) => property.id === data.propertyId) ??
@@ -517,6 +539,8 @@ export function BusinessWizard() {
   const visiblePaymentCalculation = paymentCalculation ?? emptyPaymentCalculation;
   const visibleCommissionCalculation =
     commissionCalculation ?? emptyCommissionCalculation;
+  const visibleNegotiationCalculation =
+    preview?.negotiationAdjustments ?? localNegotiationCalculation;
 
   function updateData(patch: Partial<BusinessWizardData>) {
     setData((current) => {
@@ -549,6 +573,42 @@ export function BusinessWizard() {
         ...data.paymentPlan,
         [key]: value,
       },
+    });
+  }
+
+  function addNegotiationAdjustment() {
+    updateData({
+      negotiationAdjustments: [
+        ...data.negotiationAdjustments,
+        {
+          amountCents: '0',
+          appliesTo: 'BUYER',
+          category: 'MATERIALS',
+          direction: 'INCREASE',
+          id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
+          label: '',
+          notes: '',
+        },
+      ],
+    });
+  }
+
+  function updateNegotiationAdjustment(
+    index: number,
+    patch: Partial<NegotiationAdjustmentDraft>,
+  ) {
+    updateData({
+      negotiationAdjustments: data.negotiationAdjustments.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...patch } : item,
+      ),
+    });
+  }
+
+  function removeNegotiationAdjustment(index: number) {
+    updateData({
+      negotiationAdjustments: data.negotiationAdjustments.filter(
+        (_, itemIndex) => itemIndex !== index,
+      ),
     });
   }
 
@@ -1437,7 +1497,11 @@ export function BusinessWizard() {
           ) : null}
           {activeStep === 'financial' ? (
             <FinancialStep
+              calculation={visibleNegotiationCalculation}
               data={data}
+              onAddAdjustment={addNegotiationAdjustment}
+              onAdjustmentChange={updateNegotiationAdjustment}
+              onRemoveAdjustment={removeNegotiationAdjustment}
               onSyncTotals={syncFinancialTotals}
               updateFinancial={updateFinancial}
             />
@@ -1483,6 +1547,7 @@ export function BusinessWizard() {
               data={data}
               isCommitting={isCommitting}
               isPreviewing={isPreviewing}
+              negotiationCalculation={visibleNegotiationCalculation}
               onCommit={() => void commitBusiness()}
               onRefreshPreview={() => void refreshPreview()}
               paymentCalculation={visiblePaymentCalculation}
@@ -1515,6 +1580,7 @@ export function BusinessWizard() {
           commissionCalculation={visibleCommissionCalculation}
           data={data}
           draft={draft}
+          negotiationCalculation={visibleNegotiationCalculation}
           paymentCalculation={visiblePaymentCalculation}
           selectedContractType={selectedContractType}
           selectedProperty={selectedProperty}
@@ -2133,11 +2199,22 @@ function ContractStep({
 }
 
 function FinancialStep({
+  calculation,
   data,
+  onAddAdjustment,
+  onAdjustmentChange,
+  onRemoveAdjustment,
   onSyncTotals,
   updateFinancial,
 }: {
+  calculation: NegotiationAdjustmentCalculation;
   data: BusinessWizardData;
+  onAddAdjustment: () => void;
+  onAdjustmentChange: (
+    index: number,
+    patch: Partial<NegotiationAdjustmentDraft>,
+  ) => void;
+  onRemoveAdjustment: (index: number) => void;
   onSyncTotals: (source: keyof BusinessWizardData['financial']) => void;
   updateFinancial: (key: keyof BusinessWizardData['financial'], value: string) => void;
 }) {
@@ -2203,6 +2280,133 @@ function FinancialStep({
           <strong>
             {formatMoney(data.financial.commissionBaseAmountCents, data.currency)}
           </strong>
+        </span>
+      </div>
+
+      <div className="negotiation-adjustments-header">
+        <div>
+          <strong>Ajustes referenciales de negociación</strong>
+          <p>
+            Registra diferencias de materiales, mejoras, cesiones u otros acuerdos.
+            No cambian automáticamente el contrato ni el plan de pagos.
+          </p>
+        </div>
+        <Button variant="secondary" icon={Plus} onClick={onAddAdjustment}>
+          Agregar ajuste
+        </Button>
+      </div>
+
+      {data.negotiationAdjustments.length > 0 ? (
+        <div className="business-list">
+          {data.negotiationAdjustments.map((adjustment, index) => (
+            <div className="negotiation-adjustment-row" key={adjustment.id}>
+              <div className="business-form-grid">
+                <label>
+                  Categoría
+                  <select
+                    value={adjustment.category}
+                    onChange={(event) =>
+                      onAdjustmentChange(index, {
+                        category: event.target
+                          .value as NegotiationAdjustmentDraft['category'],
+                      })
+                    }
+                  >
+                    <option value="MATERIALS">Materiales</option>
+                    <option value="IMPROVEMENTS">Mejoras</option>
+                    <option value="ASSIGNMENT">Cesión</option>
+                    <option value="OTHER">Otro</option>
+                  </select>
+                </label>
+                <label>
+                  Concepto
+                  <input
+                    value={adjustment.label}
+                    onChange={(event) =>
+                      onAdjustmentChange(index, { label: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Sentido
+                  <select
+                    value={adjustment.direction}
+                    onChange={(event) =>
+                      onAdjustmentChange(index, {
+                        direction: event.target
+                          .value as NegotiationAdjustmentDraft['direction'],
+                      })
+                    }
+                  >
+                    <option value="INCREASE">Incremento referencial</option>
+                    <option value="DECREASE">Descuento referencial</option>
+                  </select>
+                </label>
+                <MoneyField
+                  label="Monto referencial"
+                  value={adjustment.amountCents}
+                  onChange={(value) =>
+                    onAdjustmentChange(index, { amountCents: moneyToCents(value) })
+                  }
+                />
+                <label>
+                  Aplica a
+                  <select
+                    value={adjustment.appliesTo}
+                    onChange={(event) =>
+                      onAdjustmentChange(index, { appliesTo: event.target.value })
+                    }
+                  >
+                    <option value="BUYER">Comprador</option>
+                    <option value="SELLER">Vendedor</option>
+                    <option value="TENANT">Arrendatario</option>
+                    <option value="LANDLORD">Arrendador</option>
+                    <option value="OTHER">Otro</option>
+                  </select>
+                </label>
+                <label>
+                  Notas
+                  <input
+                    value={adjustment.notes}
+                    onChange={(event) =>
+                      onAdjustmentChange(index, { notes: event.target.value })
+                    }
+                  />
+                </label>
+              </div>
+              <Button
+                variant="ghost"
+                icon={X}
+                onClick={() => onRemoveAdjustment(index)}
+              >
+                Quitar
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="business-empty-row">
+          <Banknote size={18} />
+          No hay diferencias referenciales registradas.
+        </div>
+      )}
+
+      <div className="financial-breakdown">
+        <span>
+          Incrementos referenciales
+          <strong>{formatMoney(calculation.increaseTotalCents, data.currency)}</strong>
+        </span>
+        <span>
+          Descuentos referenciales
+          <strong>{formatMoney(calculation.decreaseTotalCents, data.currency)}</strong>
+        </span>
+        <span>
+          Neto referencial
+          <strong>{formatMoney(calculation.netReferenceCents, data.currency)}</strong>
+        </span>
+        <span>
+          Efecto automático
+          <strong>Ninguno</strong>
         </span>
       </div>
     </SectionPanel>
@@ -2717,6 +2921,7 @@ function ReviewStep({
   data,
   isCommitting,
   isPreviewing,
+  negotiationCalculation,
   onCommit,
   onRefreshPreview,
   paymentCalculation,
@@ -2728,6 +2933,7 @@ function ReviewStep({
   data: BusinessWizardData;
   isCommitting: boolean;
   isPreviewing: boolean;
+  negotiationCalculation: NegotiationAdjustmentCalculation;
   onCommit: () => void;
   onRefreshPreview: () => void;
   paymentCalculation: PaymentPlanCalculation;
@@ -2773,6 +2979,17 @@ function ReviewStep({
             commissionCalculation.totalCommissionAmountCents,
             data.currency,
           )}
+        />
+        <ReviewBlock
+          label="Neto referencial"
+          value={formatMoney(
+            negotiationCalculation.netReferenceCents,
+            data.currency,
+          )}
+        />
+        <ReviewBlock
+          label="Ajustes referenciales"
+          value={`${negotiationCalculation.items.length}`}
         />
       </div>
 
@@ -2825,6 +3042,7 @@ function BusinessSummary({
   data,
   draft,
   draftProgress,
+  negotiationCalculation,
   paymentCalculation,
   selectedContractType,
   selectedProperty,
@@ -2835,6 +3053,7 @@ function BusinessSummary({
   data: BusinessWizardData;
   draft: BusinessRecord;
   draftProgress: BusinessDraftProgress;
+  negotiationCalculation: NegotiationAdjustmentCalculation;
   paymentCalculation: PaymentPlanCalculation;
   selectedContractType: BusinessContextResponse['contractTypes'][number] | null;
   selectedProperty: BusinessContextProperty | null;
@@ -2889,6 +3108,12 @@ function BusinessSummary({
               commissionCalculation.totalCommissionAmountCents,
               data.currency,
             )}
+          </dd>
+        </div>
+        <div>
+          <dt>Neto referencial</dt>
+          <dd>
+            {formatMoney(negotiationCalculation.netReferenceCents, data.currency)}
           </dd>
         </div>
       </dl>
