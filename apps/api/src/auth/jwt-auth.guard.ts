@@ -42,6 +42,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     @Inject(PrismaService)
     private readonly prisma: PrismaService,
+    @Inject(Reflector)
     private readonly reflector: Reflector,
   ) {}
 
