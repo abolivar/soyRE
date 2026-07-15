@@ -477,6 +477,23 @@ enum DocumentStatus {
   ARCHIVED
 }
 
+enum DocumentRequirementSource {
+  TEMPLATE
+  CUSTOM
+}
+
+enum DocumentRequirementStatus {
+  REQUIRED
+  UPLOADED
+  UNDER_REVIEW
+  APPROVED
+  OBSERVED
+  REJECTED
+  EXPIRED
+  NOT_APPLICABLE
+  REPLACED
+}
+
 enum MandateStatus {
   DRAFT
   PENDING_DOCUMENTS
@@ -545,6 +562,9 @@ model Organization {
   businessParticipants    BusinessParticipant[]
   contractTypes           ContractType[]
   documents               Document[]
+  documentChecklistTemplates DocumentChecklistTemplate[]
+  businessDocumentChecklists BusinessDocumentChecklist[]
+  businessDocumentRequirements BusinessDocumentRequirement[]
   mandates                Mandate[]
   listings                Listing[]
   showings                Showing[]
@@ -588,6 +608,9 @@ model User {
   assignedScheduledActions       ScheduledAction[]        @relation("AssignedScheduledActions")
   uploadedDocuments              Document[]               @relation("UploadedDocuments")
   reviewedDocuments              Document[]               @relation("ReviewedDocuments")
+  createdDocumentChecklistTemplates DocumentChecklistTemplate[] @relation("CreatedDocumentChecklistTemplates")
+  createdBusinessDocumentChecklists BusinessDocumentChecklist[] @relation("CreatedBusinessDocumentChecklists")
+  createdBusinessDocumentRequirements BusinessDocumentRequirement[] @relation("CreatedBusinessDocumentRequirements")
   assignedMandates               Mandate[]                @relation("AssignedMandates")
   assignedShowings               Showing[]                @relation("AssignedShowings")
   assignedOffers                 Offer[]                  @relation("AssignedOffers")
@@ -867,6 +890,8 @@ model Business {
   calculationSnapshots      CalculationSnapshot[]
   scheduledActions          ScheduledAction[]
   documents                 Document[]
+  documentChecklists        BusinessDocumentChecklist[]
+  documentRequirements      BusinessDocumentRequirement[]
   showings                  Showing[]
   offers                    Offer[]
   sourceDisbursements       Disbursement[]              @relation("SourceBusinessDisbursements")
@@ -874,6 +899,7 @@ model Business {
 
   @@unique([organizationId, code])
   @@unique([organizationId, idempotencyKey])
+  @@unique([organizationId, id])
   @@index([organizationId, status])
   @@index([organizationId, operationType])
   @@index([propertyId])
@@ -1356,6 +1382,144 @@ model Document {
   @@index([businessId])
   @@index([businessContractId])
   @@map("documents")
+}
+
+model DocumentChecklistTemplate {
+  id                String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId    String                  @map("organization_id") @db.Uuid
+  familyKey         String                  @map("family_key")
+  name              String
+  description       String?
+  version           Int                     @default(1)
+  isActive          Boolean                 @default(false) @map("is_active")
+  operationTypes    BusinessOperationType[] @default([]) @map("operation_types")
+  countries         String[]                @default([])
+  propertyTypes     String[]                @default([]) @map("property_types")
+  contractTypeIds   String[]                @default([]) @map("contract_type_ids") @db.Uuid
+  businessStatuses  BusinessStatus[]        @default([]) @map("business_statuses")
+  previousVersionId String?                 @map("previous_version_id") @db.Uuid
+  createdByUserId   String?                 @map("created_by_user_id") @db.Uuid
+  publishedAt       DateTime?               @map("published_at")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+  organization      Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  previousVersion   DocumentChecklistTemplate? @relation("DocumentChecklistTemplateVersions", fields: [organizationId, previousVersionId], references: [organizationId, id], onDelete: Restrict)
+  nextVersions      DocumentChecklistTemplate[] @relation("DocumentChecklistTemplateVersions")
+  createdByUser     User?                   @relation("CreatedDocumentChecklistTemplates", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  items             DocumentChecklistTemplateItem[]
+  checklists        BusinessDocumentChecklist[]
+
+  @@unique([organizationId, familyKey, version])
+  @@unique([organizationId, id])
+  @@index([organizationId, isActive])
+  @@index([previousVersionId])
+  @@index([createdByUserId])
+  @@map("document_checklist_templates")
+}
+
+model DocumentChecklistTemplateItem {
+  id                        String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId            String                    @map("organization_id") @db.Uuid
+  templateId                String                    @map("template_id") @db.Uuid
+  key                       String
+  name                      String
+  category                  String
+  description               String?
+  required                  Boolean                   @default(true)
+  requiresReview            Boolean                   @default(false) @map("requires_review")
+  allowsMultipleFiles       Boolean                   @default(false) @map("allows_multiple_files")
+  blocksTransition          Boolean                   @default(false) @map("blocks_transition")
+  requiredAtStatus          BusinessStatus?           @map("required_at_status")
+  dueDaysAfterInstantiation Int?                      @map("due_days_after_instantiation")
+  expiresAfterDays          Int?                      @map("expires_after_days")
+  participantRole           BusinessParticipantRole?  @map("participant_role")
+  readRoles                 MembershipRole[]          @default([]) @map("read_roles")
+  uploadRoles               MembershipRole[]          @default([]) @map("upload_roles")
+  reviewRoles               MembershipRole[]          @default([]) @map("review_roles")
+  sortOrder                 Int                       @default(0) @map("sort_order")
+  metadata                  Json?
+  createdAt                 DateTime                  @default(now()) @map("created_at")
+  updatedAt                 DateTime                  @updatedAt @map("updated_at")
+  template                  DocumentChecklistTemplate @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Cascade)
+  requirements              BusinessDocumentRequirement[]
+
+  @@unique([templateId, key])
+  @@unique([organizationId, id])
+  @@unique([organizationId, templateId, id])
+  @@index([organizationId, templateId, sortOrder])
+  @@map("document_checklist_template_items")
+}
+
+model BusinessDocumentChecklist {
+  id                    String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId        String                    @map("organization_id") @db.Uuid
+  businessId            String                    @map("business_id") @db.Uuid
+  templateId            String                    @map("template_id") @db.Uuid
+  templateFamilyKey     String                    @map("template_family_key")
+  templateName          String                    @map("template_name")
+  templateVersion       Int                       @map("template_version")
+  applicabilitySnapshot Json                      @map("applicability_snapshot")
+  createdByUserId       String?                   @map("created_by_user_id") @db.Uuid
+  instantiatedAt        DateTime                  @default(now()) @map("instantiated_at")
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+  organization          Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  business              Business                  @relation(fields: [organizationId, businessId], references: [organizationId, id], onDelete: Cascade)
+  template              DocumentChecklistTemplate @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict)
+  createdByUser         User?                     @relation("CreatedBusinessDocumentChecklists", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  requirements          BusinessDocumentRequirement[]
+
+  @@unique([organizationId, businessId, templateFamilyKey])
+  @@unique([organizationId, id])
+  @@unique([organizationId, id, businessId, templateId])
+  @@index([organizationId, businessId])
+  @@index([organizationId, templateId])
+  @@index([createdByUserId])
+  @@map("business_document_checklists")
+}
+
+model BusinessDocumentRequirement {
+  id                  String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId      String                    @map("organization_id") @db.Uuid
+  checklistId         String                    @map("checklist_id") @db.Uuid
+  businessId          String                    @map("business_id") @db.Uuid
+  templateId          String                    @map("template_id") @db.Uuid
+  templateItemId      String?                   @map("template_item_id") @db.Uuid
+  source              DocumentRequirementSource @default(TEMPLATE)
+  key                 String
+  name                String
+  category            String
+  description         String?
+  status              DocumentRequirementStatus @default(REQUIRED)
+  required            Boolean                   @default(true)
+  requiresReview      Boolean                   @default(false) @map("requires_review")
+  allowsMultipleFiles Boolean                   @default(false) @map("allows_multiple_files")
+  blocksTransition    Boolean                   @default(false) @map("blocks_transition")
+  requiredAtStatus    BusinessStatus?           @map("required_at_status")
+  requiredBy          DateTime?                 @map("required_by") @db.Date
+  expiresAt           DateTime?                 @map("expires_at") @db.Date
+  participantRole     BusinessParticipantRole?  @map("participant_role")
+  readRoles           MembershipRole[]          @default([]) @map("read_roles")
+  uploadRoles         MembershipRole[]          @default([]) @map("upload_roles")
+  reviewRoles         MembershipRole[]          @default([]) @map("review_roles")
+  sortOrder           Int                       @default(0) @map("sort_order")
+  itemSnapshot        Json                      @map("item_snapshot")
+  customReason        String?                   @map("custom_reason")
+  createdByUserId     String?                   @map("created_by_user_id") @db.Uuid
+  createdAt           DateTime                  @default(now()) @map("created_at")
+  updatedAt           DateTime                  @updatedAt @map("updated_at")
+  organization        Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  checklist           BusinessDocumentChecklist @relation(fields: [organizationId, checklistId, businessId, templateId], references: [organizationId, id, businessId, templateId], onDelete: Cascade)
+  business            Business                  @relation(fields: [organizationId, businessId], references: [organizationId, id], onDelete: Cascade)
+  templateItem        DocumentChecklistTemplateItem? @relation(fields: [organizationId, templateId, templateItemId], references: [organizationId, templateId, id], onDelete: Restrict)
+  createdByUser       User?                     @relation("CreatedBusinessDocumentRequirements", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([checklistId, key])
+  @@index([organizationId, businessId, status])
+  @@index([organizationId, checklistId, sortOrder])
+  @@index([organizationId, templateItemId])
+  @@index([createdByUserId])
+  @@map("business_document_requirements")
 }
 
 model Mandate {

@@ -69,6 +69,24 @@ Cada requisito configurable puede definir:
 Al crear el expediente se guarda una instantánea de los requisitos aplicados.
 Cambiar una plantilla no debe modificar silenciosamente negocios existentes.
 
+## Modelo Persistente Inicial
+
+- `document_checklist_templates`: versión de una plantilla y sus criterios de
+  aplicabilidad. `familyKey` agrupa todas las versiones funcionales.
+- `document_checklist_template_items`: requisitos configurables de esa versión,
+  incluidos etapa, plazos relativos, participante, roles y bloqueo.
+- `business_document_checklists`: cabecera inmutable de la plantilla aplicada a
+  un negocio, con nombre, versión y criterios de aplicabilidad copiados.
+- `business_document_requirements`: requisitos materializados del expediente.
+  Conservan `itemSnapshot`; por eso una edición posterior de la plantilla no
+  altera la evidencia histórica del negocio.
+
+Todas estas tablas incluyen `organizationId`. Las relaciones con plantilla,
+negocio, checklist e ítem usan claves foráneas compuestas por organización e ID;
+la base de datos rechaza una relación cruzada aunque se intente omitir el filtro
+en la aplicación. Solo puede existir una versión activa por familia y
+organización.
+
 ## Documentos No Previstos
 
 Un usuario con permiso puede agregar al expediente un requisito o documento que
