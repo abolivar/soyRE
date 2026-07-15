@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import {
   DocumentEntityType,
+  DocumentRequirementStatus,
   DocumentStatus,
   Prisma,
 } from '@soyre/database';
@@ -113,6 +114,9 @@ export class BusinessDocumentFilesService {
               entityType: DocumentEntityType.BUSINESS,
               businessId,
               requirementId,
+              lineageId: requirement.allowsMultipleFiles
+                ? randomUUID()
+                : requirement.id,
               clientId: requirement.clientId,
               propertyId: requirement.propertyId,
               businessContractId: requirement.businessContractId,
@@ -132,6 +136,25 @@ export class BusinessDocumentFilesService {
               },
             },
           });
+          if (requirement.status !== DocumentRequirementStatus.UPLOADED) {
+            await tx.businessDocumentRequirement.update({
+              where: { id: requirement.id },
+              data: { status: DocumentRequirementStatus.UPLOADED },
+            });
+            await tx.businessDocumentRequirementEvent.create({
+              data: {
+                organizationId: membership.organizationId,
+                businessId,
+                checklistId,
+                requirementId,
+                documentId: created.id,
+                fromStatus: requirement.status,
+                toStatus: DocumentRequirementStatus.UPLOADED,
+                actorUserId: auth.id,
+                metadata: { action: 'upload' },
+              },
+            });
+          }
           await tx.auditLog.create({
             data: {
               action: 'business_documents.upload',
@@ -154,6 +177,169 @@ export class BusinessDocumentFilesService {
       return { document: serializeDocument(document), uploaded: true };
     } catch (error) {
       await this.storage.remove(path);
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException(
+          'This requirement already has a current file. Reload its history.',
+        );
+      }
+      throw error;
+    }
+  }
+
+  async replace(
+    auth: AuthenticatedUser,
+    businessId: string,
+    checklistId: string,
+    requirementId: string,
+    documentId: string,
+    organizationId: string | undefined,
+    reasonValue: string,
+    file: UploadedBusinessDocumentFile | undefined,
+  ) {
+    const membership = this.organizationAccess.resolveMembership(
+      auth,
+      organizationId,
+      { permission: 'Business document replacement', roles: WRITE_ROLES },
+    );
+    const requirement = await this.loadRequirement(
+      membership.organizationId,
+      businessId,
+      checklistId,
+      requirementId,
+    );
+    if (!requirement.uploadRoles.includes(membership.role)) {
+      throw new ForbiddenException('Document upload role is not allowed.');
+    }
+    this.validateFile(file);
+    const reason = reasonValue.trim();
+    if (reason.length < 3) {
+      throw new BadRequestException('A replacement reason is required.');
+    }
+    const previous = await this.prisma.document.findFirst({
+      where: {
+        id: documentId,
+        organizationId: membership.organizationId,
+        businessId,
+        requirementId,
+        isCurrent: true,
+      },
+    });
+    if (!previous?.storagePath) {
+      throw new NotFoundException('Current business document was not found.');
+    }
+
+    const path = storagePath(
+      membership.organizationId,
+      businessId,
+      checklistId,
+      requirementId,
+      file.originalname,
+    );
+    await this.storage.upload(path, file.buffer, file.mimetype);
+
+    try {
+      const document = await this.prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          const archived = await tx.document.updateMany({
+            where: { id: previous.id, isCurrent: true },
+            data: {
+              isCurrent: false,
+              status: DocumentStatus.ARCHIVED,
+              replacedAt: new Date(),
+              replacedByUserId: auth.id,
+              replacementReason: reason,
+            },
+          });
+          if (archived.count !== 1) {
+            throw new ConflictException(
+              'Document was already replaced. Reload its history.',
+            );
+          }
+          const created = await tx.document.create({
+            data: {
+              organizationId: membership.organizationId,
+              entityType: DocumentEntityType.BUSINESS,
+              businessId,
+              requirementId,
+              lineageId: previous.lineageId,
+              version: previous.version + 1,
+              replacesDocumentId: previous.id,
+              clientId: previous.clientId,
+              propertyId: previous.propertyId,
+              businessContractId: previous.businessContractId,
+              name: previous.name,
+              documentType: previous.documentType,
+              status: DocumentStatus.UPLOADED,
+              fileName: file.originalname,
+              mimeType: file.mimetype,
+              fileSize: file.size,
+              storagePath: path,
+              expiresAt: requirement.expiresAt,
+              uploadedByUserId: auth.id,
+              metadata: {
+                bucket: BUSINESS_DOCUMENTS_BUCKET,
+                checklistId,
+                requirementKey: requirement.key,
+                replacementReason: reason,
+              },
+            },
+          });
+          await tx.businessDocumentRequirement.update({
+            where: { id: requirement.id },
+            data: { status: DocumentRequirementStatus.UPLOADED },
+          });
+          if (requirement.status !== DocumentRequirementStatus.UPLOADED) {
+            await tx.businessDocumentRequirementEvent.create({
+              data: {
+                organizationId: membership.organizationId,
+                businessId,
+                checklistId,
+                requirementId,
+                documentId: created.id,
+                fromStatus: requirement.status,
+                toStatus: DocumentRequirementStatus.UPLOADED,
+                reason,
+                actorUserId: auth.id,
+                metadata: {
+                  action: 'replacement',
+                  replacedDocumentId: previous.id,
+                },
+              },
+            });
+          }
+          await tx.auditLog.create({
+            data: {
+              action: 'business_documents.replace',
+              actorUserId: auth.id,
+              organizationId: membership.organizationId,
+              targetType: 'document',
+              targetId: created.id,
+              metadata: {
+                businessId,
+                checklistId,
+                requirementId,
+                replacedDocumentId: previous.id,
+                lineageId: previous.lineageId,
+                version: previous.version + 1,
+                reason,
+              },
+            },
+          });
+          return created;
+        },
+      );
+      return {
+        document: serializeDocument(document),
+        replacedDocumentId: previous.id,
+        replaced: true,
+      };
+    } catch (error) {
+      await this.storage.remove(path);
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException(
+          'Document version changed. Reload its history before replacing it.',
+        );
+      }
       throw error;
     }
   }
@@ -302,6 +488,13 @@ function storagePath(
 function serializeDocument(document: {
   id: string;
   requirementId: string | null;
+  lineageId: string;
+  version: number;
+  isCurrent: boolean;
+  replacesDocumentId: string | null;
+  replacementReason: string | null;
+  replacedAt: Date | null;
+  replacedByUserId: string | null;
   name: string;
   documentType: string;
   status: DocumentStatus;
@@ -312,4 +505,13 @@ function serializeDocument(document: {
   updatedAt: Date;
 }) {
   return document;
+}
+
+function isUniqueConstraintError(error: unknown) {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
 }

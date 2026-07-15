@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   BusinessParticipantRole,
   BusinessStatus,
+  DocumentRequirementStatus,
   MembershipRole,
 } from '@soyre/database';
 import {
@@ -29,6 +30,33 @@ export class BusinessDocumentFileScopeDto {
   @IsOptional()
   @IsUUID()
   organizationId?: string;
+}
+
+export class ReplaceBusinessDocumentFileDto extends BusinessDocumentFileScopeDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(1000)
+  reason!: string;
+}
+
+export class TransitionBusinessDocumentRequirementDto extends BusinessDocumentFileScopeDto {
+  @IsEnum(DocumentRequirementStatus)
+  status!: DocumentRequirementStatus;
+
+  @IsOptional()
+  @IsUUID()
+  documentId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(1000)
+  reason?: string;
+}
+
+export class ValidateBusinessDocumentTransitionDto extends BusinessDocumentFileScopeDto {
+  @IsEnum(BusinessStatus)
+  targetStatus!: BusinessStatus;
 }
 
 export class InstantiateBusinessDocumentChecklistDto {

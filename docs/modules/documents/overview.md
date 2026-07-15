@@ -128,6 +128,19 @@ El expediente se opera dentro del negocio:
 - `GET /api/businesses/:businessId/document-checklists/:checklistId/requirements/:requirementId/files/:documentId/download`:
   autoriza nuevamente organización, negocio, requisito y rol antes de emitir
   una URL firmada con vigencia de 60 segundos.
+- `POST /api/businesses/:businessId/document-checklists/:checklistId/requirements/:requirementId/files/:documentId/replacements`:
+  carga una versión nueva con motivo obligatorio y archiva la versión anterior
+  sin sobrescribir ni eliminar su objeto.
+- `POST /api/businesses/:businessId/document-checklists/:checklistId/requirements/:requirementId/transitions`:
+  ejecuta una transición documental válida y registra documento, actor, motivo,
+  estado anterior y estado nuevo.
+- `GET /api/businesses/:businessId/document-checklists/:checklistId/requirements/:requirementId/history`:
+  devuelve la cadena de versiones y la línea de eventos sin exponer rutas de
+  Storage.
+- `POST /api/businesses/:businessId/document-checklists/transition-validation`:
+  valida un estado objetivo del negocio y responde `409` con los requisitos
+  bloqueantes incompletos. Los detalles sensibles solo se muestran a roles con
+  lectura del requisito.
 
 La instanciación copia versión, criterios y requisitos, calcula las fechas
 relativas y nunca reescribe el expediente cuando cambia la plantilla. La
@@ -141,8 +154,9 @@ negocio. IDs ajenos se rechazan y no producen registros parciales.
 
 El porcentaje de avance se calcula sobre requisitos obligatorios visibles. Los
 requisitos opcionales permanecen en el total y pueden completarse sin impedir
-que los obligatorios alcancen cien por ciento. La ejecución efectiva de bloqueos
-en transiciones se completa en el lote de estados documentales.
+que los obligatorios alcancen cien por ciento. Un requisito bloqueante aplica a
+todos los estados si no define `requiredAtStatus`, o únicamente al estado
+configurado. La validación server-side impide continuar mientras exista alguno.
 
 ## Documentos No Previstos
 
@@ -166,12 +180,32 @@ versionamiento y organización que los documentos esperados.
 Las transiciones deben validarse en servidor y no todos los requisitos tienen
 que recorrer todos los estados.
 
+Reglas iniciales del beta:
+
+- Una carga o reemplazo lleva el requisito a `UPLOADED`.
+- Si `requiresReview=true`, `UPLOADED` debe pasar por `UNDER_REVIEW` antes de
+  aprobar, observar o rechazar.
+- `OBSERVED`, `REJECTED`, `EXPIRED` y `NOT_APPLICABLE` requieren motivo.
+- `NOT_APPLICABLE` solo se acepta cuando no existen archivos vigentes.
+- Un documento observado o rechazado vuelve a `UPLOADED` mediante reemplazo;
+  no se edita el archivo anterior.
+- `APPROVED` puede pasar a `EXPIRED`; estados terminales no se reabren sin una
+  versión nueva.
+
 ## Versionamiento Y Relaciones
 
 - Un archivo cargado no se sobrescribe.
 - Cada reemplazo conserva versión anterior, versión nueva, autor, fecha y motivo.
+- `lineageId` identifica la cadena; `version` es creciente e `isCurrent` solo
+  puede ser verdadero para una versión de esa cadena. La base de datos impide
+  dos versiones vigentes y predecesores de otra organización, negocio o
+  requisito.
+- `business_document_requirement_events` conserva la línea inmutable de
+  transiciones con actor y motivo. Sus claves compuestas impiden insertar un
+  evento o documento de otro expediente.
 - Una adenda se relaciona con el contrato que modifica; no es solamente una nueva
-  versión del contrato.
+  versión del contrato. Esa relación se conserva en `businessContractId` del
+  requisito y se copia a cada archivo de su cadena.
 - El expediente permite múltiples contratos, adendas y anexos cuando el negocio
   lo requiera.
 - La eliminación física no es una acción operativa normal; se usa reemplazo,

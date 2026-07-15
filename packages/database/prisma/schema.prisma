@@ -565,6 +565,7 @@ model Organization {
   documentChecklistTemplates DocumentChecklistTemplate[]
   businessDocumentChecklists BusinessDocumentChecklist[]
   businessDocumentRequirements BusinessDocumentRequirement[]
+  businessDocumentRequirementEvents BusinessDocumentRequirementEvent[]
   mandates                Mandate[]
   listings                Listing[]
   showings                Showing[]
@@ -608,9 +609,11 @@ model User {
   assignedScheduledActions       ScheduledAction[]        @relation("AssignedScheduledActions")
   uploadedDocuments              Document[]               @relation("UploadedDocuments")
   reviewedDocuments              Document[]               @relation("ReviewedDocuments")
+  replacedDocuments              Document[]               @relation("ReplacedDocuments")
   createdDocumentChecklistTemplates DocumentChecklistTemplate[] @relation("CreatedDocumentChecklistTemplates")
   createdBusinessDocumentChecklists BusinessDocumentChecklist[] @relation("CreatedBusinessDocumentChecklists")
   createdBusinessDocumentRequirements BusinessDocumentRequirement[] @relation("CreatedBusinessDocumentRequirements")
+  businessDocumentRequirementEvents BusinessDocumentRequirementEvent[] @relation("BusinessDocumentRequirementEventActors")
   assignedMandates               Mandate[]                @relation("AssignedMandates")
   assignedShowings               Showing[]                @relation("AssignedShowings")
   assignedOffers                 Offer[]                  @relation("AssignedOffers")
@@ -1360,6 +1363,13 @@ model Document {
   businessId         String?            @map("business_id") @db.Uuid
   businessContractId String?            @map("business_contract_id") @db.Uuid
   requirementId      String?            @map("requirement_id") @db.Uuid
+  lineageId          String             @default(dbgenerated("gen_random_uuid()")) @map("lineage_id") @db.Uuid
+  version            Int                @default(1)
+  isCurrent          Boolean            @default(true) @map("is_current")
+  replacesDocumentId String?            @map("replaces_document_id") @db.Uuid
+  replacedAt         DateTime?          @map("replaced_at")
+  replacedByUserId   String?            @map("replaced_by_user_id") @db.Uuid
+  replacementReason  String?            @map("replacement_reason")
   name               String
   documentType       String             @map("document_type")
   status             DocumentStatus     @default(REQUIRED)
@@ -1382,9 +1392,16 @@ model Document {
   business           Business?          @relation(fields: [businessId], references: [id], onDelete: Cascade)
   businessContract   BusinessContract?  @relation(fields: [businessContractId], references: [id], onDelete: Cascade)
   requirement        BusinessDocumentRequirement? @relation(fields: [organizationId, businessId, requirementId], references: [organizationId, businessId, id], onDelete: Restrict, map: "documents_requirement_business_fkey")
+  replacesDocument   Document?          @relation("DocumentVersions", fields: [organizationId, businessId, requirementId, lineageId, replacesDocumentId], references: [organizationId, businessId, requirementId, lineageId, id], onDelete: Restrict, map: "documents_replaces_scoped_fkey")
+  replacementDocument Document?         @relation("DocumentVersions")
   uploadedByUser     User?              @relation("UploadedDocuments", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
   reviewedByUser     User?              @relation("ReviewedDocuments", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  replacedByUser     User?              @relation("ReplacedDocuments", fields: [replacedByUserId], references: [id], onDelete: Restrict)
+  requirementEvents  BusinessDocumentRequirementEvent[]
 
+  @@unique([organizationId, businessId, requirementId, id], map: "documents_requirement_id_key")
+  @@unique([organizationId, businessId, requirementId, lineageId, id], map: "documents_version_scope_id_key")
+  @@unique([organizationId, businessId, requirementId, lineageId, replacesDocumentId], map: "documents_replaces_once_key")
   @@index([organizationId, status])
   @@index([organizationId, entityType])
   @@index([clientId])
@@ -1392,6 +1409,8 @@ model Document {
   @@index([businessId])
   @@index([businessContractId])
   @@index([organizationId, businessId, requirementId], map: "documents_requirement_business_idx")
+  @@index([organizationId, businessId, requirementId, lineageId, version], map: "documents_requirement_lineage_version_idx")
+  @@index([replacedByUserId])
   @@map("documents")
 }
 
@@ -1533,9 +1552,11 @@ model BusinessDocumentRequirement {
   participant         BusinessParticipant?      @relation(fields: [organizationId, businessId, participantId], references: [organizationId, businessId, id], onDelete: Restrict, map: "business_document_requirements_participant_business_fkey")
   createdByUser       User?                     @relation("CreatedBusinessDocumentRequirements", fields: [createdByUserId], references: [id], onDelete: SetNull)
   documents           Document[]
+  events              BusinessDocumentRequirementEvent[]
 
   @@unique([checklistId, key])
   @@unique([organizationId, businessId, id], map: "business_document_requirements_org_business_id_key")
+  @@unique([organizationId, businessId, checklistId, id], map: "business_document_requirements_event_scope_key")
   @@index([organizationId, businessId, status])
   @@index([organizationId, checklistId, sortOrder])
   @@index([organizationId, templateItemId])
@@ -1545,6 +1566,31 @@ model BusinessDocumentRequirement {
   @@index([organizationId, businessId, participantId], map: "business_document_requirements_business_participant_idx")
   @@index([createdByUserId])
   @@map("business_document_requirements")
+}
+
+model BusinessDocumentRequirementEvent {
+  id             String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                     @map("organization_id") @db.Uuid
+  businessId     String                     @map("business_id") @db.Uuid
+  checklistId    String                     @map("checklist_id") @db.Uuid
+  requirementId  String                     @map("requirement_id") @db.Uuid
+  documentId     String?                    @map("document_id") @db.Uuid
+  fromStatus     DocumentRequirementStatus? @map("from_status")
+  toStatus       DocumentRequirementStatus  @map("to_status")
+  reason         String?
+  actorUserId    String?                    @map("actor_user_id") @db.Uuid
+  metadata       Json?
+  createdAt      DateTime                   @default(now()) @map("created_at")
+  organization   Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  requirement    BusinessDocumentRequirement @relation(fields: [organizationId, businessId, checklistId, requirementId], references: [organizationId, businessId, checklistId, id], onDelete: Cascade, map: "business_document_requirement_events_requirement_fkey")
+  document       Document?                  @relation(fields: [organizationId, businessId, requirementId, documentId], references: [organizationId, businessId, requirementId, id], onDelete: Restrict, map: "business_document_requirement_events_document_fkey")
+  actorUser      User?                      @relation("BusinessDocumentRequirementEventActors", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, businessId, checklistId, requirementId, createdAt], map: "business_document_requirement_events_timeline_idx")
+  @@index([organizationId, businessId, requirementId, documentId], map: "business_document_requirement_events_document_scope_idx")
+  @@index([documentId])
+  @@index([actorUserId])
+  @@map("business_document_requirement_events")
 }
 
 model Mandate {

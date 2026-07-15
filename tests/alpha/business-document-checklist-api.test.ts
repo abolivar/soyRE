@@ -5,6 +5,9 @@ import {
   BusinessParticipantRole,
   BusinessPartyType,
   createPrismaClient,
+  DocumentEntityType,
+  DocumentRequirementStatus,
+  DocumentStatus,
 } from '@soyre/database';
 import { ensureApiServer, type ApiServer } from '../helpers/api-server.ts';
 import {
@@ -137,6 +140,39 @@ test(
     assert.equal(instantiated.body.checklist.summary.blockers.length, 1);
     assert.equal(instantiated.body.checklist.summary.progressPercentage, 0);
 
+    const blockedBusinessTransition = await requestJson(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/transition-validation`,
+      {
+        cookie: ownerA.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          targetStatus: 'ACTIVE',
+        },
+      },
+    );
+    assertStatus(blockedBusinessTransition, 409);
+
+    const allowedBusinessTransition = await requestJson<{
+      allowed: boolean;
+      blockers: unknown[];
+    }>(
+      server.baseUrl,
+      `/businesses/${contextB.businessId}/document-checklists/transition-validation`,
+      {
+        cookie: ownerB.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerB.organizationId,
+          targetStatus: 'ACTIVE',
+        },
+      },
+    );
+    assertStatus(allowedBusinessTransition, 201);
+    assert.equal(allowedBusinessTransition.body.allowed, true);
+    assert.deepEqual(allowedBusinessTransition.body.blockers, []);
+
     const repeated = await requestJson<ChecklistResponse>(
       server.baseUrl,
       `/businesses/${contextA.businessId}/document-checklists`,
@@ -230,6 +266,150 @@ test(
         await prisma.document.delete({ where: { id: stored.id } });
       }
     }
+
+    const lifecycleDocument = await prisma.$transaction(async (tx) => {
+      const document = await tx.document.create({
+        data: {
+          organizationId: ownerA.organizationId,
+          entityType: DocumentEntityType.BUSINESS,
+          businessId: contextA.businessId,
+          requirementId: reservation.id,
+          name: reservation.name,
+          documentType: reservation.category,
+          status: DocumentStatus.UPLOADED,
+          fileName: 'reserva-lifecycle.pdf',
+          mimeType: 'application/pdf',
+          fileSize: 14,
+          uploadedByUserId: undefined,
+        },
+      });
+      await tx.businessDocumentRequirement.update({
+        where: { id: reservation.id },
+        data: { status: DocumentRequirementStatus.UPLOADED },
+      });
+      return document;
+    });
+
+    const directApproval = await requestJson(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/transitions`,
+      {
+        cookie: ownerA.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          status: 'APPROVED',
+          documentId: lifecycleDocument.id,
+        },
+      },
+    );
+    assertStatus(directApproval, 409);
+
+    const underReview = await requestJson(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/transitions`,
+      {
+        cookie: ownerA.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          status: 'UNDER_REVIEW',
+          documentId: lifecycleDocument.id,
+        },
+      },
+    );
+    assertStatus(underReview, 201);
+
+    const wrongDocument = await requestJson(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/transitions`,
+      {
+        cookie: ownerA.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          status: 'APPROVED',
+          documentId: contextB.contractId,
+        },
+      },
+    );
+    assertStatus(wrongDocument, 404);
+
+    const observedWithoutReason = await requestJson(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/transitions`,
+      {
+        cookie: ownerA.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          status: 'OBSERVED',
+          documentId: lifecycleDocument.id,
+        },
+      },
+    );
+    assertStatus(observedWithoutReason, 400);
+
+    const observed = await requestJson(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/transitions`,
+      {
+        cookie: ownerA.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          status: 'OBSERVED',
+          documentId: lifecycleDocument.id,
+          reason: 'Falta la firma del comprador.',
+        },
+      },
+    );
+    assertStatus(observed, 201);
+
+    const history = await requestJson<{
+      documents: Array<{
+        id: string;
+        version: number;
+        isCurrent: boolean;
+        storagePath?: string;
+      }>;
+      events: Array<{
+        fromStatus: string;
+        toStatus: string;
+        reason: string | null;
+      }>;
+    }>(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/history?organizationId=${ownerA.organizationId}`,
+      { cookie: ownerA.cookie },
+    );
+    assertStatus(history, 200);
+    assert.equal(history.body.documents[0]?.version, 1);
+    assert.equal(history.body.documents[0]?.isCurrent, true);
+    assert.equal(history.body.documents[0]?.storagePath, undefined);
+    assert.deepEqual(
+      history.body.events.map((event) => event.toStatus),
+      ['UNDER_REVIEW', 'OBSERVED'],
+    );
+    assert.equal(
+      history.body.events.at(-1)?.reason,
+      'Falta la firma del comprador.',
+    );
+
+    const crossOrganizationTransition = await requestJson(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/transitions`,
+      {
+        cookie: ownerB.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerB.organizationId,
+          status: 'NOT_APPLICABLE',
+          reason: 'Intento cruzado de otra organización.',
+        },
+      },
+    );
+    assertStatus(crossOrganizationTransition, 404);
 
     const custom = await requestJson<{
       created: boolean;
@@ -406,6 +586,7 @@ async function createTemplate(
             name: 'Reserva firmada',
             category: 'RESERVA',
             required: true,
+            requiresReview: true,
             blocksTransition: true,
             dueDaysAfterInstantiation: 3,
             readRoles: [

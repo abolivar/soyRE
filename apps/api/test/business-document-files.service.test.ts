@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import {
+  DocumentRequirementStatus,
   DocumentStatus,
   MembershipRole,
   MembershipStatus,
@@ -55,7 +57,7 @@ const pdfFile: UploadedBusinessDocumentFile = {
 };
 
 function setup(
-  overrides: { transactionError?: Error; storagePath?: string } = {},
+  overrides: { transactionError?: unknown; storagePath?: string } = {},
 ) {
   const calls = {
     uploads: [] as string[],
@@ -79,6 +81,7 @@ function setup(
     readRoles: [MembershipRole.OWNER],
     allowsMultipleFiles: false,
     expiresAt: null,
+    status: DocumentRequirementStatus.REQUIRED,
   };
   const created = {
     id: ids.document,
@@ -91,6 +94,13 @@ function setup(
     fileSize: pdfFile.size,
     createdAt: new Date('2026-07-15T12:00:00.000Z'),
     updatedAt: new Date('2026-07-15T12:00:00.000Z'),
+    lineageId: '99999999-9999-4999-8999-999999999999',
+    version: 1,
+    isCurrent: true,
+    replacesDocumentId: null,
+    replacementReason: null,
+    replacedAt: null,
+    replacedByUserId: null,
   };
   const prisma = {
     businessDocumentRequirement: { findFirst: async () => requirement },
@@ -114,7 +124,18 @@ function setup(
       calls.transactions += 1;
       if (overrides.transactionError) throw overrides.transactionError;
       return callback({
-        document: { create: async () => created },
+        document: {
+          create: async (args: {
+            data?: { version?: number; replacesDocumentId?: string };
+          }) => ({
+            ...created,
+            version: args.data?.version ?? 1,
+            replacesDocumentId: args.data?.replacesDocumentId ?? null,
+          }),
+          updateMany: async () => ({ count: 1 }),
+        },
+        businessDocumentRequirement: { update: async () => undefined },
+        businessDocumentRequirementEvent: { create: async () => undefined },
         auditLog: { create: async () => undefined },
       });
     },
@@ -238,5 +259,43 @@ describe('BusinessDocumentFilesService', () => {
       ServiceUnavailableException,
     );
     assert.equal(calls.transactions, 0);
+  });
+
+  it('replaces a current file with a new immutable version', async () => {
+    const { service, calls } = setup();
+    const result = await service.replace(
+      auth,
+      ids.business,
+      ids.checklist,
+      ids.requirement,
+      ids.document,
+      ids.organization,
+      'Documento corregido y firmado.',
+      pdfFile,
+    );
+
+    assert.equal(result.replaced, true);
+    assert.equal(result.replacedDocumentId, ids.document);
+    assert.equal(result.document.version, 2);
+    assert.equal(result.document.replacesDocumentId, ids.document);
+    assert.equal(calls.uploads.length, 1);
+    assert.equal(calls.removals.length, 0);
+    assert.equal(calls.transactions, 1);
+  });
+
+  it('maps a concurrent current-version collision to a conflict and cleans Storage', async () => {
+    const { service, calls } = setup({ transactionError: { code: 'P2002' } });
+    await assert.rejects(
+      service.upload(
+        auth,
+        ids.business,
+        ids.checklist,
+        ids.requirement,
+        ids.organization,
+        pdfFile,
+      ),
+      ConflictException,
+    );
+    assert.deepEqual(calls.removals, calls.uploads);
   });
 });
