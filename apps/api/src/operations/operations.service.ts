@@ -260,6 +260,7 @@ export class OperationsService {
     const search = query.search?.trim();
     const where: Prisma.DocumentWhereInput = {
       organizationId: membership.organizationId,
+      requirementId: null,
       ...(query.entityType ? { entityType: query.entityType } : {}),
       ...(query.status ? { status: query.status } : {}),
       ...(search
@@ -301,6 +302,17 @@ export class OperationsService {
 
   async createDocument(auth: AuthenticatedUser, dto: CreateDocumentDto) {
     const membership = this.resolveWritableMembership(auth, dto.organizationId);
+
+    if (
+      dto.storagePath ||
+      dto.fileName ||
+      dto.mimeType ||
+      dto.fileSize !== undefined
+    ) {
+      throw new BadRequestException(
+        'File metadata must be created by an authorized private upload endpoint.',
+      );
+    }
 
     const document = await this.prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {

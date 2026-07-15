@@ -122,6 +122,12 @@ El expediente se opera dentro del negocio:
   idempotente y devuelve el snapshot existente.
 - `POST /api/businesses/:businessId/document-checklists/:checklistId/requirements`:
   agrega un requisito libre con nombre, categoría abierta y motivo obligatorio.
+- `POST /api/businesses/:businessId/document-checklists/:checklistId/requirements/:requirementId/files`:
+  recibe un único archivo `multipart/form-data` en el campo `file`, aplica los
+  permisos del requisito y crea sus metadatos solo después de almacenarlo.
+- `GET /api/businesses/:businessId/document-checklists/:checklistId/requirements/:requirementId/files/:documentId/download`:
+  autoriza nuevamente organización, negocio, requisito y rol antes de emitir
+  una URL firmada con vigencia de 60 segundos.
 
 La instanciación copia versión, criterios y requisitos, calcula las fechas
 relativas y nunca reescribe el expediente cuando cambia la plantilla. La
@@ -184,12 +190,22 @@ con el negocio y sensibilidad del documento.
 
 ## Almacenamiento
 
-- Los archivos viven en Storage privado.
-- La ruta incluye `organizationId` y el recurso propietario.
-- Las descargas usan autorización server-side y URL temporal.
-- Tipo MIME, extensión y tamaño se validan en servidor.
+- Los archivos viven en el bucket privado `business-documents`; no existen
+  políticas de lectura pública ni URLs permanentes.
+- La ruta usa
+  `{organizationId}/businesses/{businessId}/checklists/{checklistId}/requirements/{requirementId}/{uuid}-{nombre}`.
+- Las descargas usan autorización server-side y una URL temporal de 60 segundos.
+- El servidor limita cada archivo a 15 MB y acepta PDF, JPEG, PNG, DOC y DOCX.
+  Valida extensión, MIME y firma binaria básica antes de escribir en Storage.
 - Metadata y estado viven en PostgreSQL; el binario no debe quedar embebido en
   una respuesta JSON.
+- La carga escribe primero el objeto privado y luego crea documento y auditoría
+  en una transacción. Si falla la transacción, elimina el objeto para no dejar
+  archivos huérfanos. Un fallo de Storage nunca crea metadatos.
+- Los endpoints genéricos de documentos no aceptan `storagePath`, nombre, MIME o
+  tamaño enviados por el cliente y no exponen archivos del checklist.
+- El API requiere `SUPABASE_URL` y `SUPABASE_SECRET_KEY`. La clave secreta es
+  exclusiva del backend y nunca debe usar el prefijo `NEXT_PUBLIC_`.
 - Retención, eliminación y eventual escaneo de archivos se completan en el lote
   de hardening antes del beta público.
 

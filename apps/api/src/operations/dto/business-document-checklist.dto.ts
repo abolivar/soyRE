@@ -25,6 +25,12 @@ export class BusinessDocumentChecklistQueryDto {
   organizationId?: string;
 }
 
+export class BusinessDocumentFileScopeDto {
+  @IsOptional()
+  @IsUUID()
+  organizationId?: string;
+}
+
 export class InstantiateBusinessDocumentChecklistDto {
   @IsOptional()
   @IsUUID()
