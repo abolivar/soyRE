@@ -39,6 +39,11 @@ La verificación se ejecutó en un worktree limpio con Node 22.22.2:
 - `pnpm build`: 6 tareas aprobadas y 26 páginas generadas.
 - `git diff --check`: aprobado.
 
+Después de integrar #92, `typecheck`, `test` y `build` se repitieron con
+`--force`: 9/9 tareas de typecheck, 9/9 tareas y 56 pruebas, y 6/6 tareas con 26
+páginas, respectivamente. El build se ejecutó fuera del sandbox porque
+Turbopack necesita abrir un puerto interno durante la compilación.
+
 ## Verificación remota de finanzas
 
 El 15/07/2026 se aplicó la migración
@@ -58,15 +63,21 @@ mediante Supabase MCP. La evidencia saneada confirmó:
 - Prueba remota adversarial aprobada para altas válidas, conservación de montos,
   transiciones, método predeterminado e idempotencia. Todas las filas temporales
   fueron eliminadas y los cuatro conteos residuales quedaron en cero.
+- La migración incremental `20260715133000_finance_foreign_key_indexes` quedó
+  incorporada desde #92. Supabase la registró como
+  `20260715132859_finance_foreign_key_indexes` y Prisma con checksum
+  `6d8729a0a69b6cb255ab705b4da21431ebff0c8eaaf9c6c4c9675cca94d22c4c`.
+- Los trece índices de cobertura se verificaron por nombre y definición. El
+  Performance Advisor quedó sin avisos `unindexed_foreign_keys` para las cuatro
+  tablas financieras.
 
 ## Deudas separadas
 
 - #6 conserva la revisión transversal de advisors y la estrategia de RLS para
   tablas históricas. La verificación detectó siete tablas anteriores con RLS
   deshabilitado; no se habilitó RLS sin definir antes sus políticas.
-- #91 cubre trece claves foráneas financieras que el Performance Advisor marca
-  sin índice de cobertura. Deben resolverse en una migración incremental, sin
-  modificar la migración ya aplicada.
+- #91 quedó implementado por #92 mediante una migración incremental, sin
+  modificar el checksum de la migración financiera base.
 - #88 corrigió la gráfica de Turbo y la exportación de tipos de
   `@soyre/database`; su commit está incorporado en esta rama de integración.
 
