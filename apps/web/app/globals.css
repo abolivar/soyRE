@@ -1328,7 +1328,7 @@ label {
 }
 
 .commission-rule-row {
-  grid-template-columns: minmax(160px, 1.2fr) 170px 120px 160px auto;
+  grid-template-columns: minmax(160px, 1.2fr) 130px 170px 120px 160px auto;
 }
 
 .negotiation-adjustment-row {

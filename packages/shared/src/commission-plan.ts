@@ -59,8 +59,11 @@ export type CommissionAllocationOutput = {
   recipientType: CommissionRuleInput['recipientType'];
   label: string;
   calculationType: CommissionCalculationType;
+  percentageBasisPoints?: number;
+  fixedAmountCents?: string;
   payableAmountCents: string;
   releaseTrigger: CommissionReleaseTrigger;
+  status: 'PENDING';
 };
 
 export type CommissionPlanCalculationOutput = {
@@ -90,14 +93,19 @@ export function calculateCommissionPlan(
     assertNonNegativeCents(baseAmount, 'baseAmountCents');
     assertNonNegativeCents(collectedAmount, 'collectedAmountCents');
   } catch (error) {
-    errors.push(error instanceof Error ? error.message : 'Invalid commission amount.');
+    errors.push(error instanceof Error ? error.message : 'El monto de comisión no es válido.');
   }
 
   for (const rule of input.rules) {
-    const duplicateKey = `${rule.participantKey}:${rule.recipientType}:${rule.calculationType}`;
+    if (!rule.participantKey.trim()) {
+      errors.push(`La regla ${rule.label} necesita un receptor registrado.`);
+      continue;
+    }
+
+    const duplicateKey = `${rule.participantKey}:${rule.recipientType}`;
 
     if (seen.has(duplicateKey)) {
-      errors.push(`Duplicate commission allocation for ${rule.label}.`);
+      errors.push(`La asignación de comisión para ${rule.label} está duplicada.`);
     }
 
     seen.add(duplicateKey);
@@ -114,28 +122,34 @@ export function calculateCommissionPlan(
       remainingCommission -= rule.appliesAfterDeductions ? capped : 0n;
 
       if (capped > grossCommission && rule.calculationType !== 'PERCENTAGE_OF_SALE') {
-        warnings.push(`${rule.label} exceeds the gross commission.`);
+        warnings.push(`${rule.label} supera la comisión bruta.`);
       }
 
       allocations.push({
         calculationType: rule.calculationType,
+        fixedAmountCents:
+          rule.fixedAmountCents === undefined
+            ? undefined
+            : centsToString(toCents(rule.fixedAmountCents)),
         label: rule.label,
         participantKey: rule.participantKey,
         payableAmountCents: centsToString(capped),
+        percentageBasisPoints: rule.percentageBasisPoints,
         recipientType: rule.recipientType,
         releaseTrigger: rule.releaseTrigger ?? 'ON_CLOSING',
+        status: 'PENDING',
       });
     } catch (error) {
-      errors.push(error instanceof Error ? error.message : 'Commission rule error.');
+      errors.push(error instanceof Error ? error.message : 'La regla de comisión no es válida.');
     }
   }
 
   if (input.mode === 'SIMPLE' && allocations.length !== 1) {
-    errors.push('Simple commission mode requires exactly one allocation.');
+    errors.push('El modo de comisión simple requiere exactamente una asignación.');
   }
 
   if (remainingCommission < 0n) {
-    errors.push('Commission deductions exceed gross commission.');
+    errors.push('Las deducciones de comisión superan la comisión bruta.');
   }
 
   const total = allocations.reduce(
@@ -148,7 +162,7 @@ export function calculateCommissionPlan(
       : total;
 
   if (total > baseAmount) {
-    warnings.push('Total commission is greater than the calculation base.');
+    warnings.push('La comisión total supera la base de cálculo.');
   }
 
   return {
@@ -177,7 +191,7 @@ function resolveGrossCommission(
   );
 
   if (!firstSalePercentage?.percentageBasisPoints) {
-    errors.push('A sale percentage or simple commission percentage is required.');
+    errors.push('Se requiere un porcentaje de venta o de comisión simple.');
     return 0n;
   }
 
@@ -208,9 +222,9 @@ function calculateRuleAmount(
     case 'TIERED':
     case 'SLIDING_SCALE':
     case 'CUSTOM':
-      throw new Error(`${rule.calculationType} requires a future custom engine.`);
+      throw new Error(`${rule.calculationType} requiere un motor personalizado futuro.`);
     default:
-      throw new Error('Unsupported commission calculation type.');
+      throw new Error('El tipo de cálculo de comisión no está soportado.');
   }
 }
 
@@ -244,6 +258,6 @@ function validateBasisPoints(value: number | undefined, label: string): asserts 
     value <= 0 ||
     value > 10000
   ) {
-    throw new Error(`${label} percentage must be greater than 0 and up to 100%.`);
+    throw new Error(`El porcentaje de ${label} debe ser mayor que 0 y hasta 100%.`);
   }
 }
