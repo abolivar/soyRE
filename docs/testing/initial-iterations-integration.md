@@ -32,8 +32,8 @@ La verificación se ejecutó en un worktree limpio con Node 22.22.2:
 
 - `pnpm db:generate`: aprobado.
 - `pnpm lint`: aprobado.
-- `pnpm typecheck`: 6 tareas aprobadas después de construir los artefactos de
-  los paquetes workspace.
+- `pnpm typecheck`: 9 tareas aprobadas; Turbo construye automáticamente los
+  artefactos de los paquetes workspace.
 - `pnpm test`: 56 pruebas aprobadas, distribuidas en 20 de `shared`, 23 de `web`
   y 13 de `api`.
 - `pnpm build`: 6 tareas aprobadas y 26 páginas generadas.
@@ -43,9 +43,8 @@ La verificación se ejecutó en un worktree limpio con Node 22.22.2:
 
 - #85 mantiene la aplicación y verificación remota de la migración financiera
   mediante Supabase MCP. La integración no aplica migraciones localmente.
-- #88 registra que `typecheck` y `test` necesitan declarar en Turbo la
-  construcción previa de `shared`, `ui` y `database` cuando el checkout no tiene
-  artefactos `dist` residuales.
+- #88 corrigió la gráfica de Turbo y la exportación de tipos de
+  `@soyre/database`; su commit está incorporado en esta rama de integración.
 
 Hasta cerrar #85, la integración debe permanecer como PR borrador y no debe
 promoverse a producción.
