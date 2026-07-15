@@ -37,9 +37,16 @@ import {
   PassportMrzData,
 } from '../lib/passport-mrz';
 import {
+  NationalIdCountry,
   NationalIdOcrData,
+  nationalIdCountries,
   parseNationalIdOcr,
 } from '../lib/national-id-ocr';
+import {
+  fileToIdentityDocumentPayload,
+  IdentityDocumentPayload,
+  isSupportedIdentityFile,
+} from '../lib/identity-document-file';
 import {
   Button,
   DataTable,
@@ -64,8 +71,6 @@ type ClientFilters = {
 type ClientCreateMode = 'manual' | 'passport' | 'national_id';
 
 type IdentityOcrStatus = 'idle' | 'reading' | 'ready' | 'error';
-
-type IdentityDocumentPayload = NonNullable<CreateClientPayload['identityDocument']>;
 
 type ClientLegalDocumentType = 'NATIONAL_ID' | 'PASSPORT' | 'RUC' | 'OTHER';
 
@@ -148,6 +153,8 @@ export function ClientsWorkspace() {
   const [nationalIdData, setNationalIdData] = useState<NationalIdOcrData | null>(
     null,
   );
+  const [nationalIdCountry, setNationalIdCountry] =
+    useState<NationalIdCountry>('CO');
   const [passportError, setPassportError] = useState<string | null>(null);
   const [passportFileName, setPassportFileName] = useState<string | null>(null);
   const [identityDocumentPreviewUrl, setIdentityDocumentPreviewUrl] = useState<
@@ -329,10 +336,21 @@ export function ClientsWorkspace() {
         throw new Error('Carga el documento de identidad antes de crear el cliente.');
       }
 
+      const clientPayload = buildClientPayload(form);
+      const correctedIdentityDocument = identityDocumentPayload
+        ? {
+            ...identityDocumentPayload,
+            documentNumber:
+              stringValue(form, 'legalId') ?? identityDocumentPayload.documentNumber,
+            firstName:
+              nameValue(form, 'firstName') ?? identityDocumentPayload.firstName,
+            lastName: nameValue(form, 'lastName') ?? identityDocumentPayload.lastName,
+          }
+        : null;
       const payload = {
-        ...buildClientPayload(form),
-        ...(identityDocumentPayload
-          ? { identityDocument: identityDocumentPayload }
+        ...clientPayload,
+        ...(correctedIdentityDocument
+          ? { identityDocument: correctedIdentityDocument }
           : {}),
         organizationId: activeOrganizationId,
       };
@@ -377,6 +395,9 @@ export function ClientsWorkspace() {
     setIdentityDocumentPreviewUrl(null);
     setPassportMrz('');
     setPassportStatus('idle');
+    if (mode === 'national_id') {
+      setNationalIdCountry('CO');
+    }
   }
 
   async function downloadIdentityDocument(documentId: string) {
@@ -417,6 +438,18 @@ export function ClientsWorkspace() {
     setPassportFileName(null);
     setIdentityDocumentPreviewUrl(null);
     setPassportMrz('');
+    setPassportStatus('idle');
+    setNationalIdCountry('CO');
+  }
+
+  function changeNationalIdCountry(country: NationalIdCountry) {
+    documentReadIdRef.current += 1;
+    setNationalIdCountry(country);
+    setIdentityDocumentPayload(null);
+    setNationalIdData(null);
+    setPassportError(null);
+    setPassportFileName(null);
+    setIdentityDocumentPreviewUrl(null);
     setPassportStatus('idle');
   }
 
@@ -495,17 +528,22 @@ export function ClientsWorkspace() {
             ocrText: text,
           });
         } else {
-          const parsed = parseNationalIdOcr(text);
+          const parsed = parseNationalIdOcr(text, nationalIdCountry);
+          const country = nationalIdCountries.find(
+            (item) => item.value === nationalIdCountry,
+          );
           setNationalIdData(parsed);
           setPassportStatus('ready');
           setIdentityDocumentPayload({
             ...basePayload,
             documentNumber: parsed.documentNumber ?? undefined,
+            issuingCountry: country?.issuingCountry,
             firstName: toNameCase(parsed.firstName),
             lastName: toNameCase(parsed.lastName),
             ocrText: parsed.rawText,
             extractedData: {
-              parser: 'generic-national-id-ocr',
+              country: nationalIdCountry,
+              parser: `national-id-ocr-${nationalIdCountry.toLocaleLowerCase()}`,
             },
           });
           fillFormFromNationalId(parsed);
@@ -522,7 +560,7 @@ export function ClientsWorkspace() {
       setPassportError(
         caught instanceof Error
           ? caught.message
-          : 'No se pudo leer el pasaporte.',
+          : 'No se pudo leer el documento.',
       );
     } finally {
       input.value = '';
@@ -598,6 +636,11 @@ export function ClientsWorkspace() {
     setFormValue(form, 'legalId', data.documentNumber);
     setFormValue(form, 'firstName', toNameCase(data.firstName));
     setFormValue(form, 'lastName', toNameCase(data.lastName));
+    setFormValue(
+      form,
+      'country',
+      nationalIdCountries.find((country) => country.value === data.country)?.label,
+    );
     setFormValue(form, 'source', 'Cedula');
     setFormValue(form, 'notes', nationalIdNotes(data, form));
   }
@@ -938,6 +981,23 @@ export function ClientsWorkspace() {
                 </h3>
                 <p>La imagen se procesa localmente, se guarda con el alta y no implica KYC.</p>
               </div>
+              {createMode === 'national_id' ? (
+                <label>
+                  País de la cédula
+                  <select
+                    onChange={(event) =>
+                      changeNationalIdCountry(event.target.value as NationalIdCountry)
+                    }
+                    value={nationalIdCountry}
+                  >
+                    {nationalIdCountries.map((country) => (
+                      <option key={country.value} value={country.value}>
+                        {country.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
               <label className="passport-upload">
                 <Upload size={18} strokeWidth={2.2} />
                 <span>
@@ -1627,39 +1687,6 @@ function createModeToDocumentType(
   }
 
   return null;
-}
-
-function isSupportedIdentityFile(file: File) {
-  return ['image/jpeg', 'image/png', 'image/webp'].includes(file.type);
-}
-
-async function fileToIdentityDocumentPayload(
-  file: File,
-  type: ClientIdentityDocumentType,
-): Promise<IdentityDocumentPayload> {
-  return {
-    type,
-    fileName: file.name,
-    mimeType: file.type,
-    fileSize: file.size,
-    fileBase64: await fileToDataUrl(file),
-  };
-}
-
-function fileToDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener('load', () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-        return;
-      }
-
-      reject(new Error('No se pudo preparar el archivo.'));
-    });
-    reader.addEventListener('error', () => reject(reader.error));
-    reader.readAsDataURL(file);
-  });
 }
 
 function setFormValue(
