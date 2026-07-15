@@ -28,6 +28,7 @@ type ChecklistResponse = {
   created: boolean;
   checklist: {
     id: string;
+    templateName: string;
     templateVersion: number;
     requirements: Array<{
       id: string;
@@ -48,9 +49,11 @@ type ChecklistResponse = {
   };
 };
 
-const enabled = process.env.BUSINESS_DOCUMENT_CHECKLIST_API_MUTATING === 'true';
+const enabled =
+  process.env.BUSINESS_DOCUMENT_CHECKLIST_API_MUTATING === 'true' ||
+  process.env.DOCUMENT_EXPEDIENTE_QA_MUTATING === 'true';
 const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-const prisma = createPrismaClient();
+const prisma = enabled ? createPrismaClient() : null;
 let server: ApiServer | null = null;
 
 before(async () => {
@@ -59,7 +62,7 @@ before(async () => {
 
 after(async () => {
   await server?.stop();
-  await prisma.$disconnect();
+  await prisma?.$disconnect();
 });
 
 test(
@@ -67,6 +70,7 @@ test(
   { skip: !enabled },
   async () => {
     assert.ok(server);
+    assert.ok(prisma);
     const ownerA = await register(
       server.baseUrl,
       `checklist-a-${runId}@example.com`,
@@ -77,19 +81,29 @@ test(
       `checklist-b-${runId}@example.com`,
       `checklist-b-${runId}`,
     );
-    const contextA = await createBusinessContext(ownerA.organizationId, 'A');
-    const contextB = await createBusinessContext(ownerB.organizationId, 'B');
+    const contextA = await createBusinessContext(
+      ownerA.organizationId,
+      'A',
+      BusinessOperationType.SALE,
+    );
+    const contextB = await createBusinessContext(
+      ownerB.organizationId,
+      'B',
+      BusinessOperationType.RENT,
+    );
     const templateA = await createTemplate(
       server.baseUrl,
       ownerA.cookie,
       ownerA.organizationId,
       `sale-pa-${runId}`,
+      BusinessOperationType.SALE,
     );
     const templateB = await createTemplate(
       server.baseUrl,
       ownerB.cookie,
       ownerB.organizationId,
-      `sale-pa-b-${runId}`,
+      `rent-pa-b-${runId}`,
+      BusinessOperationType.RENT,
     );
 
     const crossOrganizationBusiness = await requestJson(
@@ -173,6 +187,26 @@ test(
     assert.equal(allowedBusinessTransition.body.allowed, true);
     assert.deepEqual(allowedBusinessTransition.body.blockers, []);
 
+    const rentInstantiated = await requestJson<ChecklistResponse>(
+      server.baseUrl,
+      `/businesses/${contextB.businessId}/document-checklists`,
+      {
+        cookie: ownerB.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerB.organizationId,
+          templateId: templateB.id,
+        },
+      },
+    );
+    assertStatus(rentInstantiated, 201);
+    assert.equal(rentInstantiated.body.created, true);
+    assert.match(rentInstantiated.body.checklist.templateName, /Alquiler/);
+    assert.deepEqual(
+      rentInstantiated.body.checklist.requirements.map((item) => item.category),
+      ['ARRENDAMIENTO', 'ENTREGA'],
+    );
+
     const repeated = await requestJson<ChecklistResponse>(
       server.baseUrl,
       `/businesses/${contextA.businessId}/document-checklists`,
@@ -245,8 +279,9 @@ test(
       });
       assert.ok(stored.storagePath);
 
+      let replacementPath: string | null = null;
       try {
-        const download = await requestJson<{
+        const initialDownload = await requestJson<{
           signedUrl: string;
           expiresIn: number;
           document: { storagePath?: string };
@@ -255,15 +290,79 @@ test(
           `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/files/${stored.id}/download?organizationId=${ownerA.organizationId}`,
           { cookie: ownerA.cookie },
         );
-        assertStatus(download, 200);
-        assert.equal(download.body.expiresIn, 60);
-        assert.equal(download.body.document.storagePath, undefined);
-        const privateFile = await fetch(download.body.signedUrl);
+        assertStatus(initialDownload, 200);
+        assert.equal(initialDownload.body.expiresIn, 60);
+        assert.equal(initialDownload.body.document.storagePath, undefined);
+        const privateFile = await fetch(initialDownload.body.signedUrl);
         assert.equal(privateFile.status, 200);
         assert.match(await privateFile.text(), /^%PDF-/);
+
+        const replaced = await requestMultipart(
+          server.baseUrl,
+          `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/files/${stored.id}/replacements`,
+          ownerA.cookie,
+          ownerA.organizationId,
+          new File(['%PDF-1.7\n% version 2\n%%EOF'], 'reserva-v2.pdf', {
+            type: 'application/pdf',
+          }),
+          { reason: 'La reserva fue firmada por todas las partes.' },
+        );
+        assert.equal(replaced.status, 201);
+        const replacementBody = (await replaced.json()) as {
+          document: { id: string; storagePath?: string; version: number };
+        };
+        assert.equal(replacementBody.document.storagePath, undefined);
+        assert.equal(replacementBody.document.version, 2);
+        const replacement = await prisma.document.findUniqueOrThrow({
+          where: { id: replacementBody.document.id },
+        });
+        replacementPath = replacement.storagePath;
+        assert.ok(replacementPath);
+
+        const replacementHistory = await requestJson<{
+          documents: Array<{
+            id: string;
+            isCurrent: boolean;
+            replacementReason: string | null;
+            version: number;
+          }>;
+        }>(
+          server.baseUrl,
+          `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/history?organizationId=${ownerA.organizationId}`,
+          { cookie: ownerA.cookie },
+        );
+        assertStatus(replacementHistory, 200);
+        assert.deepEqual(
+          replacementHistory.body.documents.map((document) => ({
+            isCurrent: document.isCurrent,
+            version: document.version,
+          })),
+          [
+            { isCurrent: true, version: 2 },
+            { isCurrent: false, version: 1 },
+          ],
+        );
+        assert.equal(
+          replacementHistory.body.documents[1]?.replacementReason,
+          'La reserva fue firmada por todas las partes.',
+        );
+
+        const replacementDownload = await requestJson<{ signedUrl: string }>(
+          server.baseUrl,
+          `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/files/${replacement.id}/download?organizationId=${ownerA.organizationId}`,
+          { cookie: ownerA.cookie },
+        );
+        assertStatus(replacementDownload, 200);
+        assert.match(
+          await (await fetch(replacementDownload.body.signedUrl)).text(),
+          /version 2/,
+        );
       } finally {
         await deleteStorageFixture(stored.storagePath);
-        await prisma.document.delete({ where: { id: stored.id } });
+        if (replacementPath) await deleteStorageFixture(replacementPath);
+        await prisma.document.deleteMany({
+          where: { requirementId: reservation.id },
+        });
       }
     }
 
@@ -442,6 +541,36 @@ test(
     );
     assert.equal(custom.body.requirement.participantId, contextA.participantId);
 
+    const addenda = [];
+    for (const number of [1, 2]) {
+      const addendum = await requestJson<{
+        created: boolean;
+        requirement: ChecklistResponse['checklist']['requirements'][number];
+      }>(
+        server.baseUrl,
+        `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements`,
+        {
+          cookie: ownerA.cookie,
+          method: 'POST',
+          body: {
+            organizationId: ownerA.organizationId,
+            name: `Adenda ${number} firmada`,
+            category: 'ADENDA',
+            reason: `Adenda ${number} acordada después del contrato principal.`,
+            businessContractId: contextA.contractId,
+          },
+        },
+      );
+      assertStatus(addendum, 201);
+      assert.equal(
+        addendum.body.requirement.businessContractId,
+        contextA.contractId,
+      );
+      addenda.push(addendum.body.requirement);
+    }
+    assert.equal(addenda.length, 2);
+    assert.notEqual(addenda[0]?.id, addenda[1]?.id);
+
     for (const relation of [
       { clientId: contextB.clientId },
       { propertyId: contextB.propertyId },
@@ -465,6 +594,142 @@ test(
       );
       assertStatus(rejected, 400);
     }
+
+    const approvedCase = await createLifecycleRequirement({
+      baseUrl: server.baseUrl,
+      businessId: contextA.businessId,
+      checklistId: instantiated.body.checklist.id,
+      cookie: ownerA.cookie,
+      name: 'Documento para aprobación directa',
+      organizationId: ownerA.organizationId,
+      requiresReview: false,
+    });
+    const approved = await transitionRequirement({
+      ...approvedCase,
+      baseUrl: server.baseUrl,
+      cookie: ownerA.cookie,
+      organizationId: ownerA.organizationId,
+      status: 'APPROVED',
+    });
+    assertStatus(approved, 201);
+
+    const rejectedCase = await createLifecycleRequirement({
+      baseUrl: server.baseUrl,
+      businessId: contextA.businessId,
+      checklistId: instantiated.body.checklist.id,
+      cookie: ownerA.cookie,
+      name: 'Documento para rechazo',
+      organizationId: ownerA.organizationId,
+      requiresReview: true,
+    });
+    assertStatus(
+      await transitionRequirement({
+        ...rejectedCase,
+        baseUrl: server.baseUrl,
+        cookie: ownerA.cookie,
+        organizationId: ownerA.organizationId,
+        status: 'UNDER_REVIEW',
+      }),
+      201,
+    );
+    const rejected = await transitionRequirement({
+      ...rejectedCase,
+      baseUrl: server.baseUrl,
+      cookie: ownerA.cookie,
+      organizationId: ownerA.organizationId,
+      reason: 'Documento ilegible en la revisión final.',
+      status: 'REJECTED',
+    });
+    assertStatus(rejected, 201);
+
+    const expiredCase = await createLifecycleRequirement({
+      baseUrl: server.baseUrl,
+      businessId: contextA.businessId,
+      checklistId: instantiated.body.checklist.id,
+      cookie: ownerA.cookie,
+      name: 'Documento para vencimiento',
+      organizationId: ownerA.organizationId,
+      requiresReview: false,
+    });
+    const expired = await transitionRequirement({
+      ...expiredCase,
+      baseUrl: server.baseUrl,
+      cookie: ownerA.cookie,
+      organizationId: ownerA.organizationId,
+      reason: 'Vigencia documental agotada.',
+      status: 'EXPIRED',
+    });
+    assertStatus(expired, 201);
+
+    const notApplicable = await requestJson<{
+      requirement: { id: string };
+    }>(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements`,
+      {
+        cookie: ownerA.cookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          name: 'Poder especial no requerido',
+          category: 'AUTORIZACION',
+          reason: 'Caso adversarial de requisito no aplicable.',
+        },
+      },
+    );
+    assertStatus(notApplicable, 201);
+    const markedNotApplicable = await transitionRequirement({
+      baseUrl: server.baseUrl,
+      businessId: contextA.businessId,
+      checklistId: instantiated.body.checklist.id,
+      cookie: ownerA.cookie,
+      organizationId: ownerA.organizationId,
+      reason: 'Las partes comparecen personalmente.',
+      requirementId: notApplicable.body.requirement.id,
+      status: 'NOT_APPLICABLE',
+    });
+    assertStatus(markedNotApplicable, 201);
+
+    const lifecycleRows = await prisma.businessDocumentRequirement.findMany({
+      where: {
+        id: {
+          in: [
+            approvedCase.requirementId,
+            rejectedCase.requirementId,
+            expiredCase.requirementId,
+            notApplicable.body.requirement.id,
+          ],
+        },
+      },
+      select: { name: true, status: true },
+      orderBy: { name: 'asc' },
+    });
+    assert.deepEqual(
+      Object.fromEntries(lifecycleRows.map((row) => [row.name, row.status])),
+      {
+        'Documento para aprobación directa': 'APPROVED',
+        'Documento para rechazo': 'REJECTED',
+        'Documento para vencimiento': 'EXPIRED',
+        'Poder especial no requerido': 'NOT_APPLICABLE',
+      },
+    );
+
+    await prisma.document.update({
+      where: { id: approvedCase.documentId },
+      data: {
+        storagePath: `${ownerB.organizationId}/businesses/${contextB.businessId}/escape.pdf`,
+      },
+    });
+    const escapedStoragePath = await requestJson(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${approvedCase.requirementId}/files/${approvedCase.documentId}/download?organizationId=${ownerA.organizationId}`,
+      { cookie: ownerA.cookie },
+    );
+    assertStatus(escapedStoragePath, 403);
+    await prisma.document.update({
+      where: { id: approvedCase.documentId },
+      data: { storagePath: null },
+    });
 
     const versioned = await requestJson<TemplateResponse>(
       server.baseUrl,
@@ -501,9 +766,19 @@ test(
     assert.equal(listed.body.checklists[0]?.templateVersion, 1);
     assert.deepEqual(
       listed.body.checklists[0]?.requirements.map((item) => item.name),
-      ['Reserva firmada', 'Adenda o anexo', 'Comprobante extraordinario'],
+      [
+        'Reserva firmada',
+        'Adenda o anexo',
+        'Comprobante extraordinario',
+        'Adenda 1 firmada',
+        'Adenda 2 firmada',
+        'Documento para aprobación directa',
+        'Documento para rechazo',
+        'Documento para vencimiento',
+        'Poder especial no requerido',
+      ],
     );
-    assert.equal(listed.body.summary.total, 3);
+    assert.equal(listed.body.summary.total, 9);
     assert.equal(listed.body.summary.pending, 1);
 
     const readonlyPassword = `Readonly-${runId}!`;
@@ -557,15 +832,128 @@ test(
       },
     );
     assertStatus(readonlyWrite, 403);
+
+    const readonlyReview = await requestJson(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/transitions`,
+      {
+        cookie: readonlyCookie,
+        method: 'POST',
+        body: {
+          organizationId: ownerA.organizationId,
+          status: 'NOT_APPLICABLE',
+          reason: 'Intento de revisión sin permiso.',
+        },
+      },
+    );
+    assertStatus(readonlyReview, 403);
+
+    const documentsBeforeForbiddenUpload = await prisma.document.count({
+      where: { requirementId: reservation.id },
+    });
+    const readonlyUpload = await requestMultipart(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/files`,
+      readonlyCookie,
+      ownerA.organizationId,
+      new File(['%PDF-1.7\n%%EOF'], 'forbidden.pdf', {
+        type: 'application/pdf',
+      }),
+    );
+    assert.equal(readonlyUpload.status, 403);
+    assert.equal(
+      await prisma.document.count({ where: { requirementId: reservation.id } }),
+      documentsBeforeForbiddenUpload,
+    );
   },
 );
+
+async function createLifecycleRequirement(input: {
+  baseUrl: string;
+  businessId: string;
+  checklistId: string;
+  cookie: string;
+  name: string;
+  organizationId: string;
+  requiresReview: boolean;
+}) {
+  const created = await requestJson<{ requirement: { id: string } }>(
+    input.baseUrl,
+    `/businesses/${input.businessId}/document-checklists/${input.checklistId}/requirements`,
+    {
+      cookie: input.cookie,
+      method: 'POST',
+      body: {
+        organizationId: input.organizationId,
+        name: input.name,
+        category: 'QA_ESTADO',
+        reason: 'Cobertura adversarial del ciclo documental.',
+        requiresReview: input.requiresReview,
+      },
+    },
+  );
+  assertStatus(created, 201);
+  const document = await prisma.document.create({
+    data: {
+      organizationId: input.organizationId,
+      entityType: DocumentEntityType.BUSINESS,
+      businessId: input.businessId,
+      requirementId: created.body.requirement.id,
+      name: input.name,
+      documentType: 'QA_ESTADO',
+      status: DocumentStatus.UPLOADED,
+      fileName: `${input.name.toLowerCase().replaceAll(' ', '-')}.pdf`,
+      mimeType: 'application/pdf',
+      fileSize: 14,
+    },
+  });
+  await prisma.businessDocumentRequirement.update({
+    where: { id: created.body.requirement.id },
+    data: { status: DocumentRequirementStatus.UPLOADED },
+  });
+  return {
+    businessId: input.businessId,
+    checklistId: input.checklistId,
+    documentId: document.id,
+    requirementId: created.body.requirement.id,
+  };
+}
+
+function transitionRequirement(input: {
+  baseUrl: string;
+  businessId: string;
+  checklistId: string;
+  cookie: string;
+  documentId?: string;
+  organizationId: string;
+  reason?: string;
+  requirementId: string;
+  status: string;
+}) {
+  return requestJson(
+    input.baseUrl,
+    `/businesses/${input.businessId}/document-checklists/${input.checklistId}/requirements/${input.requirementId}/transitions`,
+    {
+      cookie: input.cookie,
+      method: 'POST',
+      body: {
+        documentId: input.documentId,
+        organizationId: input.organizationId,
+        reason: input.reason,
+        status: input.status,
+      },
+    },
+  );
+}
 
 async function createTemplate(
   baseUrl: string,
   cookie: string,
   organizationId: string,
   familyKey: string,
+  operationType: BusinessOperationType,
 ) {
+  const isRent = operationType === BusinessOperationType.RENT;
   const created = await requestJson<TemplateResponse>(
     baseUrl,
     '/document-checklist-templates',
@@ -575,37 +963,54 @@ async function createTemplate(
       body: {
         organizationId,
         familyKey,
-        name: `Expediente ${familyKey}`,
+        name: `${isRent ? 'Alquiler' : 'Venta'} Panamá ${runId}`,
         isActive: true,
-        operationTypes: ['SALE'],
+        operationTypes: [operationType],
         countries: ['PA'],
         propertyTypes: ['APARTMENT'],
-        items: [
-          {
-            key: 'reservation',
-            name: 'Reserva firmada',
-            category: 'RESERVA',
-            required: true,
-            requiresReview: true,
-            blocksTransition: true,
-            dueDaysAfterInstantiation: 3,
-            readRoles: [
-              'OWNER',
-              'ADMIN',
-              'BROKER',
-              'OPERATIONS',
-              'AGENT',
-              'READONLY',
+        items: isRent
+          ? [
+              {
+                key: 'lease-contract',
+                name: 'Contrato de arrendamiento',
+                category: 'ARRENDAMIENTO',
+                required: true,
+                requiresReview: true,
+                blocksTransition: true,
+              },
+              {
+                key: 'delivery-record',
+                name: 'Acta de entrega',
+                category: 'ENTREGA',
+                required: true,
+              },
+            ]
+          : [
+              {
+                key: 'reservation',
+                name: 'Reserva firmada',
+                category: 'RESERVA',
+                required: true,
+                requiresReview: true,
+                blocksTransition: true,
+                dueDaysAfterInstantiation: 3,
+                readRoles: [
+                  'OWNER',
+                  'ADMIN',
+                  'BROKER',
+                  'OPERATIONS',
+                  'AGENT',
+                  'READONLY',
+                ],
+              },
+              {
+                key: 'addendum',
+                name: 'Adenda o anexo',
+                category: 'ADENDA',
+                required: false,
+                allowsMultipleFiles: true,
+              },
             ],
-          },
-          {
-            key: 'addendum',
-            name: 'Adenda o anexo',
-            category: 'ADENDA',
-            required: false,
-            allowsMultipleFiles: true,
-          },
-        ],
       },
     },
   );
@@ -613,7 +1018,11 @@ async function createTemplate(
   return created.body.template;
 }
 
-async function createBusinessContext(organizationId: string, suffix: string) {
+async function createBusinessContext(
+  organizationId: string,
+  suffix: string,
+  operationType: BusinessOperationType,
+) {
   const client = await prisma.client.create({
     data: {
       organizationId,
@@ -626,8 +1035,11 @@ async function createBusinessContext(organizationId: string, suffix: string) {
       organizationId,
       title: `Propiedad ${suffix} ${runId}`,
       type: 'APARTMENT',
-      operations: ['SALE'],
-      salePrice: 250_000,
+      operations: [operationType],
+      salePrice:
+        operationType === BusinessOperationType.SALE ? 250_000 : undefined,
+      rentPrice:
+        operationType === BusinessOperationType.RENT ? 2_500 : undefined,
       country: 'PA',
       city: 'Panamá',
       zone: 'Prueba',
@@ -637,13 +1049,13 @@ async function createBusinessContext(organizationId: string, suffix: string) {
     data: {
       organizationId,
       name: `Compraventa ${suffix} ${runId}`,
-      operationType: BusinessOperationType.SALE,
+      operationType,
     },
   });
   const business = await prisma.business.create({
     data: {
       organizationId,
-      operationType: BusinessOperationType.SALE,
+      operationType,
       propertyId: property.id,
       primaryClientId: client.id,
       contractTypeId: contractType.id,
@@ -682,10 +1094,12 @@ async function requestMultipart(
   cookie: string,
   organizationId: string,
   file: File,
+  fields: Record<string, string> = {},
 ) {
   const body = new FormData();
   body.set('organizationId', organizationId);
   body.set('file', file);
+  for (const [key, value] of Object.entries(fields)) body.set(key, value);
   return fetch(`${baseUrl}${path}`, {
     method: 'POST',
     headers: { cookie },

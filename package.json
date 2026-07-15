@@ -16,6 +16,7 @@
     "test:api-smoke": "pnpm --filter @soyre/api build && tsx --test tests/api-smoke.test.ts",
     "test:alpha": "pnpm --filter @soyre/api build && tsx --test tests/alpha/*.test.ts",
     "test:client-zero": "pnpm --filter @soyre/api build && tsx --test tests/alpha/api-alpha-smoke.test.ts",
+    "test:documents-beta": "turbo build --filter @soyre/api && tsx --test --test-concurrency=1 tests/alpha/document-template-api.test.ts tests/alpha/business-document-checklist-api.test.ts",
     "test:e2e": "pnpm --filter @soyre/web test:e2e",
     "playwright:install": "pnpm --filter @soyre/web exec playwright install chromium",
     "format": "prettier --write .",

@@ -25,10 +25,12 @@ type TemplateResponse = {
   versionCreated?: boolean;
 };
 
-const enabled = process.env.DOCUMENT_TEMPLATE_API_MUTATING === 'true';
+const enabled =
+  process.env.DOCUMENT_TEMPLATE_API_MUTATING === 'true' ||
+  process.env.DOCUMENT_EXPEDIENTE_QA_MUTATING === 'true';
 const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 let server: ApiServer | null = null;
-const prisma = createPrismaClient();
+const prisma = enabled ? createPrismaClient() : null;
 
 before(async () => {
   if (enabled) server = await ensureApiServer();
@@ -36,7 +38,7 @@ before(async () => {
 
 after(async () => {
   await server?.stop();
-  await prisma.$disconnect();
+  await prisma?.$disconnect();
 });
 
 test(
@@ -44,6 +46,7 @@ test(
   { skip: !enabled },
   async () => {
     assert.ok(server);
+    assert.ok(prisma);
     const owner = await register(
       server.baseUrl,
       `docs-owner-${runId}@example.com`,
