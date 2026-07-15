@@ -87,6 +87,29 @@ la base de datos rechaza una relación cruzada aunque se intente omitir el filtr
 en la aplicación. Solo puede existir una versión activa por familia y
 organización.
 
+## API De Configuración De Plantillas
+
+Los endpoints administrativos viven bajo
+`/api/document-checklist-templates`:
+
+- `GET /`: lista las versiones activas; `includeInactive=true` incorpora el
+  historial de borradores y versiones desactivadas.
+- `GET /:templateId`: consulta una versión con sus requisitos.
+- `POST /`: crea la primera versión de una familia.
+- `PATCH /:templateId`: edita un borrador que todavía no se ha aplicado a un
+  negocio. Si la versión ya fue activada o usada por un expediente, crea una
+  versión nueva e inactiva y mantiene la versión publicada sin modificaciones.
+- `POST /:templateId/activate`: activa esa versión y desactiva la versión activa
+  anterior de la misma familia.
+- `POST /:templateId/deactivate`: retira la versión de nuevas aplicaciones sin
+  afectar los expedientes existentes.
+
+Solo memberships activas `OWNER` o `ADMIN` de la organización indicada pueden
+usar esta API. La organización se vuelve a validar en el servicio, incluso
+cuando el usuario tenga un rol administrativo en otra organización. Cada
+creación, edición, versión, activación y desactivación genera una entrada de
+auditoría.
+
 ## Documentos No Previstos
 
 Un usuario con permiso puede agregar al expediente un requisito o documento que

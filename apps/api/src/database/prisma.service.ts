@@ -48,6 +48,22 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this.prismaClient.document;
   }
 
+  get documentChecklistTemplate() {
+    return this.prismaClient.documentChecklistTemplate;
+  }
+
+  get documentChecklistTemplateItem() {
+    return this.prismaClient.documentChecklistTemplateItem;
+  }
+
+  get businessDocumentChecklist() {
+    return this.prismaClient.businessDocumentChecklist;
+  }
+
+  get businessDocumentRequirement() {
+    return this.prismaClient.businessDocumentRequirement;
+  }
+
   get listing() {
     return this.prismaClient.listing;
   }
