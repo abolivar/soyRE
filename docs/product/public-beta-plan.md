@@ -56,6 +56,11 @@ Completa borrador, firma, activación, vigencia, exclusividad, vencimiento,
 cancelación y renovación. Un mandato debe controlar cuándo una propiedad puede
 pasar a preparación comercial.
 
+El contrato verificable de estados, permisos, expediente, concurrencia y
+readiness vive en `docs/modules/mandates/overview.md`. El lote se divide en
+modelo/API, workspace operativo y QA adversarial; el vencimiento automático se
+conecta posteriormente en el lote de workflow.
+
 ### Lote 3 — Preparación Comercial Y Listings
 
 Valida readiness, aprobación interna, publicación, pausa, retiro y archivo. Las
@@ -131,4 +136,3 @@ Un lote no está cerrado hasta que cumple:
 - Contabilidad general completa.
 - Aplicación móvil nativa.
 - IA documental como dependencia del flujo.
-

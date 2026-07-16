@@ -270,7 +270,8 @@ con el negocio y sensibilidad del documento.
 - Los endpoints genéricos de documentos no aceptan `storagePath`, nombre, MIME o
   tamaño enviados por el cliente y no exponen archivos del checklist.
 - El API requiere `SUPABASE_URL` y `SUPABASE_SECRET_KEY`. La clave secreta es
-  exclusiva del backend y nunca debe usar el prefijo `NEXT_PUBLIC_`.
+  exclusiva del backend, se entrega a Storage mediante el SDK o el encabezado
+  `apikey` y nunca debe usar el prefijo `NEXT_PUBLIC_` ni enviarse al navegador.
 - Retención, eliminación y eventual escaneo de archivos se completan en el lote
   de hardening antes del beta público.
 

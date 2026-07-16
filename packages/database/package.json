@@ -12,12 +12,12 @@
     }
   },
   "scripts": {
-    "build": "prisma generate && tsc -p tsconfig.json && node scripts/fix-prisma-esm-imports.mjs",
+    "build": "tsc -p tsconfig.json && node scripts/fix-prisma-esm-imports.mjs",
     "db:generate": "prisma generate",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "lint": "eslint .",
-    "typecheck": "prisma generate && tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "test": "echo 'No database tests configured yet'"
   },
   "dependencies": {

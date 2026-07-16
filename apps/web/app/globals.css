@@ -1348,6 +1348,86 @@ label {
 }
 
 /* ============================================================
+ * Domain — mandate operational workspace
+ * ============================================================ */
+
+.mandate-workspace-grid {
+  align-items: start;
+  grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.85fr);
+}
+
+.mandate-detail {
+  display: grid;
+  gap: 18px;
+}
+
+.mandate-action-bar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mandate-action-bar small,
+.action-notice,
+.renewal-comparison p {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.readiness-card,
+.renewal-comparison {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.readiness-card.ready {
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 25%, var(--line));
+  color: var(--success);
+}
+
+.readiness-card.blocked {
+  background: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--warning) 25%, var(--line));
+  color: var(--warning);
+}
+
+.readiness-card ul {
+  color: var(--ink);
+  display: grid;
+  font-size: 0.84rem;
+  gap: 6px;
+  line-height: 1.45;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.readiness-card p {
+  color: var(--ink);
+  font-size: 0.84rem;
+}
+
+.renewal-comparison {
+  background: var(--surface-muted);
+}
+
+.renewal-comparison > strong {
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+}
+
+@media (max-width: 1100px) {
+  .mandate-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
  * Domain — user create/edit form
  * ============================================================ */
 
