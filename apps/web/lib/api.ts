@@ -1,7 +1,9 @@
 import type { BusinessDraftProgress } from '@soyre/shared';
 
-export const API_URL =
-  resolveApiUrl(process.env.NEXT_PUBLIC_API_URL, process.env.NODE_ENV);
+export const API_URL = resolveApiUrl(
+  process.env.NEXT_PUBLIC_API_URL,
+  process.env.NODE_ENV,
+);
 
 const API_CONNECTION_ERROR =
   'No pudimos conectar con el servicio de SoyPMS. Intenta de nuevo en unos minutos.';
@@ -939,10 +941,12 @@ export type DocumentStatus =
 
 export type MandateStatus =
   | 'DRAFT'
+  | 'PENDING_SIGNATURE'
   | 'PENDING_DOCUMENTS'
   | 'ACTIVE'
   | 'EXPIRED'
   | 'CANCELLED'
+  | 'SUPERSEDED'
   | 'ARCHIVED';
 
 export type MandateType = 'SALE' | 'RENT' | 'BOTH';
@@ -1003,6 +1007,7 @@ export type OperationalDocument = {
   propertyId: string | null;
   businessId: string | null;
   businessContractId: string | null;
+  mandateId: string | null;
   name: string;
   documentType: string;
   status: DocumentStatus;
@@ -1042,6 +1047,7 @@ export type OperationalMandate = {
   propertyId: string;
   ownerClientId: string | null;
   assignedUserId: string | null;
+  previousMandateId: string | null;
   type: MandateType;
   status: MandateStatus;
   exclusive: boolean;
@@ -1051,13 +1057,74 @@ export type OperationalMandate = {
   startsAt: string | null;
   endsAt: string | null;
   signedAt: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
+  archivedAt: string | null;
   notes: string | null;
   metadata: Record<string, unknown> | null;
-  property: OperationalPropertySummary & { ownerClientId: string | null };
+  property: OperationalPropertySummary & {
+    ownerClientId: string | null;
+    assignedUserId: string | null;
+    operations: Array<'SALE' | 'RENT'>;
+  };
   ownerClient: OperationalClientSummary | null;
   assignedUser: OperationalUserSummary | null;
+  previousMandate: {
+    id: string;
+    status: MandateStatus;
+    endsAt: string | null;
+  } | null;
+  renewal: {
+    id: string;
+    status: MandateStatus;
+    startsAt: string | null;
+    endsAt: string | null;
+  } | null;
+  documents: MandateDocumentSummary[];
+  readiness: { allowed: boolean; blockers: string[] };
   createdAt: string;
   updatedAt: string;
+};
+
+export type MandateDocumentSummary = {
+  id: string;
+  documentType: string;
+  name: string;
+  status: DocumentStatus;
+  expiresAt: string | null;
+  createdAt: string;
+};
+
+export type MandateDetailResponse = {
+  mandate: OperationalMandate;
+};
+
+export type MandateHistoryEvent = {
+  id: string;
+  action:
+    | 'CREATED'
+    | 'UPDATED'
+    | 'SUBMIT_FOR_SIGNATURE'
+    | 'RETURN_TO_DRAFT'
+    | 'REGISTER_SIGNATURE'
+    | 'ACTIVATE'
+    | 'EXPIRE'
+    | 'CANCEL'
+    | 'RENEW'
+    | 'SUPERSEDE'
+    | 'ARCHIVE';
+  fromStatus: MandateStatus | null;
+  toStatus: MandateStatus;
+  reason: string | null;
+  idempotencyKey: string;
+  metadata: Record<string, unknown> | null;
+  actorUser: OperationalUserSummary | null;
+  createdAt: string;
+};
+
+export type MandateHistoryResponse = {
+  mandateId: string;
+  events: MandateHistoryEvent[];
 };
 
 export type MandatesResponse = {
@@ -1070,6 +1137,7 @@ export type OperationalListing = {
   organizationId: string;
   propertyId: string;
   mandateId: string | null;
+  operationType: 'SALE' | 'RENT' | null;
   status: ListingStatus;
   title: string;
   publicCopy: string | null;
@@ -1266,6 +1334,8 @@ export function toUserFacingApiError(message: string, status: number) {
       'La organización debe conservar al menos un propietario activo.',
     'An organization with this slug already exists.':
       'Ya existe una organización con ese identificador.',
+    'An effective date is required to cancel an active mandate.':
+      'Indica la fecha efectiva de cancelación.',
     'At least one commercial role is required.':
       'Selecciona al menos un rol comercial.',
     'At least one contact method is required for the agent.':
@@ -1276,6 +1346,8 @@ export function toUserFacingApiError(message: string, status: number) {
       'Relaciona el documento con al menos un recurso.',
     'At least one property operation is required.':
       'Selecciona al menos una operación para el inmueble.',
+    'An active mandate is required before commercial preparation.':
+      'Activa un mandato antes de preparar comercialmente el inmueble.',
     'Authentication is required.': 'Inicia sesión para continuar.',
     'Authentication context is required.': 'Inicia sesión para continuar.',
     'Business cannot be committed with blocking validation errors.':
@@ -1328,7 +1400,8 @@ export function toUserFacingApiError(message: string, status: number) {
       'No encontramos ese documento de identidad en la organización activa.',
     'Installment count must be greater than zero.':
       'La cantidad de cuotas debe ser mayor que cero.',
-    'Invalid authentication token.': 'La sesión venció. Inicia sesión nuevamente.',
+    'Invalid authentication token.':
+      'La sesión venció. Inicia sesión nuevamente.',
     'Invalid commission amount.': 'Revisa el monto de la comisión.',
     'Invalid email or password.': 'Correo o contraseña incorrectos.',
     'Invalid total amount.': 'Revisa el monto total.',
@@ -1336,10 +1409,32 @@ export function toUserFacingApiError(message: string, status: number) {
       'El porcentaje de la línea debe ser mayor que cero y hasta 100%.',
     'Listing mandate must belong to the selected property.':
       'El mandato seleccionado no pertenece al inmueble elegido.',
+    'Listing operation type is required before commercial preparation.':
+      'Selecciona la modalidad comercial del listing.',
+    'Mandate assignee must have an active organization membership.':
+      'La persona responsable debe tener acceso activo a la organización.',
+    'Mandate authorized price must be positive.':
+      'Define un precio autorizado mayor que cero.',
+    'Mandate cancellation cannot take effect in the future.':
+      'La cancelación no puede tener una fecha futura.',
+    'Mandate commission is required.':
+      'Define la comisión pactada antes de activar.',
     'Mandate end date cannot be before start date.':
       'La fecha final del mandato no puede ser anterior al inicio.',
+    'Mandate is outside its validity period.':
+      'La fecha actual está fuera de la vigencia del mandato.',
     'Mandate must belong to this organization.':
       'El mandato seleccionado no pertenece a esta organización.',
+    'Mandate owner is required.':
+      'Vincula al cliente propietario antes de continuar.',
+    'Mandate signature date is invalid.':
+      'La fecha de firma no puede ser futura.',
+    'Mandate signature is required.':
+      'Registra la firma antes de activar el mandato.',
+    'Mandate transition reason is required.':
+      'Explica el motivo de esta acción.',
+    'Mandate validity dates are required.':
+      'Completa las fechas de inicio y fin del mandato.',
     'Membership was not found.': 'No encontramos esa membresía.',
     'Minimum area cannot exceed maximum area.':
       'El área mínima no puede superar el área máxima.',
@@ -1355,9 +1450,19 @@ export function toUserFacingApiError(message: string, status: number) {
       'Solo se pueden confirmar negocios en borrador.',
     'Only draft businesses can be edited.':
       'Solo se pueden editar negocios en borrador.',
+    'Only a manager role can approve mandate evidence.':
+      'Tu rol puede agregar la evidencia, pero no aprobarla.',
+    'Only an active or expired mandate can be renewed.':
+      'Solo un mandato activo o vencido puede renovarse.',
+    'Approved signed mandate evidence is required.':
+      'Agrega y aprueba el mandato firmado antes de continuar.',
     'Owner client must belong to this organization.':
       'El propietario seleccionado no pertenece a esta organización.',
     'Owner user is not active.': 'El usuario propietario no está activo.',
+    'Signature date and approved signed document are required.':
+      'Selecciona la fecha de firma y una evidencia aprobada.',
+    'This property has an overlapping active exclusive mandate.':
+      'Ya existe un mandato exclusivo activo que se solapa con estas fechas.',
     'Participant display name is required.':
       'Ingresa el nombre visible del participante.',
     'Payment line label is required.': 'Ingresa el nombre de la línea de pago.',
@@ -1442,11 +1547,19 @@ export function toUserFacingApiError(message: string, status: number) {
     return 'Ese tipo de cálculo todavía no está disponible.';
   }
 
-  if (/^(.+) percentage must be greater than 0 and up to 100%\.?$/i.test(normalized)) {
+  if (
+    /^(.+) percentage must be greater than 0 and up to 100%\.?$/i.test(
+      normalized,
+    )
+  ) {
     return 'El porcentaje debe ser mayor que cero y hasta 100%.';
   }
 
-  if (/^(.+) percentage must be greater than zero and up to 100%\.?$/i.test(normalized)) {
+  if (
+    /^(.+) percentage must be greater than zero and up to 100%\.?$/i.test(
+      normalized,
+    )
+  ) {
     return 'El porcentaje debe ser mayor que cero y hasta 100%.';
   }
 
