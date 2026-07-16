@@ -147,3 +147,20 @@ verde con esos casos omitidos es avance verificable, no cierre del gate.
 - El checkout estable `main` permaneció arriba durante el lote: web `200` en
   `http://127.0.0.1:3000` y salud API `200` en
   `http://127.0.0.1:4000/api/health`.
+
+## Revalidación De Integración 2026-07-16
+
+- Los branches #100, #101, #102 y #103 se actualizaron en cadena sobre el
+  `main` vigente, preservando en los conflictos los modelos y pruebas de
+  mandatos y documentos.
+- `pnpm test:documents-beta` sin opt-in finalizó en `0` con las dos pruebas
+  omitidas y sin conexión mutante. El sandbox bloqueó inicialmente el socket
+  IPC de `tsx`; la misma ejecución fuera de esa restricción confirmó el gate.
+- El E2E documental dirigido aprobó 4/4 casos en escritorio y móvil.
+- La ejecución completa detectó que Playwright reutilizaba el servidor dev con
+  un origen distinto (`127.0.0.1` frente a `localhost`), lo que impedía la
+  hidratación de controles interactivos. El runner usa ahora `localhost` por
+  defecto para coincidir con el servidor estable reutilizado.
+- Storage positivo y workspace autenticado continúan siendo gates abiertos: el
+  entorno aún no contiene `SUPABASE_SECRET_KEY` ni una sesión de sandbox para
+  el navegador. No se agregó ningún bypass.
