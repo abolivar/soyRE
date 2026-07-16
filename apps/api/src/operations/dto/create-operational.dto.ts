@@ -183,16 +183,24 @@ export class CreateListingDto {
   @IsUUID()
   mandateId?: string;
 
-  @IsOptional()
   @IsEnum(BusinessOperationType)
-  operationType?: BusinessOperationType;
+  operationType!: BusinessOperationType;
+
+  @IsOptional()
+  @IsUUID()
+  assignedUserId?: string;
+
+  @IsString()
+  @MinLength(8)
+  @MaxLength(120)
+  idempotencyKey!: string;
 
   @IsOptional()
   @IsEnum(ListingStatus)
   status?: ListingStatus;
 
   @IsString()
-  @MinLength(2)
+  @MinLength(5)
   @MaxLength(180)
   title!: string;
 

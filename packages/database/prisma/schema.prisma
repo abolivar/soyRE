@@ -531,6 +531,38 @@ enum ListingStatus {
   APPROVED
   PUBLISHED
   PAUSED
+  WITHDRAWN
+  ARCHIVED
+}
+
+enum ListingTransitionAction {
+  CREATED
+  UPDATED
+  DECLARE_READY
+  RETURN_TO_DRAFT
+  APPROVE
+  PUBLISH
+  PAUSE
+  RESUME
+  WITHDRAW
+  ARCHIVE
+  MATERIAL_ADDED
+  MATERIAL_REPLACED
+  MATERIAL_ARCHIVED
+  MATERIAL_REORDERED
+}
+
+enum ListingMaterialType {
+  COVER_IMAGE
+  GALLERY_IMAGE
+  FLOOR_PLAN
+  VIDEO_LINK
+  OTHER
+}
+
+enum ListingMaterialStatus {
+  ACTIVE
+  REPLACED
   ARCHIVED
 }
 
@@ -584,6 +616,8 @@ model Organization {
   mandates                Mandate[]
   mandateEvents           MandateEvent[]
   listings                Listing[]
+  listingEvents           ListingEvent[]
+  listingMaterials        ListingMaterial[]
   showings                Showing[]
   offers                  Offer[]
   workflowStages          WorkflowStage[]
@@ -630,6 +664,11 @@ model User {
   createdBusinessDocumentRequirements BusinessDocumentRequirement[] @relation("CreatedBusinessDocumentRequirements")
   assignedMandates               Mandate[]                @relation("AssignedMandates")
   mandateEvents                  MandateEvent[]            @relation("ActorMandateEvents")
+  assignedListings               Listing[]                @relation("AssignedListings")
+  approvedListings               Listing[]                @relation("ApprovedListings")
+  listingEvents                  ListingEvent[]            @relation("ActorListingEvents")
+  createdListingMaterials        ListingMaterial[]         @relation("CreatedListingMaterials")
+  replacedListingMaterials       ListingMaterial[]         @relation("ReplacedListingMaterials")
   assignedShowings               Showing[]                @relation("AssignedShowings")
   assignedOffers                 Offer[]                  @relation("AssignedOffers")
   createdPayoutProfiles          PayoutProfile[]          @relation("CreatedPayoutProfiles")
@@ -1628,31 +1667,98 @@ model MandateEvent {
 }
 
 model Listing {
-  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String        @map("organization_id") @db.Uuid
-  propertyId     String        @map("property_id") @db.Uuid
-  mandateId      String?       @map("mandate_id") @db.Uuid
-  operationType  BusinessOperationType? @map("operation_type")
-  status         ListingStatus @default(DRAFT)
-  title          String
-  publicCopy     String?       @map("public_copy")
-  channels       String[]      @default([])
-  readiness      Json?
-  approvedAt     DateTime?     @map("approved_at")
-  publishedAt    DateTime?     @map("published_at")
-  pausedAt       DateTime?     @map("paused_at")
-  archivedAt     DateTime?     @map("archived_at")
-  notes          String?
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  property       Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
-  mandate        Mandate?      @relation(fields: [organizationId, mandateId], references: [organizationId, id], onDelete: Restrict, map: "listings_mandate_org_fkey")
+  id               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId   String                @map("organization_id") @db.Uuid
+  propertyId       String                @map("property_id") @db.Uuid
+  mandateId        String?               @map("mandate_id") @db.Uuid
+  assignedUserId   String?               @map("assigned_user_id") @db.Uuid
+  approvedByUserId String?               @map("approved_by_user_id") @db.Uuid
+  operationType    BusinessOperationType @map("operation_type")
+  status           ListingStatus         @default(DRAFT)
+  title            String
+  publicCopy       String?               @map("public_copy")
+  channels         String[]              @default([])
+  readiness        Json?
+  approvedAt       DateTime?             @map("approved_at")
+  publishedAt      DateTime?             @map("published_at")
+  pausedAt         DateTime?             @map("paused_at")
+  withdrawnAt      DateTime?             @map("withdrawn_at")
+  archivedAt       DateTime?             @map("archived_at")
+  notes            String?
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  property         Property              @relation(fields: [organizationId, propertyId], references: [organizationId, id], onDelete: Restrict, map: "listings_property_org_fkey")
+  mandate          Mandate?              @relation(fields: [organizationId, mandateId], references: [organizationId, id], onDelete: Restrict, map: "listings_mandate_org_fkey")
+  assignedUser     User?                 @relation("AssignedListings", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  approvedByUser   User?                 @relation("ApprovedListings", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  events           ListingEvent[]
+  materials        ListingMaterial[]
 
+  @@unique([organizationId, id], map: "listings_org_id_id_key")
   @@index([organizationId, status])
-  @@index([propertyId, status])
+  @@index([organizationId, propertyId, status])
   @@index([organizationId, mandateId])
+  @@index([assignedUserId, status])
   @@map("listings")
+}
+
+model ListingEvent {
+  id             String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+  listingId      String                  @map("listing_id") @db.Uuid
+  actorUserId    String?                 @map("actor_user_id") @db.Uuid
+  action         ListingTransitionAction
+  fromStatus     ListingStatus?          @map("from_status")
+  toStatus       ListingStatus           @map("to_status")
+  reason         String?
+  idempotencyKey String                  @map("idempotency_key")
+  metadata       Json?
+  createdAt      DateTime                @default(now()) @map("created_at")
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  listing        Listing                 @relation(fields: [organizationId, listingId], references: [organizationId, id], onDelete: Cascade, map: "listing_events_listing_org_fkey")
+  actorUser      User?                   @relation("ActorListingEvents", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, listingId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("listing_events")
+}
+
+model ListingMaterial {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId      String                @map("organization_id") @db.Uuid
+  listingId           String                @map("listing_id") @db.Uuid
+  type                ListingMaterialType
+  status              ListingMaterialStatus @default(ACTIVE)
+  name                String
+  altText             String?               @map("alt_text")
+  externalUrl         String?               @map("external_url")
+  storagePath         String?               @map("storage_path")
+  mimeType            String?               @map("mime_type")
+  fileSize            Int?                  @map("file_size")
+  sortOrder           Int                   @default(0) @map("sort_order")
+  isCurrent           Boolean               @default(true) @map("is_current")
+  replacesMaterialId  String?               @map("replaces_material_id") @db.Uuid
+  createdByUserId     String?               @map("created_by_user_id") @db.Uuid
+  replacedByUserId    String?               @map("replaced_by_user_id") @db.Uuid
+  replacedAt          DateTime?             @map("replaced_at")
+  replacementReason   String?               @map("replacement_reason")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
+  organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  listing             Listing               @relation(fields: [organizationId, listingId], references: [organizationId, id], onDelete: Cascade, map: "listing_materials_listing_org_fkey")
+  replacesMaterial    ListingMaterial?      @relation("ListingMaterialVersions", fields: [organizationId, listingId, replacesMaterialId], references: [organizationId, listingId, id], onDelete: Restrict, map: "listing_materials_replaces_org_fkey")
+  replacementMaterial ListingMaterial?      @relation("ListingMaterialVersions")
+  createdByUser       User?                 @relation("CreatedListingMaterials", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  replacedByUser      User?                 @relation("ReplacedListingMaterials", fields: [replacedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, listingId, id], map: "listing_materials_org_listing_id_key")
+  @@unique([organizationId, listingId, replacesMaterialId], map: "listing_materials_replaces_once_key")
+  @@index([organizationId, listingId, status, sortOrder])
+  @@index([createdByUserId, createdAt])
+  @@index([replacedByUserId, replacedAt])
+  @@map("listing_materials")
 }
 
 model Showing {

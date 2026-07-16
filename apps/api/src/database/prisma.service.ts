@@ -68,6 +68,14 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this.prismaClient.listing;
   }
 
+  get listingEvent(): PrismaClient['listingEvent'] {
+    return this.prismaClient.listingEvent;
+  }
+
+  get listingMaterial(): PrismaClient['listingMaterial'] {
+    return this.prismaClient.listingMaterial;
+  }
+
   get mandate() {
     return this.prismaClient.mandate;
   }
