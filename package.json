@@ -17,6 +17,8 @@
     "test:alpha": "pnpm --filter @soyre/api build && tsx --test tests/alpha/*.test.ts",
     "test:client-zero": "pnpm --filter @soyre/api build && tsx --test tests/alpha/api-alpha-smoke.test.ts",
     "test:mandates-beta": "pnpm --filter @soyre/api build && tsx --test tests/alpha/mandate-lifecycle-api.test.ts",
+    "test:mandates-adversarial": "pnpm --filter @soyre/api build && tsc -p tests/tsconfig.mandates.json && tsx --test tests/alpha/mandate-adversarial-api.test.ts",
+    "test:mandates-e2e": "pnpm --filter @soyre/api build && tsc -p tests/tsconfig.mandates.json && tsx --test tests/alpha/mandate-workspace-e2e.test.ts",
     "test:e2e": "pnpm --filter @soyre/web test:e2e",
     "playwright:install": "pnpm --filter @soyre/web exec playwright install chromium",
     "format": "prettier --write .",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@soyre/database": "workspace:*",
     "@types/node": "^22.20.0",
     "eslint": "^10.6.0",
     "next": "16.2.6",
