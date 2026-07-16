@@ -157,6 +157,21 @@ test(
       (item) => item.category === 'RESERVA',
     );
     assert.ok(reservation);
+    const crossOrganizationUpload = await requestMultipart(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/files`,
+      ownerB.cookie,
+      ownerB.organizationId,
+      new File(['%PDF-1.7\n%%EOF'], 'reserva.pdf', {
+        type: 'application/pdf',
+      }),
+    );
+    assert.equal(crossOrganizationUpload.status, 404);
+    assert.equal(
+      await prisma.document.count({ where: { requirementId: reservation.id } }),
+      0,
+    );
+
     const spoofedUpload = await requestMultipart(
       server.baseUrl,
       `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/files`,
@@ -210,6 +225,13 @@ test(
       assert.ok(stored.storagePath);
 
       try {
+        const crossOrganizationDownload = await requestJson(
+          server.baseUrl,
+          `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/files/${stored.id}/download?organizationId=${ownerB.organizationId}`,
+          { cookie: ownerB.cookie },
+        );
+        assertStatus(crossOrganizationDownload, 404);
+
         const download = await requestJson<{
           signedUrl: string;
           expiresIn: number;
@@ -520,7 +542,7 @@ async function deleteStorageFixture(path: string) {
     `${url}/storage/v1/object/business-documents/${encodeURI(path)}`,
     {
       method: 'DELETE',
-      headers: { apikey: secret, authorization: `Bearer ${secret}` },
+      headers: { apikey: secret },
     },
   );
   assert.ok(

@@ -57,7 +57,11 @@ export class SupabaseDocumentStorageService {
       );
     }
     this.client = createClient(url, secretKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: false,
+      },
     });
     return this.client;
   }
