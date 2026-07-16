@@ -55,6 +55,7 @@ import {
   MembershipRole,
 } from '../lib/api';
 import {
+  canUploadNewDocument,
   completeDocumentRequirementStatuses,
   documentRequirementReviewTargets,
   documentRequirementStatusLabel,
@@ -273,7 +274,7 @@ export function BusinessDocumentWorkspace({
       const response = await apiFetch<{ signedUrl: string }>(
         `${requirementPath(businessId, requirement)}/files/${documentId}/download?${query.toString()}`,
       );
-      window.open(response.signedUrl, '_blank', 'noopener,noreferrer');
+      window.location.assign(response.signedUrl);
     } catch (caught) {
       setError(errorMessage(caught));
     }
@@ -637,7 +638,8 @@ function RequirementCard({
   const current = requirement.documents.filter(
     (document) => document.isCurrent,
   );
-  const canUpload = requirement.uploadRoles.includes(role);
+  const canReplace = requirement.uploadRoles.includes(role);
+  const canUpload = canUploadNewDocument(requirement, role);
   const canReview =
     requirement.reviewRoles.includes(role) &&
     documentRequirementReviewTargets(requirement).length > 0;
@@ -700,7 +702,7 @@ function RequirementCard({
                 >
                   Descargar
                 </Button>
-                {canUpload ? (
+                {canReplace ? (
                   <Button
                     icon={Replace}
                     onClick={() => onReplace(document.id)}

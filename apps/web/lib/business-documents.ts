@@ -1,10 +1,25 @@
 import type {
   BusinessDocumentRequirement,
   DocumentRequirementStatus,
+  MembershipRole,
 } from './api';
 
 export const completeDocumentRequirementStatuses =
   new Set<DocumentRequirementStatus>(['APPROVED', 'NOT_APPLICABLE']);
+
+export function canUploadNewDocument(
+  requirement: Pick<
+    BusinessDocumentRequirement,
+    'allowsMultipleFiles' | 'documents' | 'uploadRoles'
+  >,
+  role: MembershipRole,
+) {
+  if (!requirement.uploadRoles.includes(role)) return false;
+  return (
+    requirement.allowsMultipleFiles ||
+    !requirement.documents.some((document) => document.isCurrent)
+  );
+}
 
 export function documentRequirementReviewTargets(
   requirement: Pick<

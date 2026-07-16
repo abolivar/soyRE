@@ -1,9 +1,65 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  canUploadNewDocument,
   documentRequirementReviewTargets,
   documentRequirementStatusLabel,
 } from './business-documents';
+
+describe('canUploadNewDocument', () => {
+  it('hides a second upload when a single-file requirement has a current file', () => {
+    assert.equal(
+      canUploadNewDocument(
+        {
+          allowsMultipleFiles: false,
+          documents: [{ isCurrent: true } as never],
+          uploadRoles: ['OWNER'],
+        },
+        'OWNER',
+      ),
+      false,
+    );
+  });
+
+  it('allows authorized uploads for an empty or multi-file requirement', () => {
+    assert.equal(
+      canUploadNewDocument(
+        {
+          allowsMultipleFiles: false,
+          documents: [],
+          uploadRoles: ['OPERATIONS'],
+        },
+        'OPERATIONS',
+      ),
+      true,
+    );
+    assert.equal(
+      canUploadNewDocument(
+        {
+          allowsMultipleFiles: true,
+          documents: [{ isCurrent: true } as never],
+          uploadRoles: ['OPERATIONS'],
+        },
+        'OPERATIONS',
+      ),
+      true,
+    );
+  });
+
+  it('never exposes upload to a role outside the requirement policy', () => {
+    assert.equal(
+      canUploadNewDocument(
+        {
+          allowsMultipleFiles: true,
+          documents: [],
+          uploadRoles: ['OWNER'],
+        },
+        'READONLY',
+      ),
+      false,
+    );
+  });
+});
 
 describe('documentRequirementReviewTargets', () => {
   it('forces review before approval when the requirement requires it', () => {
