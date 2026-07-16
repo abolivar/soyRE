@@ -65,6 +65,12 @@ ejecución anterior:
 - `test` espera tanto el `build` como los tests de sus dependencias.
 - `build` continúa encadenando los builds de dependencias mediante `^build`.
 
+Turbopack usa la raiz del workspace para resolver esos paquetes. Por esa razon,
+el store de pnpm no debe vivir dentro del repositorio: se usa la ubicacion
+global predeterminada y `pnpm dev:check` impide iniciar el watcher cuando existe
+un `.pnpm-store` heredado. Esta separacion evita que decenas de miles de objetos
+del gestor de paquetes consuman descriptores o bloqueen el watcher en macOS.
+
 Esta relación se declara en `turbo.json`. Así `apps/api` recibe los artefactos
 de `packages/shared` y `packages/database`, y `apps/web` recibe los de
 `packages/shared` y `packages/ui`, incluso después de una instalación limpia.
