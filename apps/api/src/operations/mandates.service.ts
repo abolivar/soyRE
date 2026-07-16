@@ -635,7 +635,10 @@ export class MandatesService {
         }
         const signedAt = toDate(dto.signedAt);
         const today = todayUtc();
-        if (signedAt > today || signedAt < dateOnly(current.createdAt)) {
+        // The record can be created after an existing mandate was signed.
+        // Comparing a date-only value with its UTC creation day also rejects
+        // the user's current day in western time zones after midnight UTC.
+        if (signedAt > today) {
           throw new BadRequestException('Mandate signature date is invalid.');
         }
         const evidence = await tx.document.findFirst({

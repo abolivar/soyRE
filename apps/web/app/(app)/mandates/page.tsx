@@ -1,5 +1,5 @@
-import { AreaWorkspace } from '../../../components/area-workspace';
+import { MandatesWorkspace } from '../../../components/mandates-workspace';
 
 export default function MandatesPage() {
-  return <AreaWorkspace area="mandates" />;
+  return <MandatesWorkspace />;
 }

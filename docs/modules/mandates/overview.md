@@ -83,7 +83,8 @@ inmueble.
   `10_000` puntos básicos.
 - `startsAt` y `endsAt` son obligatorios para activar; `endsAt` no puede ser
   anterior a `startsAt`.
-- `signedAt` no puede ser futura ni anterior a la creación del mandato.
+- `signedAt` no puede ser futura. Puede ser anterior al alta en SoyPMS cuando
+  la organización incorpora un mandato que ya estaba firmado.
 - Un mandato solo se activa desde su fecha inicial y mientras su fecha final no
   haya pasado.
 - Precio, moneda, comisión, modalidad, propietario, inicio y fin son términos
@@ -257,6 +258,29 @@ El lote de dominio y API está implementado con:
   `main`, para cruces A/B, exclusividad, idempotencia, renovación, historial y
   readiness comercial.
 
-El workspace visual y las pruebas E2E de navegador permanecen deliberadamente
-en #116 y #117. El vencimiento automático y la regularización automática de
-listings publicados permanecen fuera de este lote.
+## Estado Implementado En #116
+
+`/mandates` ya es un workspace operativo dedicado y no un alta genérica:
+
+- crea exclusivamente borradores y deriva las acciones visibles del estado,
+  rol y asignación;
+- lista con búsqueda y filtros por modalidad, estado y vencimiento, más
+  indicadores de activos, próximos vencimientos y bloqueantes;
+- muestra términos, vigencia, propietario, responsable, readiness, expediente
+  documental e historial auditable en un panel sincronizado después de cada
+  mutación;
+- permite presentar, devolver, registrar firma con evidencia aprobada, activar,
+  vencer, cancelar, renovar y archivar según el lifecycle del servidor;
+- agrega evidencia al expediente y presenta la comparación de términos antes
+  de crear una renovación;
+- localiza montos, porcentajes, fechas, bloqueantes y errores sin exponer enums
+  ni mensajes internos;
+- conserva el día de valores `DATE` y calcula los valores por defecto con el
+  calendario local para evitar desplazamientos por UTC;
+- adapta tabla, paneles y acciones a móvil sin desbordamiento horizontal.
+
+La prueba funcional remota recorrió alta, presentación, evidencia, firma y
+activación hasta readiness comercial listo, con el historial y los indicadores
+actualizados en vivo. #117 conserva la matriz adversarial E2E, aislamiento A/B
+y concurrencia. El vencimiento automático y la regularización automática de
+listings publicados permanecen fuera de estos lotes.

@@ -1,26 +1,27 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @font-face {
   font-display: swap;
-  font-family: "DM Sans";
+  font-family: 'DM Sans';
   font-style: normal;
   font-weight: 100 1000;
-  src: url("/fonts/dm-sans/dm-sans-latin-ext.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
-    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
-    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
-    U+A720-A7FF;
+  src: url('/fonts/dm-sans/dm-sans-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 @font-face {
   font-display: swap;
-  font-family: "DM Sans";
+  font-family: 'DM Sans';
   font-style: normal;
   font-weight: 100 1000;
-  src: url("/fonts/dm-sans/dm-sans-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
-    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
-    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  src: url('/fonts/dm-sans/dm-sans-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
 }
 
 /* ============================================================
@@ -1017,6 +1018,86 @@ label {
 }
 
 /* ============================================================
+ * Domain — mandate operational workspace
+ * ============================================================ */
+
+.mandate-workspace-grid {
+  align-items: start;
+  grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.85fr);
+}
+
+.mandate-detail {
+  display: grid;
+  gap: 18px;
+}
+
+.mandate-action-bar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mandate-action-bar small,
+.action-notice,
+.renewal-comparison p {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.readiness-card,
+.renewal-comparison {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.readiness-card.ready {
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 25%, var(--line));
+  color: var(--success);
+}
+
+.readiness-card.blocked {
+  background: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--warning) 25%, var(--line));
+  color: var(--warning);
+}
+
+.readiness-card ul {
+  color: var(--ink);
+  display: grid;
+  font-size: 0.84rem;
+  gap: 6px;
+  line-height: 1.45;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.readiness-card p {
+  color: var(--ink);
+  font-size: 0.84rem;
+}
+
+.renewal-comparison {
+  background: var(--surface-muted);
+}
+
+.renewal-comparison > strong {
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+}
+
+@media (max-width: 1100px) {
+  .mandate-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
  * Domain — user create/edit form
  * ============================================================ */
 
@@ -1258,10 +1339,10 @@ label {
 }
 
 .business-inline-actions > select,
-.special-line-row > input:not([type="checkbox"]),
+.special-line-row > input:not([type='checkbox']),
 .special-line-row > select,
 .special-line-row > textarea,
-.commission-rule-row > input:not([type="checkbox"]),
+.commission-rule-row > input:not([type='checkbox']),
 .commission-rule-row > select,
 .commission-rule-row > textarea {
   background: var(--surface);
@@ -1285,10 +1366,10 @@ label {
 }
 
 .business-inline-actions > select:focus-visible,
-.special-line-row > input:not([type="checkbox"]):focus-visible,
+.special-line-row > input:not([type='checkbox']):focus-visible,
 .special-line-row > select:focus-visible,
 .special-line-row > textarea:focus-visible,
-.commission-rule-row > input:not([type="checkbox"]):focus-visible,
+.commission-rule-row > input:not([type='checkbox']):focus-visible,
 .commission-rule-row > select:focus-visible,
 .commission-rule-row > textarea:focus-visible {
   border-color: var(--primary);
