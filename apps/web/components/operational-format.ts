@@ -368,6 +368,7 @@ export function listingStatusLabel(status: ListingStatus) {
       PAUSED: 'Pausado',
       PUBLISHED: 'Publicado',
       READY: 'Listo',
+      WITHDRAWN: 'Retirado',
     } satisfies Record<ListingStatus, string>
   )[status];
 }
@@ -381,6 +382,7 @@ export function listingStatusTone(status: ListingStatus): Tone {
       PAUSED: 'warning',
       PUBLISHED: 'success',
       READY: 'featured',
+      WITHDRAWN: 'danger',
     } satisfies Record<ListingStatus, Tone>
   )[status];
 }

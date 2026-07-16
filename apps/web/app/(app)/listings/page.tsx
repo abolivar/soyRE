@@ -1,5 +1,5 @@
-import { AreaWorkspace } from '../../../components/area-workspace';
+import { ListingsWorkspace } from '../../../components/listings-workspace';
 
 export default function ListingsPage() {
-  return <AreaWorkspace area="listings" />;
+  return <ListingsWorkspace />;
 }

@@ -260,3 +260,10 @@ por 60 segundos. Los enlaces de video requieren HTTPS.
 La aplicación remota, los advisors de Supabase y las pruebas integrales A/B
 siguen siendo gates del PR: el código local aprobado no se presenta como schema
 remoto verificado hasta completar esas evidencias.
+
+El lote #128 reemplaza la vista genérica de `/listings` por un workspace
+operativo: alta separada para venta y alquiler, filtros, métricas, detalle,
+readiness localizado, acciones derivadas del estado y rol, edición de copy y
+canales, materiales privados con preview, reemplazo, archivo y orden, e
+historial cronológico. El workspace consume exclusivamente el contrato de #127
+y no simula publicaciones en portales externos.
