@@ -65,8 +65,23 @@ ejecución anterior:
 - `test` espera tanto el `build` como los tests de sus dependencias.
 - `build` continúa encadenando los builds de dependencias mediante `^build`.
 
+Turbopack usa la raiz del workspace para resolver esos paquetes. Por esa razon,
+el store de pnpm no debe vivir dentro del repositorio: se usa la ubicacion
+global predeterminada y `pnpm dev:check` impide iniciar el watcher cuando existe
+un `.pnpm-store` heredado. Esta separacion evita que decenas de miles de objetos
+del gestor de paquetes consuman descriptores o bloqueen el watcher en macOS.
+
 Esta relación se declara en `turbo.json`. Así `apps/api` recibe los artefactos
 de `packages/shared` y `packages/database`, y `apps/web` recibe los de
 `packages/shared` y `packages/ui`, incluso después de una instalación limpia.
 Los tres paquetes publican también sus declaraciones TypeScript desde `dist`;
 ningún consumidor depende del cliente Prisma generado dentro de `src`.
+
+### Generacion del cliente Prisma
+
+`@soyre/database#db:generate` es el unico nodo del pipeline que ejecuta
+`prisma generate`. Los nodos `build` y `typecheck` dependen de esa tarea en
+Turbo, pero sus scripts no regeneran el cliente por separado. De esta forma una
+ejecucion de `pnpm typecheck` comparte una sola generacion aunque Turbo necesite
+construir y validar el paquete de base de datos en el mismo grafo, evitando
+carreras sobre `packages/database/src/generated/prisma`.

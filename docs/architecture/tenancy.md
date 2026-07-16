@@ -30,19 +30,19 @@ Los usuarios adicionales pertenecen a una organización mediante `membership`. L
 
 ## Matriz De Ownership
 
-| Recurso | Frontera | Regla mínima |
-|---|---|---|
-| Usuario | Global con memberships | No obtiene acceso operativo sin membership activa. |
-| Cliente | `organizationId` directo | Solo se relaciona con recursos de la misma organización. |
-| Propiedad | `organizationId` directo | Propietario y responsable deben ser accesibles en la organización. |
-| Negocio | `organizationId` directo | Propiedad, clientes, participantes y configuración deben coincidir. |
-| Documento | `organizationId` directo | Entidad relacionada y ruta de Storage deben coincidir. |
-| Mandato | `organizationId` directo | Propiedad, propietario y responsable deben coincidir. |
-| Listing | `organizationId` directo | Propiedad y mandato deben coincidir. |
-| Visita | `organizationId` directo | Propiedad, cliente, negocio y agentes deben coincidir. |
-| Oferta | `organizationId` directo | Propiedad, cliente, negocio y responsable deben coincidir. |
-| Configuración | `organizationId` directo | Nunca se reutiliza implícitamente entre organizaciones. |
-| Auditoría | `organizationId` o alcance plataforma | No mezcla eventos operativos con backoffice de plataforma. |
+| Recurso       | Frontera                              | Regla mínima                                                                                                                                  |
+| ------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Usuario       | Global con memberships                | No obtiene acceso operativo sin membership activa.                                                                                            |
+| Cliente       | `organizationId` directo              | Solo se relaciona con recursos de la misma organización.                                                                                      |
+| Propiedad     | `organizationId` directo              | Propietario y responsable deben ser accesibles en la organización.                                                                            |
+| Negocio       | `organizationId` directo              | Propiedad, clientes, participantes y configuración deben coincidir.                                                                           |
+| Documento     | `organizationId` directo              | Entidad relacionada y ruta de Storage deben coincidir.                                                                                        |
+| Mandato       | `organizationId` directo              | Propiedad, propietario, responsable, sucesor y documentos deben coincidir; activación y renovación se serializan por organización e inmueble. |
+| Listing       | `organizationId` directo              | Propiedad y mandato deben coincidir.                                                                                                          |
+| Visita        | `organizationId` directo              | Propiedad, cliente, negocio y agentes deben coincidir.                                                                                        |
+| Oferta        | `organizationId` directo              | Propiedad, cliente, negocio y responsable deben coincidir.                                                                                    |
+| Configuración | `organizationId` directo              | Nunca se reutiliza implícitamente entre organizaciones.                                                                                       |
+| Auditoría     | `organizationId` o alcance plataforma | No mezcla eventos operativos con backoffice de plataforma.                                                                                    |
 
 ## Patrón De API
 

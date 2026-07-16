@@ -72,6 +72,10 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this.prismaClient.mandate;
   }
 
+  get mandateEvent() {
+    return this.prismaClient.mandateEvent;
+  }
+
   get membership() {
     return this.prismaClient.membership;
   }

@@ -1,5 +1,311 @@
-# Mandates Module
+# Módulo De Mandatos
 
-Future module for commercial authorization, exclusivity, validity, authorized price, and agreed commission.
+## Propósito
 
-Do not implement until mandate states and legal/business requirements are documented.
+Mandates administra la autorización comercial que una persona propietaria
+otorga a la organización para ofrecer un inmueble en venta, alquiler o ambas
+operaciones. El mandato define vigencia, exclusividad, precio autorizado,
+moneda, comisión y responsable operativo.
+
+El mandato no es un negocio ni un listing. Pertenece al inmueble y actúa como
+gate para su preparación comercial. `property` continúa siendo la entidad
+central y `organization` la frontera SaaS obligatoria.
+
+## Decisiones Del Beta
+
+- Venta, alquiler y ambas operaciones comparten infraestructura, pero la
+  autorización se valida por modalidad.
+- Un mandato firmado no se sobrescribe. Los cambios materiales requieren un
+  sucesor auditable.
+- La activación es una transición explícita y confiable del servidor; no se
+  deriva de un selector libre en el formulario de creación.
+- El vencimiento se puede registrar manualmente durante este lote. Su ejecución
+  programada pertenece al lote de automatización.
+- KYC no es requisito global. Cada organización puede exigir documentos
+  adicionales mediante su configuración documental.
+- No se elimina físicamente un mandato usado. Los estados terminales conservan
+  evidencia e historial.
+
+## Estados Objetivo
+
+| Estado              | Significado operativo                                                |
+| ------------------- | -------------------------------------------------------------------- |
+| `DRAFT`             | Términos editables; todavía no se presenta para firma.               |
+| `PENDING_SIGNATURE` | Términos completos enviados para firma.                              |
+| `PENDING_DOCUMENTS` | Firma registrada; faltan evidencias o validaciones configuradas.     |
+| `ACTIVE`            | Autorización vigente y habilitante para preparación comercial.       |
+| `EXPIRED`           | La fecha final fue alcanzada sin renovación activa.                  |
+| `CANCELLED`         | La autorización terminó antes de su vencimiento, con motivo.         |
+| `SUPERSEDED`        | Un mandato sucesor fue activado y reemplazó su vigencia.             |
+| `ARCHIVED`          | Estado terminal retirado de la operación diaria, nunca de auditoría. |
+
+`PENDING_SIGNATURE` y `SUPERSEDED` amplían el enum persistente actual. El schema,
+la migración, los DTOs, los serializadores y la UI deben cambiar juntos.
+
+## Transiciones
+
+| Desde                                             | Acción                   | Hacia               | Reglas principales                                       |
+| ------------------------------------------------- | ------------------------ | ------------------- | -------------------------------------------------------- |
+| `DRAFT`                                           | presentar para firma     | `PENDING_SIGNATURE` | Términos completos y relaciones válidas.                 |
+| `PENDING_SIGNATURE`                               | devolver para corrección | `DRAFT`             | Motivo obligatorio; no existe firma vigente.             |
+| `PENDING_SIGNATURE`                               | registrar firma          | `PENDING_DOCUMENTS` | Fecha y evidencia firmada vinculadas al mandato.         |
+| `PENDING_DOCUMENTS`                               | activar                  | `ACTIVE`            | Todas las invariantes y bloqueantes satisfechos.         |
+| `DRAFT`, `PENDING_SIGNATURE`, `PENDING_DOCUMENTS` | cancelar                 | `CANCELLED`         | Motivo obligatorio.                                      |
+| `ACTIVE`                                          | vencer                   | `EXPIRED`           | `endsAt` alcanzada; no se permite anticiparlo.           |
+| `ACTIVE`                                          | cancelar                 | `CANCELLED`         | Motivo y fecha efectiva obligatorios.                    |
+| `ACTIVE`                                          | activar sucesor          | `SUPERSEDED`        | Ocurre en la misma transacción que activa la renovación. |
+| `EXPIRED`, `CANCELLED`, `SUPERSEDED`              | archivar                 | `ARCHIVED`          | Solo `OWNER` o `ADMIN`.                                  |
+
+Toda transición fuera de la tabla devuelve conflicto y no modifica el mandato.
+Repetir una acción con la misma clave de idempotencia devuelve el resultado ya
+registrado. Las transiciones concurrentes se serializan por organización e
+inmueble.
+
+## Invariantes
+
+### Relaciones
+
+- El inmueble, propietario, responsable, mandato sucesor y documentos deben
+  pertenecer a la misma organización.
+- El propietario es obligatorio antes de presentar para firma. Puede heredarse
+  de la propiedad, pero el mandato conserva el ID acordado como snapshot.
+- El responsable debe mantener una membership activa en la organización.
+- La modalidad debe ser compatible con `property.operations`: `SALE` requiere
+  venta, `RENT` requiere alquiler y `BOTH` requiere ambas.
+- Conocer un UUID de otra organización nunca permite leer, relacionar,
+  transicionar ni inferir la existencia del recurso.
+
+### Términos
+
+- `authorizedPriceCents` es obligatorio y mayor que cero antes de firma.
+- `currency` usa exactamente tres letras ISO normalizadas a mayúsculas.
+- `commissionBps` es obligatorio para activar, admite cero y nunca supera
+  `10_000` puntos básicos.
+- `startsAt` y `endsAt` son obligatorios para activar; `endsAt` no puede ser
+  anterior a `startsAt`.
+- `signedAt` no puede ser futura. Puede ser anterior al alta en SoyPMS cuando
+  la organización incorpora un mandato que ya estaba firmado.
+- Un mandato solo se activa desde su fecha inicial y mientras su fecha final no
+  haya pasado.
+- Precio, moneda, comisión, modalidad, propietario, inicio y fin son términos
+  materiales. Después de registrar firma son inmutables; una modificación
+  material crea un sucesor.
+
+### Exclusividad Y Concurrencia
+
+Los intervalos se consideran inclusivos. Dos mandatos se solapan si comparten
+al menos un día y sus modalidades comparten venta o alquiler.
+
+- Un mandato exclusivo no puede activarse si existe otro mandato activo y
+  solapado para el mismo inmueble y modalidad.
+- Un mandato no exclusivo tampoco puede activarse contra un exclusivo activo y
+  solapado.
+- Dos mandatos no exclusivos pueden coexistir cuando la organización lo decide.
+- `BOTH` intersecta tanto `SALE` como `RENT`.
+- La validación debe ser segura ante dos activaciones concurrentes; consultar y
+  luego insertar sin bloqueo transaccional no es suficiente.
+
+## Renovación
+
+Renovar crea un nuevo mandato `DRAFT` con `previousMandateId`; no cambia fechas
+ni términos del original. El sucesor copia términos como punto de partida, pero
+requiere nueva revisión, firma y evidencia.
+
+El mandato anterior continúa `ACTIVE` hasta que el sucesor se activa o llega a
+su vencimiento. Activar el sucesor y marcar el anterior `SUPERSEDED` es una sola
+transacción. Solo puede existir un sucesor no terminal por mandato y una
+solicitud repetida con la misma clave es idempotente.
+
+## Expediente Del Mandato
+
+`DocumentEntityType.MANDATE` ya existe, pero la relación no debe depender de
+`metadata`. El modelo `Document` necesita `mandateId` y una clave foránea que
+proteja organización y mandato.
+
+La evidencia mínima de firma es un documento vigente vinculado al mandato. La
+organización puede exigir poderes, identificaciones, certificados u otros
+documentos; esos requisitos son configurables y no convierten KYC en política
+global de SoyPMS.
+
+Para activar:
+
+- Debe existir evidencia firmada vigente y aprobada.
+- No puede existir un requisito configurado obligatorio que bloquee activación.
+- Reemplazar un archivo conserva versiones, autor, fecha y motivo.
+- Cancelar, vencer o renovar no elimina el expediente histórico.
+
+## Readiness Comercial
+
+Un listing `DRAFT` puede prepararse antes de la activación para adelantar copy y
+materiales, pero no puede pasar a `READY`, `APPROVED` o `PUBLISHED` sin:
+
+1. Un mandato `ACTIVE` de la misma organización e inmueble.
+2. Modalidad compatible con la operación del listing.
+3. Fecha actual dentro de la vigencia inclusiva.
+4. Evidencia firmada y bloqueantes documentales resueltos.
+5. Ausencia de conflicto de exclusividad.
+
+El guard se ejecuta en el servidor cada vez que el listing intenta avanzar. Un
+mandato vencido, cancelado o reemplazado impide nuevas transiciones comerciales.
+La pausa automática de listings ya publicados pertenece al lote de workflow;
+durante el beta manual, la API debe devolver el bloqueante y una tarea operativa
+debe hacer visible la regularización pendiente.
+
+## Permisos Iniciales
+
+| Acción                                               | Roles                                                                                                                                                       |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Listar y consultar                                   | `OWNER`, `ADMIN`, `BROKER`, `OPERATIONS`; `AGENT` y `EXTERNAL_AGENT` solo si están asignados; `FINANCE` para términos financieros; `READONLY` sin acciones. |
+| Crear y editar borrador                              | `OWNER`, `ADMIN`, `BROKER`, `OPERATIONS`; `AGENT` solo cuando está asignado al inmueble.                                                                    |
+| Presentar para firma                                 | `OWNER`, `ADMIN`, `BROKER`, `OPERATIONS` y agente asignado.                                                                                                 |
+| Registrar firma, activar, vencer, cancelar o renovar | `OWNER`, `ADMIN`, `BROKER`, `OPERATIONS`.                                                                                                                   |
+| Archivar                                             | `OWNER`, `ADMIN`.                                                                                                                                           |
+
+La autorización se evalúa en servidor por organización, rol, asignación y
+recurso. La UI oculta acciones no permitidas, pero nunca es la fuente de verdad.
+
+## Auditoría E Historial
+
+Se registran dentro de la misma transacción:
+
+- creación y cambios de términos del borrador;
+- presentación, devolución y firma;
+- activación, vencimiento, cancelación, renovación y archivo;
+- cambios de responsable;
+- conflictos rechazados relevantes;
+- documentos cargados, revisados y reemplazados.
+
+Cada evento conserva organización, mandato, actor, estado anterior y nuevo,
+fecha, motivo, clave de idempotencia y términos materiales afectados. La
+respuesta de historial se ordena por fecha y desempata por ID.
+
+## API Objetivo
+
+- `GET /api/mandates`: filtros por estado, modalidad, inmueble, responsable,
+  vencimiento y búsqueda.
+- `GET /api/mandates/:mandateId`: detalle, readiness, bloqueantes y resumen del
+  expediente.
+- `POST /api/mandates`: crea únicamente `DRAFT`.
+- `PATCH /api/mandates/:mandateId`: edita campos permitidos del borrador.
+- `POST /api/mandates/:mandateId/transitions`: ejecuta una transición validada.
+- `POST /api/mandates/:mandateId/renewals`: crea o devuelve el sucesor
+  idempotente.
+- `GET /api/mandates/:mandateId/history`: devuelve eventos auditables.
+
+`organizationId` nunca concede acceso. Cada consulta parte de una membership
+activa y scopea el recurso antes de validar relaciones.
+
+## Workspace Objetivo
+
+`/mandates` debe dejar de ser un alta genérica y ofrecer:
+
+- lista con búsqueda y filtros de estado, modalidad, responsable y vencimiento;
+- alertas de mandatos por vencer y bloqueantes;
+- detalle con términos, propiedad, propietario, responsable y vigencia;
+- timeline de estados e historial;
+- expediente firmado y requisitos configurados;
+- acciones contextuales según estado y permisos;
+- renovación con comparación entre términos anteriores y nuevos;
+- loading, empty, error, sin permisos y adaptación móvil.
+
+La UI visible está en español y muestra montos, porcentajes y fechas locales sin
+exponer enums ni errores internos.
+
+## QA Obligatorio
+
+- Recorridos completos de venta, alquiler y `BOTH`.
+- Matriz exacta de transiciones válidas e inválidas.
+- Fechas límite, firma futura, moneda, monto y comisión extremos.
+- Dos activaciones exclusivas simultáneas sobre el mismo inmueble.
+- Exclusividad con operaciones que coinciden y que no coinciden.
+- Renovación idempotente y activación atómica del sucesor.
+- Mandato activo que habilita readiness y mandato terminal que lo bloquea.
+- Roles, asignación y cruces por cada ID relacionado entre organizaciones A/B.
+- Evidencia firmada ausente, observada, vencida, aprobada y reemplazada.
+- Auditoría exacta y ausencia de escrituras parciales ante fallos.
+- E2E desktop y móvil para lista, detalle, transiciones y estados vacíos/error.
+
+## División De Implementación
+
+1. #115 — modelo, migración remota, servicio de dominio, API, historial,
+   expediente y guard de readiness.
+2. #116 — workspace operativo de Mandatos con acciones por estado y rol;
+   depende de #115.
+3. #117 — QA adversarial remoto y E2E, incluido aislamiento A/B y
+   concurrencia; depende de #115 y #116.
+
+Cada bloque usa issue, branch, commit vinculado, PR y gate propio. Los cambios
+de base se aplican por Supabase remoto y se verifican con schema, SQL y advisors.
+
+## Estado Implementado En #115
+
+El lote de dominio y API está implementado con:
+
+- lifecycle server-side, edición exclusiva de borradores y transición
+  idempotente por `organizationId` + clave;
+- bloqueo de fila y advisory lock transaccional por organización e inmueble
+  para serializar activaciones y renovaciones;
+- claves foráneas compuestas que impiden asociar propiedad, propietario,
+  mandato anterior, documentos o listings entre organizaciones;
+- `MandateEvent` como historial inmutable con RLS habilitado y acceso directo
+  por Data API cerrado;
+- relación explícita `Document.mandateId` y evidencia `SIGNED_MANDATE` aprobada
+  antes de registrar firma o activar;
+- renovación create-or-return y supersesión atómica del mandato anterior;
+- guard server-side que exige mandato activo y modalidad compatible antes de
+  crear listings fuera de `DRAFT`;
+- prueba remota opt-in `pnpm test:mandates-beta`, aislada del servidor de
+  `main`, para cruces A/B, exclusividad, idempotencia, renovación, historial y
+  readiness comercial.
+
+## Estado Implementado En #116
+
+`/mandates` ya es un workspace operativo dedicado y no un alta genérica:
+
+- crea exclusivamente borradores y deriva las acciones visibles del estado,
+  rol y asignación;
+- lista con búsqueda y filtros por modalidad, estado y vencimiento, más
+  indicadores de activos, próximos vencimientos y bloqueantes;
+- muestra términos, vigencia, propietario, responsable, readiness, expediente
+  documental e historial auditable en un panel sincronizado después de cada
+  mutación;
+- permite presentar, devolver, registrar firma con evidencia aprobada, activar,
+  vencer, cancelar, renovar y archivar según el lifecycle del servidor;
+- agrega evidencia al expediente y presenta la comparación de términos antes
+  de crear una renovación;
+- localiza montos, porcentajes, fechas, bloqueantes y errores sin exponer enums
+  ni mensajes internos;
+- conserva el día de valores `DATE` y calcula los valores por defecto con el
+  calendario local para evitar desplazamientos por UTC;
+- adapta tabla, paneles y acciones a móvil sin desbordamiento horizontal.
+
+La prueba funcional remota recorrió alta, presentación, evidencia, firma y
+activación hasta readiness comercial listo, con el historial y los indicadores
+actualizados en vivo. #117 conserva la matriz adversarial E2E, aislamiento A/B
+y concurrencia. El vencimiento automático y la regularización automática de
+listings publicados permanecen fuera de estos lotes.
+
+## Estado Implementado En #117
+
+La cobertura beta adversarial queda automatizada y opt-in para no mutar datos
+remotos durante los gates ordinarios:
+
+- matriz de venta, alquiler y `BOTH`, términos extremos, roles, asignación y
+  relaciones cruzadas entre organizaciones;
+- transiciones válidas e inválidas, evidencia ausente, rechazada, vencida,
+  aprobada y reemplazada, con verificación de rollback;
+- activaciones simultáneas, intersección por modalidad, exclusividad y
+  readiness de listings;
+- renovaciones concurrentes idempotentes y supersesión atómica;
+- E2E autenticado independiente en Chromium desktop y móvil para lista,
+  detalle, evidencia, firma, activación, readiness, historial y overflow;
+- fixtures identificables, organizaciones aisladas y limpieza en `finally`,
+  incluso ante fallos.
+
+Las transacciones del dominio usan un presupuesto explícito de espera y
+ejecución. Esto permite que una solicitud concurrente espere el advisory lock
+de PostgreSQL remoto sin agotar el límite implícito de cinco segundos antes de
+confirmar el resultado idempotente.
+
+El protocolo, los flags de seguridad y los resultados esperados están en
+`docs/testing/mandates-adversarial-beta.md`.

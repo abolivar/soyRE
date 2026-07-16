@@ -56,7 +56,9 @@ export function formatDate(value: string | null | undefined) {
     return 'Sin fecha';
   }
 
-  const date = new Date(value);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? new Date(`${value}T12:00:00`)
+    : new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return 'Fecha inválida';
@@ -326,6 +328,8 @@ export function mandateStatusLabel(status: MandateStatus) {
       DRAFT: 'Borrador',
       EXPIRED: 'Vencido',
       PENDING_DOCUMENTS: 'Docs pendientes',
+      PENDING_SIGNATURE: 'Pendiente de firma',
+      SUPERSEDED: 'Reemplazado',
     } satisfies Record<MandateStatus, string>
   )[status];
 }
@@ -339,6 +343,8 @@ export function mandateStatusTone(status: MandateStatus): Tone {
       DRAFT: 'neutral',
       EXPIRED: 'danger',
       PENDING_DOCUMENTS: 'warning',
+      PENDING_SIGNATURE: 'warning',
+      SUPERSEDED: 'neutral',
     } satisfies Record<MandateStatus, Tone>
   )[status];
 }

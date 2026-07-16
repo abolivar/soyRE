@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
 } from '@nestjs/common';
@@ -8,20 +9,22 @@ import {
   DocumentEntityType,
   DocumentStatus,
   ListingStatus,
-  MandateStatus,
   MembershipStatus,
   OfferStatus,
   Prisma,
   ShowingStatus,
 } from '@soyre/database';
-import { READ_ROLES, WRITE_ROLES } from '../auth/authorization.constants.js';
+import {
+  COMMIT_ROLES,
+  READ_ROLES,
+  WRITE_ROLES,
+} from '../auth/authorization.constants.js';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { OrganizationAccessService } from '../auth/organization-access.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import {
   CreateDocumentDto,
   CreateListingDto,
-  CreateMandateDto,
   CreateOfferDto,
   CreateShowingDto,
   CreateWorkflowStageDto,
@@ -29,11 +32,11 @@ import {
 import {
   ListDocumentsQueryDto,
   ListListingsQueryDto,
-  ListMandatesQueryDto,
   ListOffersQueryDto,
   ListShowingsQueryDto,
   ListWorkflowStagesQueryDto,
 } from './dto/list-operational-query.dto.js';
+import { MandatesService } from './mandates.service.js';
 
 const DOCUMENT_INCLUDE = {
   business: {
@@ -86,36 +89,6 @@ const DOCUMENT_INCLUDE = {
     },
   },
 } satisfies Prisma.DocumentInclude;
-
-const MANDATE_INCLUDE = {
-  assignedUser: {
-    select: {
-      id: true,
-      email: true,
-      firstName: true,
-      lastName: true,
-    },
-  },
-  ownerClient: {
-    select: {
-      id: true,
-      displayName: true,
-      email: true,
-      phone: true,
-    },
-  },
-  property: {
-    select: {
-      id: true,
-      title: true,
-      internalCode: true,
-      status: true,
-      city: true,
-      zone: true,
-      ownerClientId: true,
-    },
-  },
-} satisfies Prisma.MandateInclude;
 
 const LISTING_INCLUDE = {
   mandate: {
@@ -228,10 +201,6 @@ type DocumentWithDetails = Prisma.DocumentGetPayload<{
   include: typeof DOCUMENT_INCLUDE;
 }>;
 
-type MandateWithDetails = Prisma.MandateGetPayload<{
-  include: typeof MANDATE_INCLUDE;
-}>;
-
 type ListingWithDetails = Prisma.ListingGetPayload<{
   include: typeof LISTING_INCLUDE;
 }>;
@@ -250,6 +219,8 @@ export class OperationsService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(OrganizationAccessService)
     private readonly organizationAccess: OrganizationAccessService,
+    @Inject(MandatesService)
+    private readonly mandatesService: MandatesService,
   ) {}
 
   async listDocuments(auth: AuthenticatedUser, query: ListDocumentsQueryDto) {
@@ -263,6 +234,7 @@ export class OperationsService {
       requirementId: null,
       ...(query.entityType ? { entityType: query.entityType } : {}),
       ...(query.status ? { status: query.status } : {}),
+      ...(query.mandateId ? { mandateId: query.mandateId } : {}),
       ...(search
         ? {
             OR: [
@@ -302,6 +274,15 @@ export class OperationsService {
 
   async createDocument(auth: AuthenticatedUser, dto: CreateDocumentDto) {
     const membership = this.resolveWritableMembership(auth, dto.organizationId);
+    if (
+      dto.entityType === DocumentEntityType.MANDATE &&
+      dto.status === DocumentStatus.APPROVED &&
+      !COMMIT_ROLES.has(membership.role)
+    ) {
+      throw new ForbiddenException(
+        'Only a manager role can approve mandate evidence.',
+      );
+    }
 
     if (
       dto.storagePath ||
@@ -330,6 +311,7 @@ export class OperationsService {
             propertyId: dto.propertyId,
             businessId: dto.businessId,
             businessContractId: dto.businessContractId,
+            mandateId: dto.mandateId,
             name: requiredText(dto.name, 'Document name is required.'),
             documentType: requiredText(
               dto.documentType,
@@ -366,146 +348,6 @@ export class OperationsService {
     );
 
     return { document: this.serializeDocument(document) };
-  }
-
-  async listMandates(auth: AuthenticatedUser, query: ListMandatesQueryDto) {
-    const membership = this.resolveReadableMembership(
-      auth,
-      query.organizationId,
-    );
-    const search = query.search?.trim();
-    const where: Prisma.MandateWhereInput = {
-      organizationId: membership.organizationId,
-      ...(query.status ? { status: query.status } : {}),
-      ...(query.type ? { type: query.type } : {}),
-      ...(search
-        ? {
-            OR: [
-              {
-                property: { title: { contains: search, mode: 'insensitive' } },
-              },
-              {
-                property: {
-                  internalCode: { contains: search, mode: 'insensitive' },
-                },
-              },
-              {
-                ownerClient: {
-                  displayName: { contains: search, mode: 'insensitive' },
-                },
-              },
-              { notes: { contains: search, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
-    };
-
-    const mandates = await this.prisma.mandate.findMany({
-      where,
-      include: MANDATE_INCLUDE,
-      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
-      take: 100,
-    });
-
-    return {
-      organization: this.serializeOrganization(membership),
-      mandates: mandates.map((mandate: MandateWithDetails) =>
-        this.serializeMandate(mandate),
-      ),
-    };
-  }
-
-  async createMandate(auth: AuthenticatedUser, dto: CreateMandateDto) {
-    const membership = this.resolveWritableMembership(auth, dto.organizationId);
-    const startsAt = toDate(dto.startsAt);
-    const endsAt = toDate(dto.endsAt);
-    const assignedUserId = dto.assignedUserId ?? auth.id;
-
-    if (startsAt && endsAt && endsAt < startsAt) {
-      throw new BadRequestException(
-        'Mandate end date cannot be before start date.',
-      );
-    }
-
-    const mandate = await this.prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
-        const property = await this.ensureProperty(
-          tx,
-          membership.organizationId,
-          dto.propertyId,
-        );
-        const ownerClientId = dto.ownerClientId ?? property.ownerClientId;
-
-        if (ownerClientId) {
-          await this.ensureClient(tx, membership.organizationId, ownerClientId);
-        }
-
-        if (assignedUserId) {
-          await this.ensureAssignedUser(
-            tx,
-            membership.organizationId,
-            assignedUserId,
-          );
-        }
-
-        if (dto.exclusive && dto.status === MandateStatus.ACTIVE) {
-          const existingExclusive = await tx.mandate.findFirst({
-            where: {
-              exclusive: true,
-              organizationId: membership.organizationId,
-              propertyId: dto.propertyId,
-              status: MandateStatus.ACTIVE,
-            },
-            select: { id: true },
-          });
-
-          if (existingExclusive) {
-            throw new ConflictException(
-              'This property already has an active exclusive mandate.',
-            );
-          }
-        }
-
-        const created = await tx.mandate.create({
-          data: {
-            organizationId: membership.organizationId,
-            propertyId: dto.propertyId,
-            ownerClientId,
-            assignedUserId,
-            type: dto.type,
-            status: dto.status ?? MandateStatus.DRAFT,
-            exclusive: dto.exclusive ?? false,
-            authorizedPriceCents: parseOptionalCents(
-              dto.authorizedPriceCents,
-              'authorizedPriceCents',
-            ),
-            currency: normalizeCurrency(dto.currency),
-            commissionBps: dto.commissionBps,
-            startsAt,
-            endsAt,
-            signedAt: toDate(dto.signedAt),
-            notes: cleanText(dto.notes),
-            metadata: dto.metadata as Prisma.InputJsonObject | undefined,
-          },
-          include: MANDATE_INCLUDE,
-        });
-
-        await this.audit(tx, membership.organizationId, auth.id, {
-          action: 'mandates.create',
-          targetType: 'mandate',
-          targetId: created.id,
-          metadata: {
-            propertyId: created.propertyId,
-            status: created.status,
-            type: created.type,
-          },
-        });
-
-        return created;
-      },
-    );
-
-    return { mandate: this.serializeMandate(mandate) };
   }
 
   async listListings(auth: AuthenticatedUser, query: ListListingsQueryDto) {
@@ -584,11 +426,20 @@ export class OperationsService {
         }
 
         const status = dto.status ?? ListingStatus.DRAFT;
+        if (status !== ListingStatus.DRAFT) {
+          await this.mandatesService.assertListingReadiness(tx, {
+            organizationId: membership.organizationId,
+            propertyId: dto.propertyId,
+            mandateId: dto.mandateId,
+            operationType: dto.operationType,
+          });
+        }
         const created = await tx.listing.create({
           data: {
             organizationId: membership.organizationId,
             propertyId: dto.propertyId,
             mandateId: dto.mandateId,
+            operationType: dto.operationType,
             status,
             title: requiredText(dto.title, 'Listing title is required.'),
             publicCopy: cleanText(dto.publicCopy),
@@ -990,7 +841,8 @@ export class OperationsService {
       !dto.clientId &&
       !dto.propertyId &&
       !dto.businessId &&
-      !dto.businessContractId
+      !dto.businessContractId &&
+      !dto.mandateId
     ) {
       throw new BadRequestException(
         'At least one document relation is required.',
@@ -1000,6 +852,25 @@ export class OperationsService {
     await this.ensureClient(tx, organizationId, dto.clientId);
     await this.ensureProperty(tx, organizationId, dto.propertyId);
     await this.ensureBusiness(tx, organizationId, dto.businessId);
+
+    if (dto.mandateId) {
+      const mandate = await tx.mandate.findFirst({
+        where: { id: dto.mandateId, organizationId },
+        select: { id: true },
+      });
+      if (!mandate) {
+        throw new BadRequestException(
+          'Document mandate must belong to this organization.',
+        );
+      }
+      if (dto.entityType !== DocumentEntityType.MANDATE) {
+        throw new BadRequestException(
+          'A mandate relation requires MANDATE document entity type.',
+        );
+      }
+    } else if (dto.entityType === DocumentEntityType.MANDATE) {
+      throw new BadRequestException('Mandate document relation is required.');
+    }
 
     if (dto.businessContractId) {
       const contract = await tx.businessContract.findFirst({
@@ -1177,6 +1048,7 @@ export class OperationsService {
       propertyId: document.propertyId,
       businessId: document.businessId,
       businessContractId: document.businessContractId,
+      mandateId: document.mandateId,
       name: document.name,
       documentType: document.documentType,
       status: document.status,
@@ -1202,38 +1074,13 @@ export class OperationsService {
     };
   }
 
-  private serializeMandate(mandate: MandateWithDetails) {
-    return {
-      id: mandate.id,
-      organizationId: mandate.organizationId,
-      propertyId: mandate.propertyId,
-      ownerClientId: mandate.ownerClientId,
-      assignedUserId: mandate.assignedUserId,
-      type: mandate.type,
-      status: mandate.status,
-      exclusive: mandate.exclusive,
-      authorizedPriceCents: mandate.authorizedPriceCents?.toString() ?? null,
-      currency: mandate.currency,
-      commissionBps: mandate.commissionBps,
-      startsAt: toDateString(mandate.startsAt),
-      endsAt: toDateString(mandate.endsAt),
-      signedAt: toDateString(mandate.signedAt),
-      notes: mandate.notes,
-      metadata: mandate.metadata,
-      property: mandate.property,
-      ownerClient: mandate.ownerClient,
-      assignedUser: mandate.assignedUser,
-      createdAt: mandate.createdAt.toISOString(),
-      updatedAt: mandate.updatedAt.toISOString(),
-    };
-  }
-
   private serializeListing(listing: ListingWithDetails) {
     return {
       id: listing.id,
       organizationId: listing.organizationId,
       propertyId: listing.propertyId,
       mandateId: listing.mandateId,
+      operationType: listing.operationType,
       status: listing.status,
       title: listing.title,
       publicCopy: listing.publicCopy,
