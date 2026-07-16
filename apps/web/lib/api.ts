@@ -939,10 +939,12 @@ export type DocumentStatus =
 
 export type MandateStatus =
   | 'DRAFT'
+  | 'PENDING_SIGNATURE'
   | 'PENDING_DOCUMENTS'
   | 'ACTIVE'
   | 'EXPIRED'
   | 'CANCELLED'
+  | 'SUPERSEDED'
   | 'ARCHIVED';
 
 export type MandateType = 'SALE' | 'RENT' | 'BOTH';
@@ -1003,6 +1005,7 @@ export type OperationalDocument = {
   propertyId: string | null;
   businessId: string | null;
   businessContractId: string | null;
+  mandateId: string | null;
   name: string;
   documentType: string;
   status: DocumentStatus;
@@ -1070,6 +1073,7 @@ export type OperationalListing = {
   organizationId: string;
   propertyId: string;
   mandateId: string | null;
+  operationType: 'SALE' | 'RENT' | null;
   status: ListingStatus;
   title: string;
   publicCopy: string | null;

@@ -235,3 +235,28 @@ exponer enums ni errores internos.
 
 Cada bloque usa issue, branch, commit vinculado, PR y gate propio. Los cambios
 de base se aplican por Supabase remoto y se verifican con schema, SQL y advisors.
+
+## Estado Implementado En #115
+
+El lote de dominio y API está implementado con:
+
+- lifecycle server-side, edición exclusiva de borradores y transición
+  idempotente por `organizationId` + clave;
+- bloqueo de fila y advisory lock transaccional por organización e inmueble
+  para serializar activaciones y renovaciones;
+- claves foráneas compuestas que impiden asociar propiedad, propietario,
+  mandato anterior, documentos o listings entre organizaciones;
+- `MandateEvent` como historial inmutable con RLS habilitado y acceso directo
+  por Data API cerrado;
+- relación explícita `Document.mandateId` y evidencia `SIGNED_MANDATE` aprobada
+  antes de registrar firma o activar;
+- renovación create-or-return y supersesión atómica del mandato anterior;
+- guard server-side que exige mandato activo y modalidad compatible antes de
+  crear listings fuera de `DRAFT`;
+- prueba remota opt-in `pnpm test:mandates-beta`, aislada del servidor de
+  `main`, para cruces A/B, exclusividad, idempotencia, renovación, historial y
+  readiness comercial.
+
+El workspace visual y las pruebas E2E de navegador permanecen deliberadamente
+en #116 y #117. El vencimiento automático y la regularización automática de
+listings publicados permanecen fuera de este lote.

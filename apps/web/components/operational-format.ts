@@ -326,6 +326,8 @@ export function mandateStatusLabel(status: MandateStatus) {
       DRAFT: 'Borrador',
       EXPIRED: 'Vencido',
       PENDING_DOCUMENTS: 'Docs pendientes',
+      PENDING_SIGNATURE: 'Pendiente de firma',
+      SUPERSEDED: 'Reemplazado',
     } satisfies Record<MandateStatus, string>
   )[status];
 }
@@ -339,6 +341,8 @@ export function mandateStatusTone(status: MandateStatus): Tone {
       DRAFT: 'neutral',
       EXPIRED: 'danger',
       PENDING_DOCUMENTS: 'warning',
+      PENDING_SIGNATURE: 'warning',
+      SUPERSEDED: 'neutral',
     } satisfies Record<MandateStatus, Tone>
   )[status];
 }

@@ -496,10 +496,12 @@ enum DocumentRequirementStatus {
 
 enum MandateStatus {
   DRAFT
+  PENDING_SIGNATURE
   PENDING_DOCUMENTS
   ACTIVE
   EXPIRED
   CANCELLED
+  SUPERSEDED
   ARCHIVED
 }
 
@@ -507,6 +509,20 @@ enum MandateType {
   SALE
   RENT
   BOTH
+}
+
+enum MandateTransitionAction {
+  CREATED
+  UPDATED
+  SUBMIT_FOR_SIGNATURE
+  RETURN_TO_DRAFT
+  REGISTER_SIGNATURE
+  ACTIVATE
+  EXPIRE
+  CANCEL
+  RENEW
+  SUPERSEDE
+  ARCHIVE
 }
 
 enum ListingStatus {
@@ -566,6 +582,7 @@ model Organization {
   businessDocumentChecklists BusinessDocumentChecklist[]
   businessDocumentRequirements BusinessDocumentRequirement[]
   mandates                Mandate[]
+  mandateEvents           MandateEvent[]
   listings                Listing[]
   showings                Showing[]
   offers                  Offer[]
@@ -612,6 +629,7 @@ model User {
   createdBusinessDocumentChecklists BusinessDocumentChecklist[] @relation("CreatedBusinessDocumentChecklists")
   createdBusinessDocumentRequirements BusinessDocumentRequirement[] @relation("CreatedBusinessDocumentRequirements")
   assignedMandates               Mandate[]                @relation("AssignedMandates")
+  mandateEvents                  MandateEvent[]            @relation("ActorMandateEvents")
   assignedShowings               Showing[]                @relation("AssignedShowings")
   assignedOffers                 Offer[]                  @relation("AssignedOffers")
   createdPayoutProfiles          PayoutProfile[]          @relation("CreatedPayoutProfiles")
@@ -1359,6 +1377,7 @@ model Document {
   propertyId         String?            @map("property_id") @db.Uuid
   businessId         String?            @map("business_id") @db.Uuid
   businessContractId String?            @map("business_contract_id") @db.Uuid
+  mandateId          String?            @map("mandate_id") @db.Uuid
   name               String
   documentType       String             @map("document_type")
   status             DocumentStatus     @default(REQUIRED)
@@ -1380,6 +1399,7 @@ model Document {
   property           Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   business           Business?          @relation(fields: [businessId], references: [id], onDelete: Cascade)
   businessContract   BusinessContract?  @relation(fields: [businessContractId], references: [id], onDelete: Cascade)
+  mandate            Mandate?           @relation(fields: [organizationId, mandateId], references: [organizationId, id], onDelete: Restrict, map: "documents_mandate_org_fkey")
   uploadedByUser     User?              @relation("UploadedDocuments", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
   reviewedByUser     User?              @relation("ReviewedDocuments", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
 
@@ -1389,6 +1409,7 @@ model Document {
   @@index([propertyId])
   @@index([businessId])
   @@index([businessContractId])
+  @@index([organizationId, mandateId])
   @@map("documents")
 }
 
@@ -1548,6 +1569,7 @@ model Mandate {
   propertyId               String        @map("property_id") @db.Uuid
   ownerClientId            String?       @map("owner_client_id") @db.Uuid
   assignedUserId           String?       @map("assigned_user_id") @db.Uuid
+  previousMandateId        String?       @map("previous_mandate_id") @db.Uuid
   type                     MandateType
   status                   MandateStatus @default(DRAFT)
   exclusive                Boolean       @default(false)
@@ -1557,21 +1579,52 @@ model Mandate {
   startsAt                 DateTime?     @map("starts_at") @db.Date
   endsAt                   DateTime?     @map("ends_at") @db.Date
   signedAt                 DateTime?     @map("signed_at") @db.Date
+  cancelledAt              DateTime?     @map("cancelled_at")
+  cancellationReason       String?       @map("cancellation_reason")
+  archivedAt               DateTime?     @map("archived_at")
   notes                    String?
   metadata                 Json?
   createdAt                DateTime      @default(now()) @map("created_at")
   updatedAt                DateTime      @updatedAt @map("updated_at")
   organization             Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  property                 Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
-  ownerClient              Client?       @relation("MandateOwnerClient", fields: [ownerClientId], references: [id], onDelete: SetNull)
+  property                 Property      @relation(fields: [organizationId, propertyId], references: [organizationId, id], onDelete: Restrict, map: "mandates_property_org_fkey")
+  ownerClient              Client?       @relation("MandateOwnerClient", fields: [organizationId, ownerClientId], references: [organizationId, id], onDelete: Restrict, map: "mandates_owner_client_org_fkey")
   assignedUser             User?         @relation("AssignedMandates", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  previousMandate          Mandate?       @relation("MandateRenewals", fields: [organizationId, previousMandateId], references: [organizationId, id], onDelete: Restrict, map: "mandates_previous_mandate_org_fkey")
+  renewal                  Mandate?       @relation("MandateRenewals")
+  events                   MandateEvent[]
+  documents                Document[]
   listings                 Listing[]
 
+  @@unique([organizationId, id], map: "mandates_org_id_id_key")
+  @@unique([organizationId, previousMandateId], map: "mandates_org_previous_key")
   @@index([organizationId, status])
-  @@index([propertyId, status])
+  @@index([organizationId, propertyId, status])
   @@index([ownerClientId])
   @@index([assignedUserId])
   @@map("mandates")
+}
+
+model MandateEvent {
+  id             String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                    @map("organization_id") @db.Uuid
+  mandateId      String                    @map("mandate_id") @db.Uuid
+  actorUserId    String?                   @map("actor_user_id") @db.Uuid
+  action         MandateTransitionAction
+  fromStatus     MandateStatus?            @map("from_status")
+  toStatus       MandateStatus             @map("to_status")
+  reason         String?
+  idempotencyKey String                    @map("idempotency_key")
+  metadata       Json?
+  createdAt      DateTime                  @default(now()) @map("created_at")
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  mandate        Mandate                   @relation(fields: [organizationId, mandateId], references: [organizationId, id], onDelete: Cascade, map: "mandate_events_mandate_org_fkey")
+  actorUser      User?                     @relation("ActorMandateEvents", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, mandateId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("mandate_events")
 }
 
 model Listing {
@@ -1579,6 +1632,7 @@ model Listing {
   organizationId String        @map("organization_id") @db.Uuid
   propertyId     String        @map("property_id") @db.Uuid
   mandateId      String?       @map("mandate_id") @db.Uuid
+  operationType  BusinessOperationType? @map("operation_type")
   status         ListingStatus @default(DRAFT)
   title          String
   publicCopy     String?       @map("public_copy")
@@ -1593,11 +1647,11 @@ model Listing {
   updatedAt      DateTime      @updatedAt @map("updated_at")
   organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   property       Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
-  mandate        Mandate?      @relation(fields: [mandateId], references: [id], onDelete: SetNull)
+  mandate        Mandate?      @relation(fields: [organizationId, mandateId], references: [organizationId, id], onDelete: Restrict, map: "listings_mandate_org_fkey")
 
   @@index([organizationId, status])
   @@index([propertyId, status])
-  @@index([mandateId])
+  @@index([organizationId, mandateId])
   @@map("listings")
 }
 
