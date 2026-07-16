@@ -952,7 +952,13 @@ export type MandateStatus =
 export type MandateType = 'SALE' | 'RENT' | 'BOTH';
 
 export type ListingStatus =
-  'DRAFT' | 'READY' | 'APPROVED' | 'PUBLISHED' | 'PAUSED' | 'ARCHIVED';
+  | 'DRAFT'
+  | 'READY'
+  | 'APPROVED'
+  | 'PUBLISHED'
+  | 'PAUSED'
+  | 'WITHDRAWN'
+  | 'ARCHIVED';
 
 export type ShowingStatus =
   'REQUESTED' | 'CONFIRMED' | 'COMPLETED' | 'NO_SHOW' | 'CANCELLED';
@@ -1137,21 +1143,28 @@ export type OperationalListing = {
   organizationId: string;
   propertyId: string;
   mandateId: string | null;
-  operationType: 'SALE' | 'RENT' | null;
+  assignedUserId: string | null;
+  approvedByUserId: string | null;
+  operationType: 'SALE' | 'RENT';
   status: ListingStatus;
   title: string;
   publicCopy: string | null;
   channels: string[];
-  readiness: Record<string, unknown> | null;
+  readiness: ListingReadiness;
   approvedAt: string | null;
   publishedAt: string | null;
   pausedAt: string | null;
+  withdrawnAt: string | null;
   archivedAt: string | null;
   notes: string | null;
   property: OperationalPropertySummary & {
+    assignedUserId: string | null;
+    operations: Array<'SALE' | 'RENT'>;
+    country: string;
     currency: string;
     salePrice: number | null;
     rentPrice: number | null;
+    availableFrom: string | null;
   };
   mandate: {
     id: string;
@@ -1159,8 +1172,63 @@ export type OperationalListing = {
     type: MandateType;
     endsAt: string | null;
   } | null;
+  assignedUser: OperationalUserSummary | null;
+  approvedByUser: OperationalUserSummary | null;
+  materials: ListingMaterial[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type ListingReadinessBlocker = {
+  code: string;
+  scope: 'LISTING' | 'MANDATE' | 'MATERIAL' | 'PROPERTY';
+};
+
+export type ListingReadiness = {
+  ready: boolean;
+  checkedAt: string;
+  blockers: ListingReadinessBlocker[];
+};
+
+export type ListingMaterial = {
+  id: string;
+  organizationId: string;
+  listingId: string;
+  type: 'COVER_IMAGE' | 'GALLERY_IMAGE' | 'FLOOR_PLAN' | 'VIDEO_LINK' | 'OTHER';
+  status: 'ACTIVE' | 'REPLACED' | 'ARCHIVED';
+  name: string;
+  altText: string | null;
+  externalUrl: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  sortOrder: number;
+  isCurrent: boolean;
+  replacesMaterialId: string | null;
+  createdByUserId: string | null;
+  replacedByUserId: string | null;
+  replacedAt: string | null;
+  replacementReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ListingDetailResponse = { listing: OperationalListing };
+
+export type ListingHistoryEvent = {
+  id: string;
+  action: string;
+  fromStatus: ListingStatus | null;
+  toStatus: ListingStatus;
+  reason: string | null;
+  idempotencyKey: string;
+  metadata: Record<string, unknown> | null;
+  actorUser: OperationalUserSummary | null;
+  createdAt: string;
+};
+
+export type ListingHistoryResponse = {
+  listingId: string;
+  events: ListingHistoryEvent[];
 };
 
 export type ListingsResponse = {
@@ -1276,6 +1344,31 @@ export async function apiFetch<T>(
           ? body.message.join(', ')
           : 'Request failed.';
 
+    throw new Error(toUserFacingApiError(rawMessage, response.status));
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export async function apiFetchFormData<T>(
+  path: string,
+  body: FormData,
+  method: 'POST' | 'PATCH',
+): Promise<T> {
+  const response = await fetchApi(path, {
+    body,
+    credentials: 'include',
+    method,
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const rawMessage =
+      typeof payload?.message === 'string'
+        ? payload.message
+        : Array.isArray(payload?.message)
+          ? payload.message.join(', ')
+          : 'Request failed.';
     throw new Error(toUserFacingApiError(rawMessage, response.status));
   }
 
