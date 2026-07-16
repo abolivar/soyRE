@@ -17,6 +17,7 @@
     "test:api-smoke": "pnpm --filter @soyre/api build && tsx --test tests/api-smoke.test.ts",
     "test:alpha": "pnpm --filter @soyre/api build && tsx --test tests/alpha/*.test.ts",
     "test:client-zero": "pnpm --filter @soyre/api build && tsx --test tests/alpha/api-alpha-smoke.test.ts",
+    "test:documents-beta": "turbo build --filter @soyre/api && tsx --test --test-concurrency=1 tests/alpha/document-template-api.test.ts tests/alpha/business-document-checklist-api.test.ts",
     "test:mandates-beta": "pnpm --filter @soyre/api build && tsx --test tests/alpha/mandate-lifecycle-api.test.ts",
     "test:mandates-adversarial": "pnpm --filter @soyre/api build && tsc -p tests/tsconfig.mandates.json && tsx --test tests/alpha/mandate-adversarial-api.test.ts",
     "test:mandates-e2e": "pnpm --filter @soyre/api build && tsc -p tests/tsconfig.mandates.json && tsx --test tests/alpha/mandate-workspace-e2e.test.ts",
