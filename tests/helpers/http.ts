@@ -28,8 +28,7 @@ export async function requestJson<T>(
   }
 
   const response = await fetch(`${baseUrl}${path}`, {
-    body:
-      options.body === undefined ? undefined : JSON.stringify(options.body),
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
     headers,
     method: options.method ?? 'GET',
   });
@@ -38,6 +37,29 @@ export async function requestJson<T>(
 
   return {
     body,
+    headers: response.headers,
+    status: response.status,
+    text,
+  };
+}
+
+export async function requestFormData<T>(
+  baseUrl: string,
+  path: string,
+  body: FormData,
+  options: { cookie?: string; method?: 'POST' | 'PATCH' } = {},
+): Promise<ApiResponse<T>> {
+  const headers = new Headers();
+  if (options.cookie) headers.set('cookie', options.cookie);
+  const response = await fetch(`${baseUrl}${path}`, {
+    body,
+    headers,
+    method: options.method ?? 'POST',
+  });
+  const text = await response.text();
+  const parsed = text ? (JSON.parse(text) as T) : ({} as T);
+  return {
+    body: parsed,
     headers: response.headers,
     status: response.status,
     text,

@@ -1,0 +1,21 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "paths": {
+      "@soyre/database": ["../packages/database/src/index.ts"]
+    },
+    "types": ["node"]
+  },
+  "include": [
+    "alpha/listing-adversarial-api.test.ts",
+    "alpha/listing-workspace-e2e.test.ts",
+    "helpers/api-server.ts",
+    "helpers/http.ts",
+    "helpers/listing-fixtures.ts",
+    "helpers/mandate-fixtures.ts"
+  ]
+}
