@@ -76,3 +76,12 @@ de `packages/shared` y `packages/database`, y `apps/web` recibe los de
 `packages/shared` y `packages/ui`, incluso después de una instalación limpia.
 Los tres paquetes publican también sus declaraciones TypeScript desde `dist`;
 ningún consumidor depende del cliente Prisma generado dentro de `src`.
+
+### Generacion del cliente Prisma
+
+`@soyre/database#db:generate` es el unico nodo del pipeline que ejecuta
+`prisma generate`. Los nodos `build` y `typecheck` dependen de esa tarea en
+Turbo, pero sus scripts no regeneran el cliente por separado. De esta forma una
+ejecucion de `pnpm typecheck` comparte una sola generacion aunque Turbo necesite
+construir y validar el paquete de base de datos en el mismo grafo, evitando
+carreras sobre `packages/database/src/generated/prisma`.
