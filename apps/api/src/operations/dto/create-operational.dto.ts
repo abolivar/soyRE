@@ -50,6 +50,10 @@ export class CreateDocumentDto {
   @IsUUID()
   businessContractId?: string;
 
+  @IsOptional()
+  @IsUUID()
+  mandateId?: string;
+
   @IsString()
   @MinLength(2)
   @MaxLength(180)
@@ -178,6 +182,10 @@ export class CreateListingDto {
   @IsOptional()
   @IsUUID()
   mandateId?: string;
+
+  @IsOptional()
+  @IsEnum(BusinessOperationType)
+  operationType?: BusinessOperationType;
 
   @IsOptional()
   @IsEnum(ListingStatus)

@@ -56,6 +56,27 @@ describe('toUserFacingApiError', () => {
     );
   });
 
+  it('maps mandate lifecycle blockers to operational Spanish', () => {
+    assert.equal(
+      toUserFacingApiError(
+        'This property has an overlapping active exclusive mandate.',
+        409,
+      ),
+      'Ya existe un mandato exclusivo activo que se solapa con estas fechas.',
+    );
+    assert.equal(
+      toUserFacingApiError(
+        'Approved signed mandate evidence is required.',
+        409,
+      ),
+      'Agrega y aprueba el mandato firmado antes de continuar.',
+    );
+    assert.equal(
+      toUserFacingApiError('Mandate signature date is invalid.', 400),
+      'La fecha de firma no puede ser futura.',
+    );
+  });
+
   it('maps dynamic organization ownership errors without leaking raw resources', () => {
     assert.equal(
       toUserFacingApiError(
