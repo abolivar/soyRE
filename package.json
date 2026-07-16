@@ -7,12 +7,13 @@
     "node": "22.x"
   },
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "pnpm dev:check && turbo dev --env-mode=loose",
+    "dev:check": "node scripts/check-dev-environment.mjs",
     "build": "turbo build",
     "lint": "pnpm check:design-system && turbo lint",
     "check:design-system": "node scripts/check-design-system.mjs",
     "typecheck": "turbo typecheck",
-    "test": "turbo test",
+    "test": "node --test scripts/*.test.mjs && turbo test",
     "test:api-smoke": "pnpm --filter @soyre/api build && tsx --test tests/api-smoke.test.ts",
     "test:alpha": "pnpm --filter @soyre/api build && tsx --test tests/alpha/*.test.ts",
     "test:client-zero": "pnpm --filter @soyre/api build && tsx --test tests/alpha/api-alpha-smoke.test.ts",

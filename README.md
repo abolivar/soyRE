@@ -80,6 +80,25 @@ pnpm install
 cp .env.example .env
 ```
 
+El store de pnpm debe permanecer fuera del workspace. El proyecto usa la
+ubicacion global predeterminada de pnpm porque Next/Turbopack observa la raiz
+completa del monorepo para resolver los paquetes compartidos. Un `.pnpm-store`
+local agrega decenas de miles de archivos al watcher y puede causar errores
+`EMFILE` en macOS.
+
+Si el checkout conserva un `.pnpm-store` creado por una configuracion anterior:
+
+1. Deten los procesos `pnpm dev` del proyecto.
+2. Mueve `.pnpm-store` fuera del repositorio como respaldo temporal.
+3. Ejecuta `pnpm install` para usar el store global de pnpm.
+4. Confirma el entorno con `pnpm dev:check` y luego inicia `pnpm dev`.
+
+`pnpm dev` ejecuta esa comprobacion antes de iniciar Turbo y falla con una
+explicacion accionable si detecta el store heredado. No borra archivos ni mueve
+el store automaticamente. El comando de desarrollo reenvia las variables del
+entorno local a las aplicaciones del monorepo; build y produccion conservan sus
+configuraciones independientes.
+
 El `.env` o `.env.local` local puede contener `DATABASE_URL` y `DIRECT_URL` solo contra Supabase remoto. No se debe introducir Docker, VM ni Postgres local. Para desarrollo visual puedes correr el frontend:
 
 ```bash
