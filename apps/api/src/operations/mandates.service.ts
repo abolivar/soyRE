@@ -84,6 +84,14 @@ const MANDATE_INCLUDE = {
   },
 } satisfies Prisma.MandateInclude;
 
+// Remote PostgreSQL lock contention can legitimately exceed Prisma's default
+// five-second interactive transaction budget. Keep the lock wait bounded while
+// leaving enough time for the transaction to commit after it acquires the lock.
+const MANDATE_TRANSACTION_OPTIONS = {
+  maxWait: 10_000,
+  timeout: 20_000,
+} as const;
+
 type MandateWithDetails = Prisma.MandateGetPayload<{
   include: typeof MANDATE_INCLUDE;
 }>;
@@ -283,6 +291,7 @@ export class MandatesService {
         });
         return created;
       },
+      MANDATE_TRANSACTION_OPTIONS,
     );
 
     return { mandate: this.serializeMandate(mandate) };
@@ -383,6 +392,7 @@ export class MandatesService {
         });
         return updated;
       },
+      MANDATE_TRANSACTION_OPTIONS,
     );
     return { mandate: this.serializeMandate(mandate) };
   }
@@ -466,6 +476,7 @@ export class MandatesService {
         });
         return updated;
       },
+      MANDATE_TRANSACTION_OPTIONS,
     );
     return { mandate: this.serializeMandate(mandate) };
   }
@@ -559,6 +570,7 @@ export class MandatesService {
         });
         return { created: true, mandate: renewal };
       },
+      MANDATE_TRANSACTION_OPTIONS,
     );
     return {
       created: result.created,

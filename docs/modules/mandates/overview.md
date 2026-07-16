@@ -284,3 +284,28 @@ activación hasta readiness comercial listo, con el historial y los indicadores
 actualizados en vivo. #117 conserva la matriz adversarial E2E, aislamiento A/B
 y concurrencia. El vencimiento automático y la regularización automática de
 listings publicados permanecen fuera de estos lotes.
+
+## Estado Implementado En #117
+
+La cobertura beta adversarial queda automatizada y opt-in para no mutar datos
+remotos durante los gates ordinarios:
+
+- matriz de venta, alquiler y `BOTH`, términos extremos, roles, asignación y
+  relaciones cruzadas entre organizaciones;
+- transiciones válidas e inválidas, evidencia ausente, rechazada, vencida,
+  aprobada y reemplazada, con verificación de rollback;
+- activaciones simultáneas, intersección por modalidad, exclusividad y
+  readiness de listings;
+- renovaciones concurrentes idempotentes y supersesión atómica;
+- E2E autenticado independiente en Chromium desktop y móvil para lista,
+  detalle, evidencia, firma, activación, readiness, historial y overflow;
+- fixtures identificables, organizaciones aisladas y limpieza en `finally`,
+  incluso ante fallos.
+
+Las transacciones del dominio usan un presupuesto explícito de espera y
+ejecución. Esto permite que una solicitud concurrente espere el advisory lock
+de PostgreSQL remoto sin agotar el límite implícito de cinco segundos antes de
+confirmar el resultado idempotente.
+
+El protocolo, los flags de seguridad y los resultados esperados están en
+`docs/testing/mandates-adversarial-beta.md`.

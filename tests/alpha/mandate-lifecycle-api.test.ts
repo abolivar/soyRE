@@ -10,6 +10,7 @@ import {
   MandateType,
 } from '@soyre/database';
 import { ensureApiServer, type ApiServer } from '../helpers/api-server.ts';
+import { cleanupMandateFixtures } from '../helpers/mandate-fixtures.ts';
 import {
   assertStatus,
   extractSessionCookie,
@@ -40,6 +41,7 @@ before(async () => {
 
 after(async () => {
   await server?.stop();
+  if (enabled) await cleanupMandateFixtures(prisma, runId);
   await prisma.$disconnect();
 });
 
