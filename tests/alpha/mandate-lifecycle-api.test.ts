@@ -379,7 +379,10 @@ async function completeSignature(
     mandateId,
     'REGISTER_SIGNATURE',
     `${key}-signature`,
-    { documentId: document.body.document.id, signedAt: utcDate(new Date()) },
+    {
+      documentId: document.body.document.id,
+      signedAt: utcDate(new Date(Date.now() - 86_400_000)),
+    },
   );
   assertStatus(signed, 201);
 }

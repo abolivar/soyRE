@@ -11,7 +11,10 @@ describe('resolveApiUrl', () => {
   });
 
   it('keeps the local fallback outside production', () => {
-    assert.equal(resolveApiUrl(undefined, 'development'), 'http://localhost:4000');
+    assert.equal(
+      resolveApiUrl(undefined, 'development'),
+      'http://localhost:4000',
+    );
   });
 
   it('does not point production builds to localhost by default', () => {
@@ -53,20 +56,50 @@ describe('toUserFacingApiError', () => {
     );
   });
 
+  it('maps mandate lifecycle blockers to operational Spanish', () => {
+    assert.equal(
+      toUserFacingApiError(
+        'This property has an overlapping active exclusive mandate.',
+        409,
+      ),
+      'Ya existe un mandato exclusivo activo que se solapa con estas fechas.',
+    );
+    assert.equal(
+      toUserFacingApiError(
+        'Approved signed mandate evidence is required.',
+        409,
+      ),
+      'Agrega y aprueba el mandato firmado antes de continuar.',
+    );
+    assert.equal(
+      toUserFacingApiError('Mandate signature date is invalid.', 400),
+      'La fecha de firma no puede ser futura.',
+    );
+  });
+
   it('maps dynamic organization ownership errors without leaking raw resources', () => {
     assert.equal(
-      toUserFacingApiError('Listing mandate must belong to this organization.', 400),
+      toUserFacingApiError(
+        'Listing mandate must belong to this organization.',
+        400,
+      ),
       'El recurso seleccionado no pertenece a esta organización.',
     );
     assert.equal(
-      toUserFacingApiError('Agent participant does not belong to this organization.', 400),
+      toUserFacingApiError(
+        'Agent participant does not belong to this organization.',
+        400,
+      ),
       'El recurso seleccionado no pertenece a esta organización.',
     );
   });
 
   it('maps shared money and percentage validation errors', () => {
     assert.equal(
-      toUserFacingApiError('reservationAmountCents must be integer cents.', 400),
+      toUserFacingApiError(
+        'reservationAmountCents must be integer cents.',
+        400,
+      ),
       'Ingresa un monto válido.',
     );
     assert.equal(
