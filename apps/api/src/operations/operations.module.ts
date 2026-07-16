@@ -7,6 +7,7 @@ import { DocumentChecklistTemplatesService } from './document-checklist-template
 import { DocumentsController } from './documents.controller.js';
 import { ListingsController } from './listings.controller.js';
 import { MandatesController } from './mandates.controller.js';
+import { MandatesService } from './mandates.service.js';
 import { OffersController } from './offers.controller.js';
 import { OperationsService } from './operations.service.js';
 import { ShowingsController } from './showings.controller.js';
@@ -28,6 +29,7 @@ import { WorkflowStagesController } from './workflow-stages.controller.js';
     OperationsService,
     BusinessDocumentChecklistsService,
     DocumentChecklistTemplatesService,
+    MandatesService,
   ],
 })
 export class OperationsModule {}

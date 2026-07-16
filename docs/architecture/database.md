@@ -35,20 +35,30 @@ La migración inicial de identidad fue aplicada en Supabase remoto y registrada 
 - Mantener enums explícitos para estados de negocio.
 - Verificar cambios remotos con SQL, `list_tables` y advisors de Supabase.
 
-## Modelos Futuros Principales
+## Modelos Operativos Principales
 
 - `Organization`
 - `User`
 - `Membership`
-- `Role`
 - `Property`
-- `Owner`
 - `Mandate`
+- `MandateEvent`
 - `Document`
-- `Workflow`
+- `WorkflowStage`
 - `Listing`
 - `Showing`
 - `Offer`
-- `Deal`
-- `Commission`
+- `Business`
+- `CommissionPlan`
 - `AuditLog`
+
+Las relaciones operativas sensibles combinan `organization_id` con el ID del
+recurso cuando el vínculo puede cruzar la frontera SaaS. En mandatos esto cubre
+propiedad, propietario, renovación, expediente y listing. Las transiciones se
+serializan con bloqueo de fila y advisory lock transaccional por
+`organization_id:property_id`.
+
+`MandateEvent` tiene RLS habilitado sin políticas públicas de forma
+intencional: el historial se consulta por la API autenticada, que valida la
+membership y el alcance del recurso. Una política de Data API solo se añadirá
+cuando exista un caso de uso explícito y probado.

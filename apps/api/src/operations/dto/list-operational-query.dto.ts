@@ -11,6 +11,7 @@ import {
 } from '@soyre/database';
 import {
   IsEnum,
+  IsISO8601,
   IsOptional,
   IsString,
   IsUUID,
@@ -34,6 +35,10 @@ export class ListDocumentsQueryDto {
   @IsOptional()
   @IsEnum(DocumentEntityType)
   entityType?: DocumentEntityType;
+
+  @IsOptional()
+  @IsUUID()
+  mandateId?: string;
 }
 
 export class ListMandatesQueryDto {
@@ -53,6 +58,18 @@ export class ListMandatesQueryDto {
   @IsOptional()
   @IsEnum(MandateType)
   type?: MandateType;
+
+  @IsOptional()
+  @IsUUID()
+  propertyId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  assignedUserId?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  expiringBefore?: string;
 }
 
 export class ListListingsQueryDto {

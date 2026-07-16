@@ -16,6 +16,7 @@
     "test:api-smoke": "pnpm --filter @soyre/api build && tsx --test tests/api-smoke.test.ts",
     "test:alpha": "pnpm --filter @soyre/api build && tsx --test tests/alpha/*.test.ts",
     "test:client-zero": "pnpm --filter @soyre/api build && tsx --test tests/alpha/api-alpha-smoke.test.ts",
+    "test:mandates-beta": "pnpm --filter @soyre/api build && tsx --test tests/alpha/mandate-lifecycle-api.test.ts",
     "test:e2e": "pnpm --filter @soyre/web test:e2e",
     "playwright:install": "pnpm --filter @soyre/web exec playwright install chromium",
     "format": "prettier --write .",
