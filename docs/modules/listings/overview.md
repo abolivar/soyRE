@@ -267,3 +267,10 @@ readiness localizado, acciones derivadas del estado y rol, edición de copy y
 canales, materiales privados con preview, reemplazo, archivo y orden, e
 historial cronológico. El workspace consume exclusivamente el contrato de #127
 y no simula publicaciones en portales externos.
+
+El lote #129 automatiza una matriz adversarial opt-in para lifecycle, venta y
+alquiler separados, mandato `BOTH`, roles, asignación, aislamiento A/B,
+idempotencia, carreras de creación y rollback de Storage. También agrega un E2E
+autenticado independiente para Chromium desktop y móvil. Los flags, puertos,
+prerrequisitos y resultados exactos están en
+`docs/testing/listings-adversarial-beta.md`.
