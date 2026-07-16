@@ -6,15 +6,19 @@
       "cache": false,
       "persistent": true
     },
+    "db:generate": {
+      "cache": false,
+      "outputs": ["src/generated/prisma/**"]
+    },
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["db:generate", "^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**", "build/**"]
     },
     "lint": {
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["^build", "^typecheck"],
+      "dependsOn": ["db:generate", "^build", "^typecheck"],
       "outputs": []
     },
     "test": {
