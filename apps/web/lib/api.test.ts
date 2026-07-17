@@ -111,6 +111,17 @@ describe('toUserFacingApiError', () => {
     );
   });
 
+  it('maps document storage and permission errors', () => {
+    assert.equal(
+      toUserFacingApiError('Document file exceeds the 15 MB limit.', 400),
+      'El archivo supera el límite de 15 MB.',
+    );
+    assert.equal(
+      toUserFacingApiError('Document upload role is not allowed.', 403),
+      'Tu rol no permite cargar archivos para este requisito.',
+    );
+  });
+
   it('uses Spanish status fallbacks for unknown English API errors', () => {
     assert.equal(
       toUserFacingApiError('Unexpected commission conflict occurred.', 409),

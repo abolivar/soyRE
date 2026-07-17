@@ -219,6 +219,37 @@ Reglas iniciales del beta:
 - `FINANCE`: consultar documentos financieros y de pago autorizados.
 - `READONLY`: lectura solo cuando la política del documento lo permita.
 
+## Workspace Operativo Del Negocio
+
+La ruta `/businesses/:businessId/documents` es la entrada principal al
+expediente durante el beta. El listado de negocios enlaza cada operación
+confirmada a esta ruta y conserva `organizationId` en la navegación para no
+inferir el ámbito cuando un usuario pertenece a más de una organización.
+La navegación global `/documents` funciona como selector de expedientes y ya no
+ofrece captura genérica de rutas de archivo o metadatos de Storage.
+
+La pantalla consume exclusivamente la respuesta autorizada del API y muestra:
+
+- Progreso de requisitos obligatorios, pendientes, completados y bloqueos.
+- Requisitos separados por estado y agrupados dentro de cada vista por la etapa
+  que pueden bloquear, con categoría, fecha y relación contractual visibles.
+- Archivos vigentes, descarga firmada y reemplazo como versión nueva.
+- Acciones de carga y revisión solo cuando el rol activo aparece en
+  `uploadRoles` o `reviewRoles` del requisito.
+- Requisitos personalizados con nombre, categoría abierta y motivo.
+- Historial de versiones y eventos sin revelar rutas privadas de Storage.
+- Estados explícitos de carga, expediente vacío, error y ausencia de permisos.
+
+Solo `OWNER` y `ADMIN` consultan plantillas e inicializan un expediente vacío
+desde la interfaz. Los demás roles reciben una indicación operativa sin intentar
+consultar la API administrativa. La pantalla no considera un KYC fijo ni crea
+documentos ficticios: cada requisito proviene de la plantilla de la organización
+o de una adición explícita y auditable del equipo.
+
+En pantallas estrechas, el resumen lateral pasa debajo del checklist, las
+acciones ocupan el ancho disponible y ningún control depende únicamente del
+color para comunicar estado o bloqueo.
+
 Los permisos finales se evalúan por membership activa, organización, relación
 con el negocio y sensibilidad del documento.
 
