@@ -40,7 +40,8 @@
   --warning-soft: #f8ead6;
   --danger: #b42318;
   --danger-soft: #fff0ed;
-  --sidebar: #0d3f38;
+  --brand-surface: #0d3f38;
+  --sidebar: var(--brand-surface);
   --sidebar-surface: #14524a;
   --sidebar-accent: #5fd9c4;
   --sidebar-text: #ffffff;
