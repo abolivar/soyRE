@@ -14,22 +14,17 @@ import {
   AuthUser,
   BusinessesResponse,
   BusinessListItem,
-  BusinessOperationType,
-  BusinessStatus,
   DashboardSummaryResponse,
 } from '../lib/api';
+import { activeMemberships, formatMoneyCents } from './operational-format';
 import {
-  activeMemberships,
-  businessStatusLabel,
-  businessStatusTone,
-  formatMoneyCents,
-  operationLabel,
-  operationTone,
-} from './operational-format';
+  buildFinanceData,
+  buildOperationData,
+  buildStatusData,
+} from './chart-data';
 import {
   BarChart,
   Button,
-  type ChartDatum,
   DonutChart,
   EmptyState,
   ErrorState,
@@ -296,69 +291,4 @@ export function ReportsWorkspace() {
       )}
     </>
   );
-}
-
-function buildOperationData(businesses: readonly BusinessListItem[]): ChartDatum[] {
-  const counts = new Map<BusinessOperationType, number>();
-
-  for (const business of businesses) {
-    counts.set(
-      business.operationType,
-      (counts.get(business.operationType) ?? 0) + 1,
-    );
-  }
-
-  return [...counts.entries()]
-    .map(([operation, value]) => ({
-      label: operationLabel(operation),
-      tone: operationTone(operation),
-      value,
-    }))
-    .sort((a, b) => b.value - a.value);
-}
-
-function buildStatusData(businesses: readonly BusinessListItem[]): ChartDatum[] {
-  const counts = new Map<BusinessStatus, number>();
-
-  for (const business of businesses) {
-    counts.set(business.status, (counts.get(business.status) ?? 0) + 1);
-  }
-
-  return [...counts.entries()]
-    .map(([status, value]) => ({
-      label: businessStatusLabel(status),
-      tone: businessStatusTone(status),
-      value,
-    }))
-    .sort((a, b) => b.value - a.value);
-}
-
-function buildFinanceData(
-  summary: DashboardSummaryResponse | null,
-): ChartDatum[] {
-  if (!summary) {
-    return [];
-  }
-
-  const { metrics } = summary;
-
-  const items: ChartDatum[] = [
-    {
-      label: 'Cobros vencidos',
-      tone: 'danger',
-      value: Number(metrics.overdueReceivables.amountCents),
-    },
-    {
-      label: 'Próximos 7 días',
-      tone: 'warning',
-      value: Number(metrics.nextSevenDaysReceivables.amountCents),
-    },
-    {
-      label: 'Comisiones',
-      tone: 'featured',
-      value: Number(metrics.pendingCommissions.amountCents),
-    },
-  ];
-
-  return items.filter((item) => item.value > 0);
 }
