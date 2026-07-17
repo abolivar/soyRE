@@ -20,6 +20,10 @@ import {
   CreateCustomDocumentRequirementDto,
   InstantiateBusinessDocumentChecklistDto,
 } from './dto/business-document-checklist.dto.js';
+import {
+  COMPLETE_DOCUMENT_REQUIREMENT_STATUSES,
+  documentRoleAllows,
+} from './business-document.constants.js';
 
 const DEFAULT_READ_ROLES = [
   MembershipRole.OWNER,
@@ -36,12 +40,6 @@ const DEFAULT_REVIEW_ROLES = [
   MembershipRole.OPERATIONS,
 ];
 
-const COMPLETE_STATUSES = new Set<DocumentRequirementStatus>([
-  DocumentRequirementStatus.APPROVED,
-  DocumentRequirementStatus.NOT_APPLICABLE,
-  DocumentRequirementStatus.REPLACED,
-]);
-
 const CHECKLIST_INCLUDE = {
   requirements: {
     include: {
@@ -51,6 +49,13 @@ const CHECKLIST_INCLUDE = {
       documents: {
         select: {
           id: true,
+          lineageId: true,
+          version: true,
+          isCurrent: true,
+          replacesDocumentId: true,
+          replacementReason: true,
+          replacedAt: true,
+          replacedByUserId: true,
           name: true,
           documentType: true,
           status: true,
@@ -63,6 +68,19 @@ const CHECKLIST_INCLUDE = {
           updatedAt: true,
         },
         orderBy: { createdAt: 'desc' as const },
+      },
+      events: {
+        select: {
+          id: true,
+          documentId: true,
+          fromStatus: true,
+          toStatus: true,
+          reason: true,
+          actorUserId: true,
+          metadata: true,
+          createdAt: true,
+        },
+        orderBy: [{ createdAt: 'asc' as const }, { id: 'asc' as const }],
       },
       client: { select: { id: true, displayName: true } },
       participant: {
@@ -688,17 +706,20 @@ function requirementSummary(
   }>,
 ) {
   const completed = requirements.filter((item) =>
-    COMPLETE_STATUSES.has(item.status),
+    COMPLETE_DOCUMENT_REQUIREMENT_STATUSES.has(item.status),
   );
   const pending = requirements.filter(
-    (item) => item.required && !COMPLETE_STATUSES.has(item.status),
+    (item) =>
+      item.required && !COMPLETE_DOCUMENT_REQUIREMENT_STATUSES.has(item.status),
   );
   const required = requirements.filter((item) => item.required);
   const completedRequired = required.filter((item) =>
-    COMPLETE_STATUSES.has(item.status),
+    COMPLETE_DOCUMENT_REQUIREMENT_STATUSES.has(item.status),
   );
   const blockers = requirements.filter(
-    (item) => item.blocksTransition && !COMPLETE_STATUSES.has(item.status),
+    (item) =>
+      item.blocksTransition &&
+      !COMPLETE_DOCUMENT_REQUIREMENT_STATUSES.has(item.status),
   );
   return {
     total: requirements.length,
@@ -720,7 +741,7 @@ function requirementSummary(
 }
 
 function canRead(roles: MembershipRole[], role: MembershipRole) {
-  return roles.includes(role);
+  return documentRoleAllows(roles, role);
 }
 
 function relativeDate(base: Date, days: number | null) {

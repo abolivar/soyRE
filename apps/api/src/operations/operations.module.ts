@@ -3,6 +3,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { BusinessDocumentChecklistsController } from './business-document-checklists.controller.js';
 import { BusinessDocumentChecklistsService } from './business-document-checklists.service.js';
 import { BusinessDocumentFilesService } from './business-document-files.service.js';
+import { BusinessDocumentLifecycleService } from './business-document-lifecycle.service.js';
 import { DocumentChecklistTemplatesController } from './document-checklist-templates.controller.js';
 import { DocumentChecklistTemplatesService } from './document-checklist-templates.service.js';
 import { DocumentsController } from './documents.controller.js';
@@ -31,6 +32,7 @@ import { WorkflowStagesController } from './workflow-stages.controller.js';
     OperationsService,
     BusinessDocumentChecklistsService,
     BusinessDocumentFilesService,
+    BusinessDocumentLifecycleService,
     DocumentChecklistTemplatesService,
     SupabaseDocumentStorageService,
     MandatesService,
