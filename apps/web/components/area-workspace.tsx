@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  BarChart3,
   CalendarDays,
   ClipboardCheck,
   DollarSign,
@@ -95,7 +94,6 @@ export type AreaKey =
   | 'mandates'
   | 'offers'
   | 'receivables'
-  | 'reports'
   | 'settlements'
   | 'showings';
 
@@ -272,19 +270,6 @@ const areaConfig: Record<AreaKey, AreaConfig> = {
       'Los cobros reales se derivan del payment plan, no de tareas manuales sueltas.',
     sideTitle: 'Regla de cobranza',
     title: 'Cobranza',
-  },
-  reports: {
-    description:
-      'Lecturas operativas para ventas, cobranza, comisiones y actividad.',
-    emptyDescription:
-      'Los reportes aparecerán a medida que existan negocios y actividad.',
-    emptyTitle: 'Sin reportes calculables',
-    eyebrow: 'Inteligencia operativa',
-    icon: BarChart3,
-    sideDescription:
-      'Los reportes se alimentan de relaciones existentes, no de respaldos manuales.',
-    sideTitle: 'Fuente de verdad',
-    title: 'Reportes',
   },
   settlements: {
     description: 'Liquidación y pago de comisiones aprobadas.',
@@ -1401,8 +1386,6 @@ function buildRows(area: AreaKey, data: WorkspaceData): AreaRow[] {
             ? paymentStatusTone(business.nextPayment.status)
             : 'neutral',
         }));
-    case 'reports':
-      return buildReportRows(data);
     case 'settlements':
       return data.businesses
         .filter((business) => business.permissionHints.canViewCommissions)
@@ -1443,43 +1426,6 @@ function buildMetrics(
   data: WorkspaceData,
   rows: AreaRow[],
 ): Metric[] {
-  const summary = data.summary;
-
-  if (area === 'reports' && summary) {
-    return [
-      {
-        detail: 'Negocios abiertos en flujo.',
-        icon: ClipboardCheck,
-        label: 'Negocios',
-        tone: 'primary',
-        value: String(summary.metrics.openBusinesses),
-      },
-      {
-        detail: 'Cobros vencidos.',
-        icon: DollarSign,
-        label: 'Vencido',
-        tone: 'danger',
-        value: formatMoneyCents(summary.metrics.overdueReceivables.amountCents),
-      },
-      {
-        detail: 'Cobros de los próximos 7 días.',
-        icon: CalendarDays,
-        label: '7 días',
-        tone: 'warning',
-        value: formatMoneyCents(
-          summary.metrics.nextSevenDaysReceivables.amountCents,
-        ),
-      },
-      {
-        detail: 'Comisiones pendientes.',
-        icon: TrendingUp,
-        label: 'Comisiones',
-        tone: 'featured',
-        value: formatMoneyCents(summary.metrics.pendingCommissions.amountCents),
-      },
-    ];
-  }
-
   return [
     {
       detail: 'Registros visibles con la organización activa.',
@@ -1508,59 +1454,6 @@ function buildMetrics(
       label: 'Acciones',
       tone: 'warning',
       value: String(data.tasks.length),
-    },
-  ];
-}
-
-function buildReportRows(data: WorkspaceData): AreaRow[] {
-  const summary = data.summary;
-
-  if (!summary) {
-    return [];
-  }
-
-  return [
-    {
-      amount: String(summary.metrics.openBusinesses),
-      context: 'Pipeline',
-      date: 'Actual',
-      id: 'report-businesses',
-      meta: 'Negocios por estado',
-      status: 'Disponible',
-      title: 'Negocios abiertos',
-      tone: 'primary',
-    },
-    {
-      amount: formatMoneyCents(summary.metrics.overdueReceivables.amountCents),
-      context: 'Cobranza',
-      date: 'Actual',
-      id: 'report-overdue',
-      meta: `${summary.metrics.overdueReceivables.count} cuotas`,
-      status: 'Disponible',
-      title: 'Cobros vencidos',
-      tone: summary.metrics.overdueReceivables.count > 0 ? 'danger' : 'success',
-    },
-    {
-      amount: formatMoneyCents(
-        summary.metrics.nextSevenDaysReceivables.amountCents,
-      ),
-      context: 'Cobranza',
-      date: '7 días',
-      id: 'report-next-seven',
-      meta: `${summary.metrics.nextSevenDaysReceivables.count} cuotas`,
-      status: 'Disponible',
-      title: 'Cobros por vencer',
-      tone: 'warning',
-    },
-    {
-      amount: formatMoneyCents(summary.metrics.pendingCommissions.amountCents),
-      context: 'Finanzas',
-      date: 'Actual',
-      id: 'report-commissions',
-      meta: `${summary.metrics.pendingCommissions.count} asignaciones`,
-      status: 'Disponible',
-      title: 'Comisiones pendientes',
-      tone: 'featured',
     },
   ];
 }
