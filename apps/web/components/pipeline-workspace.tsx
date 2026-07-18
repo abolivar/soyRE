@@ -26,16 +26,19 @@ import {
 } from './operational-format';
 import {
   Button,
+  DonutChart,
   EmptyState,
   ErrorState,
   FilterBar,
   LoadingState,
   PageHeader,
   SearchInput,
+  SectionPanel,
   Select,
   StatusBadge,
   type Tone,
 } from '@soyre/ui';
+import { buildOperationData } from './chart-data';
 
 type PipelineFilters = {
   search: string;
@@ -144,6 +147,10 @@ export function PipelineWorkspace() {
         (membership) => membership.organizationId === activeOrganizationId,
       ) ?? null,
     [activeOrganizationId, organizations],
+  );
+  const operationData = useMemo(
+    () => buildOperationData(businesses),
+    [businesses],
   );
   const totals = useMemo(
     () => ({
@@ -333,8 +340,27 @@ export function PipelineWorkspace() {
           title="Sin negocios en el filtro"
         />
       ) : (
-        <section className="kanban-board" aria-label="Funnel comercial">
-          {columns.map((column) => {
+        <>
+          <section
+            aria-label="Negocios por operación"
+            className="stack"
+            style={{ marginBottom: 18 }}
+          >
+            <SectionPanel
+              description="Mezcla de operaciones en el filtro actual."
+              title="Negocios por operación"
+            >
+              <DonutChart
+                ariaLabel="Negocios por operación"
+                centerLabel="negocios"
+                centerValue={String(businesses.length)}
+                data={operationData}
+              />
+            </SectionPanel>
+          </section>
+
+          <section className="kanban-board" aria-label="Funnel comercial">
+            {columns.map((column) => {
             const columnBusinesses = businesses.filter((business) =>
               column.statuses.includes(business.status),
             );
@@ -401,7 +427,8 @@ export function PipelineWorkspace() {
               </section>
             );
           })}
-        </section>
+          </section>
+        </>
       )}
     </>
   );
