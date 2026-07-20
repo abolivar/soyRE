@@ -1786,6 +1786,234 @@
 }
 
 /* ============================================================
+ * Charts — dataviz primitives (BarChart, DonutChart, ChartLegend)
+ * Colors come from --viz-* (aliased to semantic tones). Text wears
+ * ink tokens, never the series color.
+ * ============================================================ */
+
+/* Solid tone swatch — reused by legend dots. */
+.chart-swatch {
+  border-radius: 3px;
+  flex: 0 0 auto;
+  height: 10px;
+  width: 10px;
+}
+
+.chart-swatch.tone-primary {
+  background: var(--viz-primary);
+}
+
+.chart-swatch.tone-rent {
+  background: var(--viz-rent);
+}
+
+.chart-swatch.tone-featured {
+  background: var(--viz-featured);
+}
+
+.chart-swatch.tone-success {
+  background: var(--viz-success);
+}
+
+.chart-swatch.tone-warning {
+  background: var(--viz-warning);
+}
+
+.chart-swatch.tone-danger {
+  background: var(--viz-danger);
+}
+
+.chart-swatch.tone-neutral {
+  background: var(--viz-neutral);
+}
+
+/* Bar chart — horizontal, HTML + tokens. */
+.bar-chart {
+  display: grid;
+  gap: 12px;
+}
+
+.bar-chart-row {
+  align-items: center;
+  column-gap: 12px;
+  display: grid;
+  grid-template-columns: minmax(72px, 26%) minmax(0, 1fr) auto;
+}
+
+.bar-chart-label {
+  color: var(--ink);
+  font-size: 0.84rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-chart-track {
+  background: var(--viz-track);
+  border-radius: 999px;
+  display: block;
+  height: 10px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.bar-chart-fill {
+  border-radius: 999px;
+  display: block;
+  height: 100%;
+  min-width: 0;
+  transition: width var(--dur-slow, 0.55s) var(--ease-out, ease-out);
+}
+
+.bar-chart-fill.tone-primary {
+  background: var(--viz-primary);
+}
+
+.bar-chart-fill.tone-rent {
+  background: var(--viz-rent);
+}
+
+.bar-chart-fill.tone-featured {
+  background: var(--viz-featured);
+}
+
+.bar-chart-fill.tone-success {
+  background: var(--viz-success);
+}
+
+.bar-chart-fill.tone-warning {
+  background: var(--viz-warning);
+}
+
+.bar-chart-fill.tone-danger {
+  background: var(--viz-danger);
+}
+
+.bar-chart-fill.tone-neutral {
+  background: var(--viz-neutral);
+}
+
+.bar-chart-value {
+  color: var(--ink-strong);
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Donut chart — SVG + tokens. */
+.donut-chart {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.donut-chart-figure {
+  flex: 0 0 auto;
+  height: 132px;
+  position: relative;
+  width: 132px;
+}
+
+.donut-chart-figure svg {
+  height: 100%;
+  width: 100%;
+}
+
+.donut-track {
+  stroke: var(--viz-track);
+  stroke-width: 4;
+}
+
+.donut-segment {
+  stroke-width: 4;
+}
+
+.donut-segment.tone-primary {
+  stroke: var(--viz-primary);
+}
+
+.donut-segment.tone-rent {
+  stroke: var(--viz-rent);
+}
+
+.donut-segment.tone-featured {
+  stroke: var(--viz-featured);
+}
+
+.donut-segment.tone-success {
+  stroke: var(--viz-success);
+}
+
+.donut-segment.tone-warning {
+  stroke: var(--viz-warning);
+}
+
+.donut-segment.tone-danger {
+  stroke: var(--viz-danger);
+}
+
+.donut-segment.tone-neutral {
+  stroke: var(--viz-neutral);
+}
+
+.donut-chart-center {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
+  text-align: center;
+}
+
+.donut-chart-center strong {
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.donut-chart-center span {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+/* Legend — shared. */
+.chart-legend {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.chart-legend-item {
+  align-items: center;
+  column-gap: 8px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.chart-legend-label {
+  color: var(--ink);
+  font-size: 0.86rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-legend-value {
+  color: var(--ink-strong);
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ============================================================
  * Reduced motion — keep opacity/color cues, drop movement
  * ============================================================ */
 

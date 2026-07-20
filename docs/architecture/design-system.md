@@ -100,3 +100,17 @@ import { PageHeader, MetricCard, SectionPanel } from "@soyre/ui";
 - No usar hex literals en componentes; siempre tokens.
 - No mezclar colores de tipo de operación (teal/slate/amber) en una misma primitiva — la primitiva recibe la tonalidad por prop (`tone`).
 - No agregar primitivas a `apps/web/components/` que sean genéricamente reutilizables — esas van a `packages/ui`. `apps/web/components/` queda solo para componentes específicos del producto (workspaces, layouts de app, formularios concretos).
+
+## Charts (dataviz)
+
+Primitivas de visualización de datos propias, SVG/HTML + tokens, sin dependencias (per ADR-0005):
+
+- **`BarChart`** — barras categóricas horizontales (HTML + tokens, mismo idioma que `ProgressMeter`). Cada barra lleva su label y valor visibles.
+- **`DonutChart`** — composición (SVG con `stroke-dasharray`, `pathLength=100`). Centro opcional + leyenda.
+- **`ChartLegend`** — leyenda compartida (swatch de tono + label + valor).
+
+Reglas (además de las generales):
+
+- **Color por tono, no paleta arcoíris.** Cada dato lleva `tone?: Tone`; los colores salen de `--viz-*` (aliased a los tonos semánticos existentes). Un gráfico "por estado" usa el mismo color que el badge de ese estado. Serie de una sola dimensión → teal (`--viz-primary`).
+- **Nunca identidad solo por color.** Los tonos del sistema tienen solapamiento CVD (validado con el skill `dataviz`: danger↔warning ΔE 3.9 deutan; neutral < 3:1). Por eso **cada barra/segmento lleva label textual** y el donut lleva leyenda siempre. El texto usa tokens de tinta, nunca el color de la serie.
+- **Datos snapshot** (composición/distribución). Tendencias temporales (Sparkline/StatTrend) quedan diferidas hasta que la API exponga series históricas.

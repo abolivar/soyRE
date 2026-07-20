@@ -49,4 +49,17 @@
   --sidebar-subtle: #6fa097;
   --sidebar-border: rgba(255, 255, 255, 0.08);
   --shadow-soft: 0 18px 44px rgba(20, 20, 18, 0.08);
+
+  /* Data visualization — series map to existing semantic tones, no new hues.
+   * A "negocios por estado" chart uses the same color the badge already has. */
+  --viz-track: var(--surface-strong);
+  --viz-grid: var(--line);
+  --viz-label: var(--muted);
+  --viz-primary: var(--primary);
+  --viz-rent: var(--rent);
+  --viz-featured: var(--featured);
+  --viz-success: var(--success);
+  --viz-warning: var(--warning);
+  --viz-danger: var(--danger);
+  --viz-neutral: var(--muted-soft);
 }
