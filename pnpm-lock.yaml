@@ -17,6 +17,9 @@ importers:
       '@types/node':
         specifier: ^22.20.0
         version: 22.20.0
+      corepack:
+        specifier: 0.35.0
+        version: 0.35.0
       eslint:
         specifier: ^10.6.0
         version: 10.6.0(jiti@2.7.0)
@@ -1258,6 +1261,11 @@ packages:
   cookie@2.0.0:
     resolution: {integrity: sha512-hRSFuKJ6SYHrFVNltQdagQFMk7e0Q/VrORTGqZGyUAmmhA3EwPeldHCTg0HqUaDodQOfQDe7qXuOtpf4lwCsaA==}
     engines: {node: '>=22'}
+
+  corepack@0.35.0:
+    resolution: {integrity: sha512-9BuIGHDFE7Zieor1CeRsvt7X7AJFEuJ6OnbSbsVprq83ChDFoBh1wP98NeUS9FT3ZwlzFllPElXcz/OiDf0YGw==}
+    engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
+    hasBin: true
 
   cors@2.8.6:
     resolution: {integrity: sha512-tJtZBBHA6vjIAaF6EnIaq6laBBP9aq/Y3ouVJjEfoHbRBcHBAHYcMh/w8LDrk2PvIMMq8gmopa5D4V8RmbrxGw==}
@@ -3270,6 +3278,8 @@ snapshots:
   cookie@1.1.1: {}
 
   cookie@2.0.0: {}
+
+  corepack@0.35.0: {}
 
   cors@2.8.6:
     dependencies:

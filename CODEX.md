@@ -28,8 +28,10 @@ Principios no negociables:
 - Logo principal: `apps/web/public/brands/soypms/logo-teal.svg`.
 - Sello para sidebar, favicon y espacios compactos: `apps/web/public/brands/soypms/seal-teal.svg`.
 - Fuente UI/marca: DM Sans self-hosted en `apps/web/public/fonts/dm-sans`.
-- Runtime: Node.js 22 LTS.
-- Package manager: pnpm.
+- Runtime soportado y de despliegue: Node.js 22 LTS (`22.x`).
+- Runtime local reproducible: Node.js `22.22.2`, declarado en `.nvmrc` y
+  `pnpm-workspace.yaml`.
+- Package manager: pnpm `10.33.2`, declarado en `package.json`.
 - Monorepo: pnpm workspaces.
 - Orquestación: Turborepo.
 - Frontend: Next.js App Router.
@@ -60,6 +62,10 @@ Las siguientes fases deben construirse encima de esa base, respetando sesión, m
 
 Antes de implementar:
 
+- Ejecutar comandos del proyecto mediante `pnpm`; el workspace selecciona el
+  Node local reproducible aunque la shell padre tenga otra version.
+- Confirmar el contrato con `pnpm runtime:check` cuando se diagnostique el
+  entorno o el despliegue.
 - Leer el documento de módulo en `docs/modules/*` si existe.
 - Leer `docs/architecture/*` si el cambio toca arquitectura.
 - Revisar migraciones y schema si el cambio toca datos.

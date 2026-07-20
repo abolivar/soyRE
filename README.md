@@ -75,10 +75,20 @@ No introducir Docker, Docker Compose, VM ni Postgres local.
 ## Setup Local
 
 ```bash
-nvm use
 pnpm install
+pnpm runtime:check
 cp .env.example .env
 ```
+
+El workspace selecciona Node `22.22.2` para todos los scripts ejecutados con
+pnpm, incluso si la terminal fue abierta con otro Node. `.nvmrc` conserva la
+misma version para quien prefiera ejecutar `nvm use`. El contrato falla antes de
+iniciar Next, Nest, Prisma o Turbo cuando el proceso no usa Node `22.x` o pnpm
+`10.33.2`.
+
+No ejecutes los scripts del repositorio con un `node` global. Usa `pnpm <script>`
+para que la seleccion del runtime sea propia de SoyRE y no afecte otros
+proyectos instalados en la misma maquina.
 
 El store de pnpm debe permanecer fuera del workspace. El proyecto usa la
 ubicacion global predeterminada de pnpm porque Next/Turbopack observa la raiz
@@ -98,6 +108,30 @@ explicacion accionable si detecta el store heredado. No borra archivos ni mueve
 el store automaticamente. El comando de desarrollo reenvia las variables del
 entorno local a las aplicaciones del monorepo; build y produccion conservan sus
 configuraciones independientes.
+
+## Vercel
+
+El proyecto `soypms-alpha` usa la raiz del monorepo y Node `22.x`. Vercel solo
+garantiza la version mayor y actualiza automaticamente minor y patch; por eso
+`package.json#engines.node` declara `22.x`, mientras `.nvmrc` fija `22.22.2`
+para desarrollo reproducible.
+
+`vercel.json` versiona el contrato de build:
+
+- instalacion: `pnpm install --frozen-lockfile`;
+- build: `pnpm build:web`, que ejecuta `pnpm runtime:check` antes de Turbo;
+- salida: `apps/web/.next`;
+- package manager: pnpm `10.33.2` mediante `packageManager` y Corepack `0.35.0`.
+
+La version de la CLI de Vercel esta fijada dentro de `pnpm vercel:build` y se
+ejecuta de forma aislada con `pnpm dlx`; Corepack si es una dependencia ligera
+del workspace. No uses una CLI global, porque heredaria el Node activo de la
+terminal y podria omitir Corepack.
+
+La variable `ENABLE_EXPERIMENTAL_COREPACK=1` debe existir en Development,
+Preview y Production. La configuracion del dashboard debe conservar Node
+`22.x`; `package.json` actua como respaldo versionado y tiene precedencia para
+la seleccion del major.
 
 El `.env` o `.env.local` local puede contener `DATABASE_URL` y `DIRECT_URL` solo contra Supabase remoto. No se debe introducir Docker, VM ni Postgres local. Para desarrollo visual puedes correr el frontend:
 

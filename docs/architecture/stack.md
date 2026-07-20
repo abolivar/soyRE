@@ -3,8 +3,9 @@
 ## Decisión
 
 - **Runtime y orquestación**
-  - Node.js 22 LTS.
-  - pnpm 10 con workspaces.
+  - Node.js 22 LTS como rango soportado y runtime de Vercel.
+  - Node.js 22.22.2 como runtime local reproducible de los scripts pnpm.
+  - pnpm 10.33.2 con workspaces.
   - Turborepo.
 
 - **Frontend (`apps/web`)**
@@ -45,6 +46,32 @@ La base PostgreSQL gestionada vive en Supabase. Los cambios de schema y datos ad
 No se usará una librería de componentes de terceros (shadcn/ui, Radix, MUI, Chakra) como base. Las primitivas se construyen propias en `packages/ui` sobre el sistema de clases CSS definido en `apps/web/app/globals.css` y los tokens de `design.md`. Esta decisión se revisa solo si aparece una necesidad concreta documentada (por ejemplo, Radix Primitives para accesibilidad compleja), no por defecto.
 
 Decisión registrada en `docs/decisions/adr-0005-design-system-home.md`.
+
+## Contrato De Runtime Y Despliegue
+
+El contrato versionado se reparte deliberadamente entre cuatro archivos, sin
+duplicar responsabilidades:
+
+- `.nvmrc` fija Node `22.22.2` para nvm.
+- `pnpm-workspace.yaml` hace que pnpm use ese Node en los scripts del proyecto y
+  rechace engines o versiones de package manager incompatibles.
+- `package.json` declara Node `22.x` para Vercel y pnpm `10.33.2` para Corepack.
+- `vercel.json` ejecuta instalacion congelada y el build web con el chequeo de
+  runtime como primera etapa.
+- `package.json#scripts.vercel:build` fija y aisla la CLI de Vercel mediante
+  `pnpm dlx`; `devDependencies` incluye Corepack para no depender de su
+  instalacion global.
+
+Vercel actualiza automaticamente el minor y patch de Node 22 para builds y
+funciones. El chequeo acepta cualquier `22.x`, pero el desarrollo mediante pnpm
+continua usando `22.22.2`. Esto conserva compatibilidad con el proveedor sin
+perder reproducibilidad local.
+
+Los archivos de contrato forman parte de `globalDependencies` en Turbo. Un
+cambio de Node, pnpm o politica del workspace invalida el cache compartido y
+evita reutilizar resultados generados bajo un contrato anterior.
+
+Decisión registrada en `docs/decisions/adr-0006-node-pnpm-vercel-runtime.md`.
 
 ## Principios
 

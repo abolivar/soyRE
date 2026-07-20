@@ -1,3 +1,10 @@
 packages:
-  - "apps/*"
-  - "packages/*"
+  - 'apps/*'
+  - 'packages/*'
+
+# Repo-local toolchain contract. pnpm executes project scripts with this exact
+# Node release even when the parent shell was opened with another Node version.
+useNodeVersion: 22.22.2
+engineStrict: true
+managePackageManagerVersions: true
+packageManagerStrictVersion: true
