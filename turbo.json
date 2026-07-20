@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": [".nvmrc", "package.json", "pnpm-workspace.yaml"],
+  "globalPassThroughEnv": ["ENABLE_EXPERIMENTAL_COREPACK"],
   "tasks": {
     "dev": {
       "dependsOn": ["^build"],
@@ -13,6 +14,7 @@
     },
     "build": {
       "dependsOn": ["db:generate", "^build"],
+      "env": ["API_PROXY_URL"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**", "build/**"]
     },
     "lint": {
