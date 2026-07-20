@@ -1377,6 +1377,7 @@ model Document {
   propertyId         String?            @map("property_id") @db.Uuid
   businessId         String?            @map("business_id") @db.Uuid
   businessContractId String?            @map("business_contract_id") @db.Uuid
+  requirementId      String?            @map("requirement_id") @db.Uuid
   mandateId          String?            @map("mandate_id") @db.Uuid
   name               String
   documentType       String             @map("document_type")
@@ -1399,6 +1400,7 @@ model Document {
   property           Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   business           Business?          @relation(fields: [businessId], references: [id], onDelete: Cascade)
   businessContract   BusinessContract?  @relation(fields: [businessContractId], references: [id], onDelete: Cascade)
+  requirement        BusinessDocumentRequirement? @relation(fields: [organizationId, businessId, requirementId], references: [organizationId, businessId, id], onDelete: Restrict, map: "documents_requirement_business_fkey")
   mandate            Mandate?           @relation(fields: [organizationId, mandateId], references: [organizationId, id], onDelete: Restrict, map: "documents_mandate_org_fkey")
   uploadedByUser     User?              @relation("UploadedDocuments", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
   reviewedByUser     User?              @relation("ReviewedDocuments", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
@@ -1409,6 +1411,7 @@ model Document {
   @@index([propertyId])
   @@index([businessId])
   @@index([businessContractId])
+  @@index([organizationId, businessId, requirementId], map: "documents_requirement_business_idx")
   @@index([organizationId, mandateId])
   @@map("documents")
 }
@@ -1550,8 +1553,10 @@ model BusinessDocumentRequirement {
   businessContract    BusinessContract?         @relation(fields: [businessId, businessContractId], references: [businessId, id], onDelete: Restrict, map: "business_document_requirements_contract_business_fkey")
   participant         BusinessParticipant?      @relation(fields: [organizationId, businessId, participantId], references: [organizationId, businessId, id], onDelete: Restrict, map: "business_document_requirements_participant_business_fkey")
   createdByUser       User?                     @relation("CreatedBusinessDocumentRequirements", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  documents           Document[]
 
   @@unique([checklistId, key])
+  @@unique([organizationId, businessId, id], map: "business_document_requirements_org_business_id_key")
   @@index([organizationId, businessId, status])
   @@index([organizationId, checklistId, sortOrder])
   @@index([organizationId, templateItemId])

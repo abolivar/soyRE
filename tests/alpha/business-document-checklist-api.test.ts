@@ -153,6 +153,106 @@ test(
     assert.equal(repeated.body.created, false);
     assert.equal(repeated.body.checklist.id, instantiated.body.checklist.id);
 
+    const reservation = instantiated.body.checklist.requirements.find(
+      (item) => item.category === 'RESERVA',
+    );
+    assert.ok(reservation);
+    const crossOrganizationUpload = await requestMultipart(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/files`,
+      ownerB.cookie,
+      ownerB.organizationId,
+      new File(['%PDF-1.7\n%%EOF'], 'reserva.pdf', {
+        type: 'application/pdf',
+      }),
+    );
+    assert.equal(crossOrganizationUpload.status, 404);
+    assert.equal(
+      await prisma.document.count({ where: { requirementId: reservation.id } }),
+      0,
+    );
+
+    const spoofedUpload = await requestMultipart(
+      server.baseUrl,
+      `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/files`,
+      ownerA.cookie,
+      ownerA.organizationId,
+      new File(['not really a pdf'], 'reserva.pdf', {
+        type: 'application/pdf',
+      }),
+    );
+    assert.equal(spoofedUpload.status, 400);
+    assert.equal(
+      await prisma.document.count({ where: { requirementId: reservation.id } }),
+      0,
+    );
+
+    if (!process.env.SUPABASE_SECRET_KEY) {
+      const unconfiguredStorage = await requestMultipart(
+        server.baseUrl,
+        `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/files`,
+        ownerA.cookie,
+        ownerA.organizationId,
+        new File(['%PDF-1.7\n%%EOF'], 'reserva.pdf', {
+          type: 'application/pdf',
+        }),
+      );
+      assert.equal(unconfiguredStorage.status, 503);
+      assert.equal(
+        await prisma.document.count({
+          where: { requirementId: reservation.id },
+        }),
+        0,
+      );
+    } else {
+      const uploaded = await requestMultipart(
+        server.baseUrl,
+        `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/files`,
+        ownerA.cookie,
+        ownerA.organizationId,
+        new File(['%PDF-1.7\n%%EOF'], 'reserva.pdf', {
+          type: 'application/pdf',
+        }),
+      );
+      assert.equal(uploaded.status, 201);
+      const uploadBody = (await uploaded.json()) as {
+        document: { id: string; storagePath?: string };
+      };
+      assert.equal(uploadBody.document.storagePath, undefined);
+      const stored = await prisma.document.findUniqueOrThrow({
+        where: { id: uploadBody.document.id },
+      });
+      assert.ok(stored.storagePath);
+
+      try {
+        const crossOrganizationDownload = await requestJson(
+          server.baseUrl,
+          `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/files/${stored.id}/download?organizationId=${ownerB.organizationId}`,
+          { cookie: ownerB.cookie },
+        );
+        assertStatus(crossOrganizationDownload, 404);
+
+        const download = await requestJson<{
+          signedUrl: string;
+          expiresIn: number;
+          document: { storagePath?: string };
+        }>(
+          server.baseUrl,
+          `/businesses/${contextA.businessId}/document-checklists/${instantiated.body.checklist.id}/requirements/${reservation.id}/files/${stored.id}/download?organizationId=${ownerA.organizationId}`,
+          { cookie: ownerA.cookie },
+        );
+        assertStatus(download, 200);
+        assert.equal(download.body.expiresIn, 60);
+        assert.equal(download.body.document.storagePath, undefined);
+        const privateFile = await fetch(download.body.signedUrl);
+        assert.equal(privateFile.status, 200);
+        assert.match(await privateFile.text(), /^%PDF-/);
+      } finally {
+        await deleteStorageFixture(stored.storagePath);
+        await prisma.document.delete({ where: { id: stored.id } });
+      }
+    }
+
     const custom = await requestJson<{
       created: boolean;
       requirement: ChecklistResponse['checklist']['requirements'][number];
@@ -415,6 +515,40 @@ async function createBusinessContext(organizationId: string, suffix: string) {
     participantId: participant.id,
     contractId: contract.id,
   };
+}
+
+async function requestMultipart(
+  baseUrl: string,
+  path: string,
+  cookie: string,
+  organizationId: string,
+  file: File,
+) {
+  const body = new FormData();
+  body.set('organizationId', organizationId);
+  body.set('file', file);
+  return fetch(`${baseUrl}${path}`, {
+    method: 'POST',
+    headers: { cookie },
+    body,
+  });
+}
+
+async function deleteStorageFixture(path: string) {
+  const url = process.env.SUPABASE_URL;
+  const secret = process.env.SUPABASE_SECRET_KEY;
+  assert.ok(url && secret);
+  const response = await fetch(
+    `${url}/storage/v1/object/business-documents/${encodeURI(path)}`,
+    {
+      method: 'DELETE',
+      headers: { apikey: secret },
+    },
+  );
+  assert.ok(
+    response.ok,
+    `Storage fixture cleanup failed: ${await response.text()}`,
+  );
 }
 
 async function register(baseUrl: string, email: string, slug: string) {
