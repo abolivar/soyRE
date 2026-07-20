@@ -62,6 +62,9 @@ importers:
       '@soyre/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@supabase/supabase-js':
+        specifier: ^2.108.2
+        version: 2.108.2
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3

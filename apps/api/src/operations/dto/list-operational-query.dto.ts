@@ -85,6 +85,18 @@ export class ListListingsQueryDto {
   @IsOptional()
   @IsEnum(ListingStatus)
   status?: ListingStatus;
+
+  @IsOptional()
+  @IsEnum(BusinessOperationType)
+  operationType?: BusinessOperationType;
+
+  @IsOptional()
+  @IsUUID()
+  propertyId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  assignedUserId?: string;
 }
 
 export class ListShowingsQueryDto {
