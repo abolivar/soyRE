@@ -6,7 +6,7 @@
  * Decision: docs/decisions/adr-0005-design-system-home.md.
  */
 
-export type { Tone } from './types';
+export type { ChartDatum, Tone } from './types';
 
 // Atoms
 export { Button } from './components/Button';
@@ -61,3 +61,11 @@ export { ConfirmDialog } from './components/ConfirmDialog';
 export { FormDrawer } from './components/FormDrawer';
 export { Tabs } from './components/Tabs';
 export type { TabItem, TabsProps } from './components/Tabs';
+
+// Charts
+export { BarChart } from './components/BarChart';
+export type { BarChartProps } from './components/BarChart';
+export { DonutChart } from './components/DonutChart';
+export type { DonutChartProps } from './components/DonutChart';
+export { ChartLegend } from './components/ChartLegend';
+export type { ChartLegendProps } from './components/ChartLegend';
