@@ -1,5 +1,13 @@
 # Prueba Cliente Cero Alpha
 
+## Guía Para El Tester
+
+La ejecución manual debe comenzar por la
+[guía de alpha testing guiado](./guided-alpha-tester.md). Esa guía define las
+reglas del juego, la trazabilidad en GitHub, la severidad, la evidencia mínima y
+el recorrido guiado de punta a punta. Este documento conserva el contrato
+resumido de aceptación y la macroprueba automatizada.
+
 ## Objetivo
 
 Esta prueba es el eje de aceptacion funcional para abrir el alpha de SoyPMS con
