@@ -14,6 +14,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   apiFetch,
   AuthUser,
+  BusinessesResponse,
+  BusinessListItem,
   DashboardSummaryResponse,
 } from '../lib/api';
 import {
@@ -28,8 +30,10 @@ import {
   scheduledActionLabel,
   scheduledActionTone,
 } from './operational-format';
+import { buildFinanceData, buildStatusData } from './chart-data';
 import {
   ActivityTimeline,
+  BarChart,
   Button,
   DataTable,
   EmptyState,
@@ -50,6 +54,7 @@ export function DashboardWorkspace() {
     null,
   );
   const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null);
+  const [businesses, setBusinesses] = useState<BusinessListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -97,6 +102,7 @@ export function DashboardWorkspace() {
   async function refreshDashboard(organizationId = activeOrganizationId) {
     if (!organizationId) {
       setSummary(null);
+      setBusinesses([]);
       setIsLoading(false);
       return;
     }
@@ -104,12 +110,19 @@ export function DashboardWorkspace() {
     setIsLoading(true);
     setError(null);
     const query = new URLSearchParams({ organizationId });
-    const response = await apiFetch<DashboardSummaryResponse>(
-      `/dashboard/summary?${query.toString()}`,
-    );
-    setSummary(response);
+    const [summaryResponse, businessesResponse] = await Promise.all([
+      apiFetch<DashboardSummaryResponse>(
+        `/dashboard/summary?${query.toString()}`,
+      ),
+      apiFetch<BusinessesResponse>(`/businesses?${query.toString()}`),
+    ]);
+    setSummary(summaryResponse);
+    setBusinesses(businessesResponse.businesses);
     setIsLoading(false);
   }
+
+  const statusData = useMemo(() => buildStatusData(businesses), [businesses]);
+  const financeData = useMemo(() => buildFinanceData(summary), [summary]);
 
   const metricCards = summary
     ? [
@@ -261,6 +274,43 @@ export function DashboardWorkspace() {
               <span>Acciones</span>
               <strong>{summary.metrics.pendingActions}</strong>
             </div>
+          </section>
+
+          <section className="field-grid" aria-label="Composición">
+            <SectionPanel
+              title="Negocios por estado"
+              description="Distribución del pipeline por etapa del flujo."
+            >
+              <BarChart
+                ariaLabel="Negocios por estado"
+                data={statusData}
+                empty={
+                  <EmptyState
+                    description="Los negocios aparecerán aquí agrupados por estado."
+                    icon={ClipboardCheck}
+                    title="Sin negocios"
+                  />
+                }
+              />
+            </SectionPanel>
+
+            <SectionPanel
+              title="Finanzas pendientes"
+              description="Cobros y comisiones que esperan acción."
+            >
+              <BarChart
+                ariaLabel="Finanzas pendientes"
+                data={financeData}
+                formatValue={(value) => formatMoneyCents(String(Math.round(value)))}
+                empty={
+                  <EmptyState
+                    description="No hay montos pendientes en este momento."
+                    icon={DollarSign}
+                    title="Sin pendientes"
+                  />
+                }
+              />
+            </SectionPanel>
           </section>
 
           <section className="dashboard-grid">
