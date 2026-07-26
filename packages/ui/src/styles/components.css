@@ -1858,6 +1858,7 @@
 }
 
 .bar-chart-fill {
+  animation: bar-chart-reveal var(--dur-slow, 0.55s) var(--ease-out, ease-out) both;
   border-radius: 999px;
   display: block;
   height: 100%;
@@ -2017,6 +2018,61 @@
  * Reduced motion — keep opacity/color cues, drop movement
  * ============================================================ */
 
+/* ============================================================
+ * Chart motion — measured grow-in on mount (per design.md §8)
+ * ============================================================ */
+
+/* Bars reveal left→right via clip-path (keeps the pill radius intact,
+ * unlike scaleX which would squash the rounded ends). */
+@keyframes bar-chart-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ~40ms stagger between the first several bars. */
+.bar-chart-row:nth-child(2) .bar-chart-fill {
+  animation-delay: 40ms;
+}
+
+.bar-chart-row:nth-child(3) .bar-chart-fill {
+  animation-delay: 80ms;
+}
+
+.bar-chart-row:nth-child(4) .bar-chart-fill {
+  animation-delay: 120ms;
+}
+
+.bar-chart-row:nth-child(5) .bar-chart-fill {
+  animation-delay: 160ms;
+}
+
+.bar-chart-row:nth-child(6) .bar-chart-fill {
+  animation-delay: 200ms;
+}
+
+/* Donut appears with a subtle scale + micro-rotation. Nothing bouncy. */
+@keyframes donut-chart-reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.96) rotate(-8deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+.donut-chart-figure svg {
+  animation: donut-chart-reveal var(--dur-slow, 0.55s) var(--ease-out, ease-out) both;
+  transform-origin: center;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .button,
   .primary-link,
@@ -2040,5 +2096,11 @@
   .form-drawer,
   .property-card:hover {
     transform: none;
+  }
+
+  /* Charts: show the final state immediately, no movement. */
+  .bar-chart-fill,
+  .donut-chart-figure svg {
+    animation: none;
   }
 }
