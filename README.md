@@ -11,6 +11,8 @@ El CRM de clientes existe como modulo centralizado, pero no reemplaza el foco pr
 Antes de modificar codigo o arquitectura:
 
 - `CODEX.md`: reglas obligatorias para Codex y asistentes de desarrollo.
+- `docs/product/master-product-synopsis.md`: doctrina maestra, modelo operativo,
+  procesos, variables, KPIs y potencial integral de SoyPMS.
 - `docs/product/foundational.md`: definicion base del producto.
 - `docs/architecture/overview.md`: vision tecnica general.
 - `docs/architecture/stack.md`: stack y decisiones firmes.
