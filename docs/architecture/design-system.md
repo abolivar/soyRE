@@ -50,20 +50,24 @@ packages/ui/
 
 ## Primitivas canónicas
 
-### Ya implementadas en `apps/web/components/ui.tsx` (a migrar)
+Estado actual: **21 primitivas** implementadas en `packages/ui/src/components/`, agrupadas por rol.
 
-`PageHeader`, `MetricCard`, `StatusBadge`, `SectionPanel`, `SearchInput`, `FilterBar`, `DataTable`, `EmptyState`, `LoadingState`, `ErrorState`, `ActivityTimeline`, `ConfirmDialog`, `FormDrawer`.
+### Atoms (6)
 
-Migración: mover archivos a `packages/ui/src/components/<Name>/`, exportar desde `packages/ui/src/index.ts`, y actualizar imports en `apps/web/`.
+- **`Button`** — 4 variantes (`primary`/`secondary`/`ghost`/`danger`), `loading` state con Loader2, `icon` leading (LucideIcon), `asChild` para renderizar el hijo aplicándole las clases y handlers del botón (útil para envolver `<Link>` de Next sin romper accesibilidad). Extends `ButtonHTMLAttributes<HTMLButtonElement>`.
+- **`Badge`** — pieza de metadato per `design.md §7.2`, props `tone: Tone`, `shape: 'badge' | 'tag'`.
+- **`Card`** — surface genérica, extends `HTMLAttributes<HTMLElement>`, renderiza `<article>`.
+- **`Input`** / **`Select`** / **`Textarea`** — wrappers con `id` requerido (Server Component-friendly, sin `useId`), `label`, `labelHidden?` (patrón visually-hidden para accesibilidad sin texto visible), `hint?`, `error?` que dispara `aria-invalid` + borde danger.
 
-### Faltantes (solo existen como clases CSS o HTML crudo)
+### Composites (14)
 
-- **`Button`** — clase `.button` con variantes `primary`/`secondary`/`ghost`/`danger` ya existe. Falta wrapper React con sizes (`sm`/`md`/`lg`), loading state, icono leading/trailing, soporte `asChild` opcional para anchors.
-- **`Badge`** / **`Tag`** — clases `.status-badge` y `.tone-*` ya existen. Falta wrapper React con prop `tone`.
-- **`Input`** / **`Select`** / **`Textarea`** — estilos globales aplicados a tags HTML. Falta componente con label, hint, error state, focus ring controlado.
-- **`Card`** genérica — estilos `.metric-card`, `.section-panel` existen. Falta una `Card` reutilizable de base que las demás compongan.
-- **`PropertyCard`** — componente clave per `design.md §7.5`. No existe aún. Debe incluir barra de acento por tipo de operación, thumbnail, insight, nombre, ubicación, precio + rango estimado, chips, badge final de match/métrica.
-- **`Tabs`** — no existe.
+`PageHeader`, `MetricCard`, `StatusBadge`, `SectionPanel`, `SearchInput`, `FilterBar`, `DataTable`, `EmptyState`, `LoadingState`, `ErrorState`, `ActivityTimeline`, `ConfirmDialog`, `FormDrawer`, `Tabs`.
+
+`Tabs` — config-driven API (`items: TabItem[]` en vez de compound `<Tabs><TabsList><TabsTrigger>`), controlled si `value` está seteado o uncontrolled con `defaultValue`, keyboard navigation (←/→ con focus follow), ARIA completo (`role=tablist/tab/tabpanel`, `aria-selected`, `aria-controls`, `aria-labelledby`, `tabIndex 0/-1`).
+
+### Domain (1)
+
+- **`PropertyCard`** — componente clave per `design.md §7.5`. Tipos públicos: `PropertyOperation` (`sale` | `rent` | `featured`), `PropertyPrice`, `PropertyChip`, `PropertyMatchBadge`. Renderiza barra de acento por operación (mapea a `Tone`: `sale → primary`, `rent → rent`, `featured → featured`), thumbnail (o placeholder tinted por tono), insight con dot coloreado, nombre, ubicación, precio + rango estimado, chips de metadata, badge de match/métrica. `operationLabel` es required (no hardcode de "Venta"/"Alquiler" — i18n-friendly). `priceFormatter` default `Intl.NumberFormat` USD sin decimales; consumers overridean para COP/PEN/etc. Renderiza como `<article>` no-interactivo; consumers wrappean con `<Link>` de Next para navegación.
 
 ## Build pipeline
 
