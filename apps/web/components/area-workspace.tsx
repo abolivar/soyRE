@@ -68,7 +68,9 @@ import {
   showingStatusTone,
 } from './operational-format';
 import {
+  BarChart,
   Button,
+  type ChartDatum,
   DataTable,
   EmptyState,
   ErrorState,
@@ -85,6 +87,7 @@ import {
   Textarea,
   type Tone,
 } from '@soyre/ui';
+import { buildPaymentStatusData, buildStatusData } from './chart-data';
 
 export type AreaKey =
   | 'audit'
@@ -391,6 +394,7 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
     () => buildMetrics(area, data, filteredRows),
     [area, data, filteredRows],
   );
+  const areaCharts = useMemo(() => buildAreaCharts(area, data), [area, data]);
   const canCreate = activeMembership
     ? isCreatableArea(area) && operationalWriteRoles.has(activeMembership.role)
     : false;
@@ -627,6 +631,34 @@ export function AreaWorkspace({ area }: { area: AreaKey }) {
               />
             ))}
           </section>
+
+          {areaCharts.length > 0 ? (
+            <section
+              aria-label={`Gráficos de ${config.title}`}
+              className="stack"
+              style={{ marginBottom: 18 }}
+            >
+              {areaCharts.map((chart) => (
+                <SectionPanel
+                  description={chart.description}
+                  key={chart.key}
+                  title={chart.title}
+                >
+                  <BarChart
+                    ariaLabel={chart.title}
+                    data={chart.data}
+                    empty={
+                      <EmptyState
+                        description="Aún no hay datos para este gráfico."
+                        icon={config.icon}
+                        title="Sin datos"
+                      />
+                    }
+                  />
+                </SectionPanel>
+              ))}
+            </section>
+          ) : null}
 
           <section className="dashboard-grid">
             <DataTable
@@ -1276,6 +1308,42 @@ function OperationalCreateFields({
           </details>
         </>
       );
+  }
+}
+
+type AreaChart = {
+  key: string;
+  title: string;
+  description: string;
+  data: ChartDatum[];
+};
+
+function buildAreaCharts(area: AreaKey, data: WorkspaceData): AreaChart[] {
+  switch (area) {
+    case 'commissions':
+      return [
+        {
+          data: buildStatusData(
+            data.businesses.filter(
+              (business) => business.permissionHints.canViewCommissions,
+            ),
+          ),
+          description: 'Negocios con comisión visible, por etapa del flujo.',
+          key: 'commissions-by-status',
+          title: 'Comisiones por estado',
+        },
+      ];
+    case 'receivables':
+      return [
+        {
+          data: buildPaymentStatusData(data.businesses),
+          description: 'Próximos cobros agrupados por estado de pago.',
+          key: 'receivables-by-payment',
+          title: 'Cobros por estado de pago',
+        },
+      ];
+    default:
+      return [];
   }
 }
 

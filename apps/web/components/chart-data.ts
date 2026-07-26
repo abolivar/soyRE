@@ -4,12 +4,15 @@ import type {
   BusinessOperationType,
   BusinessStatus,
   DashboardSummaryResponse,
+  PaymentScheduleLineStatus,
 } from '../lib/api';
 import {
   businessStatusLabel,
   businessStatusTone,
   operationLabel,
   operationTone,
+  paymentStatusLabel,
+  paymentStatusTone,
 } from './operational-format';
 
 /**
@@ -52,6 +55,28 @@ export function buildStatusData(
     .map(([status, value]) => ({
       label: businessStatusLabel(status),
       tone: businessStatusTone(status),
+      value,
+    }))
+    .sort((a, b) => b.value - a.value);
+}
+
+export function buildPaymentStatusData(
+  businesses: readonly BusinessListItem[],
+): ChartDatum[] {
+  const counts = new Map<PaymentScheduleLineStatus, number>();
+
+  for (const business of businesses) {
+    const payment = business.nextPayment;
+    if (!payment) {
+      continue;
+    }
+    counts.set(payment.status, (counts.get(payment.status) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .map(([status, value]) => ({
+      label: paymentStatusLabel(status),
+      tone: paymentStatusTone(status),
       value,
     }))
     .sort((a, b) => b.value - a.value);
