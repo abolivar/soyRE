@@ -6,12 +6,20 @@ import {
   Param,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { BusinessDocumentChecklistsService } from './business-document-checklists.service.js';
 import {
+  BusinessDocumentFilesService,
+  type UploadedBusinessDocumentFile,
+} from './business-document-files.service.js';
+import {
   BusinessDocumentChecklistQueryDto,
+  BusinessDocumentFileScopeDto,
   CreateCustomDocumentRequirementDto,
   InstantiateBusinessDocumentChecklistDto,
 } from './dto/business-document-checklist.dto.js';
@@ -21,6 +29,8 @@ export class BusinessDocumentChecklistsController {
   constructor(
     @Inject(BusinessDocumentChecklistsService)
     private readonly checklistsService: BusinessDocumentChecklistsService,
+    @Inject(BusinessDocumentFilesService)
+    private readonly filesService: BusinessDocumentFilesService,
   ) {}
 
   @Get()
@@ -30,6 +40,49 @@ export class BusinessDocumentChecklistsController {
     @Query() query: BusinessDocumentChecklistQueryDto,
   ) {
     return this.checklistsService.list(user, businessId, query.organizationId);
+  }
+
+  @Post(':checklistId/requirements/:requirementId/files')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 15 * 1024 * 1024, files: 1 },
+    }),
+  )
+  uploadFile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('businessId') businessId: string,
+    @Param('checklistId') checklistId: string,
+    @Param('requirementId') requirementId: string,
+    @Body() dto: BusinessDocumentFileScopeDto,
+    @UploadedFile() file: UploadedBusinessDocumentFile | undefined,
+  ) {
+    return this.filesService.upload(
+      user,
+      businessId,
+      checklistId,
+      requirementId,
+      dto.organizationId,
+      file,
+    );
+  }
+
+  @Get(':checklistId/requirements/:requirementId/files/:documentId/download')
+  downloadFile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('businessId') businessId: string,
+    @Param('checklistId') checklistId: string,
+    @Param('requirementId') requirementId: string,
+    @Param('documentId') documentId: string,
+    @Query() query: BusinessDocumentFileScopeDto,
+  ) {
+    return this.filesService.download(
+      user,
+      businessId,
+      checklistId,
+      requirementId,
+      documentId,
+      query.organizationId,
+    );
   }
 
   @Post()

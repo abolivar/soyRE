@@ -231,6 +231,7 @@ export class OperationsService {
     const search = query.search?.trim();
     const where: Prisma.DocumentWhereInput = {
       organizationId: membership.organizationId,
+      requirementId: null,
       ...(query.entityType ? { entityType: query.entityType } : {}),
       ...(query.status ? { status: query.status } : {}),
       ...(query.mandateId ? { mandateId: query.mandateId } : {}),
@@ -280,6 +281,17 @@ export class OperationsService {
     ) {
       throw new ForbiddenException(
         'Only a manager role can approve mandate evidence.',
+      );
+    }
+
+    if (
+      dto.storagePath ||
+      dto.fileName ||
+      dto.mimeType ||
+      dto.fileSize !== undefined
+    ) {
+      throw new BadRequestException(
+        'File metadata must be created by an authorized private upload endpoint.',
       );
     }
 

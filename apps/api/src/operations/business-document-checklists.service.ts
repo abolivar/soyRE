@@ -48,6 +48,22 @@ const CHECKLIST_INCLUDE = {
       businessContract: {
         select: { id: true, contractNumber: true, status: true, version: true },
       },
+      documents: {
+        select: {
+          id: true,
+          name: true,
+          documentType: true,
+          status: true,
+          fileName: true,
+          mimeType: true,
+          fileSize: true,
+          expiresAt: true,
+          uploadedByUserId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { createdAt: 'desc' as const },
+      },
       client: { select: { id: true, displayName: true } },
       participant: {
         select: { id: true, displayName: true, role: true, isPrimary: true },
