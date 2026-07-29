@@ -252,6 +252,14 @@ test('public discovery metadata is explicit and safe before launch', async ({
   ]) {
     expect((await request.get(asset)).ok()).toBe(true);
   }
+
+  expect((await request.get('/soypms-indexnow-key.txt')).status()).toBe(404);
+  await expect(page.locator('script[src*="googletagmanager.com"]')).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole('complementary', { name: 'Preferencias de medición' }),
+  ).toHaveCount(0);
 });
 
 const publicContentPages = [
@@ -406,4 +414,155 @@ test('enabled demo form submits consent and attribution without PII in the URL',
   });
   expect(submittedPayload).not.toHaveProperty('consentPolicyVersion');
   expect(page.url()).not.toContain('ada@example.com');
+});
+
+test('consented analytics emits only allowlisted events without PII', async ({
+  page,
+}) => {
+  test.skip(
+    process.env.E2E_PUBLIC_ANALYTICS_ENABLED !== 'true',
+    'Run against a build with analytics and the demo form enabled.',
+  );
+
+  let analyticsScriptLoads = 0;
+  await page.route('https://www.googletagmanager.com/gtag/js**', async (route) => {
+    analyticsScriptLoads += 1;
+    await route.fulfill({
+      body: '/* GA4 intercepted by Playwright */',
+      contentType: 'application/javascript',
+      status: 200,
+    });
+  });
+  await page.route('**/api/public/demo-requests', async (route) => {
+    if (route.request().method() === 'OPTIONS') {
+      await route.fulfill({
+        headers: {
+          'Access-Control-Allow-Credentials': 'true',
+          'Access-Control-Allow-Headers': 'content-type',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Origin': new URL(page.url()).origin,
+        },
+        status: 204,
+      });
+      return;
+    }
+
+    await route.fulfill({
+      body: JSON.stringify({
+        requestId: '00000000-0000-4000-8000-000000000301',
+        status: 'received',
+      }),
+      contentType: 'application/json',
+      headers: {
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Origin': new URL(page.url()).origin,
+      },
+      status: 201,
+    });
+  });
+
+  await page.goto(
+    '/?utm_source=perplexity.ai&utm_medium=referral&utm_campaign=alpha#demo',
+  );
+  expect(analyticsScriptLoads).toBe(0);
+  await expect(
+    page.getByRole('complementary', { name: 'Preferencias de medición' }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.dataLayer?.some(
+          (entry) =>
+            entry[0] === 'consent' &&
+            entry[1] === 'default' &&
+            (entry[2] as { analytics_storage?: string }).analytics_storage ===
+              'denied',
+        ),
+      ),
+    )
+    .toBe(true);
+
+  await page.getByRole('button', { name: 'Aceptar medición' }).click();
+  await expect.poll(() => analyticsScriptLoads).toBe(1);
+
+  await page.getByLabel('Nombre').fill('Ada Broker');
+  await page.getByLabel('Correo laboral').fill('ada@example.com');
+  await page.getByLabel('Empresa').fill('Inmobiliaria Ejemplo');
+  await page.getByLabel('País').fill('Panamá');
+  await page.getByLabel('Tamaño del equipo').selectOption('TWO_TO_FIVE');
+  await page
+    .getByLabel('Reto operativo (opcional)')
+    .fill('Ordenar expedientes');
+  await page.getByLabel(/Acepto que SoyPMS use estos datos/).check();
+  await page.getByRole('button', { name: 'Solicitar una demo' }).click();
+  await expect(page.getByText(/Solicitud recibida. Referencia:/)).toBeVisible();
+
+  const dataLayer = await page.evaluate(() => window.dataLayer ?? []);
+  const eventNames = dataLayer
+    .filter((entry) => entry[0] === 'event')
+    .map((entry) => entry[1]);
+
+  expect(eventNames).toEqual(
+    expect.arrayContaining([
+      'demo_form_view',
+      'demo_form_start',
+      'demo_form_submit',
+      'demo_form_success',
+    ]),
+  );
+  const serializedAnalytics = JSON.stringify(dataLayer);
+  for (const forbiddenValue of [
+    'ada@example.com',
+    'Ada Broker',
+    'Inmobiliaria Ejemplo',
+    'Ordenar expedientes',
+  ]) {
+    expect(serializedAnalytics).not.toContain(forbiddenValue);
+  }
+
+  await page.getByRole('button', { name: 'Preferencias de cookies' }).click();
+  await expect(
+    page.getByRole('complementary', { name: 'Preferencias de medición' }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      window.dataLayer?.some(
+        (entry) =>
+          entry[0] === 'consent' &&
+          entry[1] === 'update' &&
+          (entry[2] as { analytics_storage?: string }).analytics_storage ===
+            'denied',
+      ),
+    ),
+  ).toBe(true);
+});
+
+test('approved crawler policy serves public HTML and explicit robots groups', async ({
+  request,
+}) => {
+  test.skip(
+    process.env.E2E_INDEXING_ENABLED !== 'true',
+    'Run against a build with the approved indexing gate enabled.',
+  );
+
+  for (const userAgent of [
+    'Googlebot',
+    'Bingbot',
+    'OAI-SearchBot',
+    'PerplexityBot',
+  ]) {
+    const response = await request.get('/', {
+      headers: { 'user-agent': userAgent },
+    });
+    expect(response.status()).toBe(200);
+    expect(await response.text()).toContain(
+      'Opera toda tu cartera, de la captación a la comisión.',
+    );
+  }
+
+  const robots = await (await request.get('/robots.txt')).text();
+  expect(robots).toContain('User-Agent: OAI-SearchBot');
+  expect(robots).toContain('User-Agent: PerplexityBot');
+  expect(robots).toContain('User-Agent: GPTBot');
+  expect(robots).toContain('User-Agent: Google-Extended');
 });

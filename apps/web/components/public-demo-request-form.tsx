@@ -3,8 +3,12 @@
 import { Button, Input, Select, Textarea } from '@soyre/ui';
 import Link from 'next/link';
 import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../lib/api';
+import {
+  onPublicAnalyticsConsentChanged,
+  trackPublicEvent,
+} from '../lib/public-analytics';
 
 type FormState =
   | { kind: 'idle' }
@@ -30,6 +34,9 @@ type DemoRequestResponse = {
 export function PublicDemoRequestForm({ enabled }: { enabled: boolean }) {
   const [attribution, setAttribution] = useState<Attribution>({});
   const [formState, setFormState] = useState<FormState>({ kind: 'idle' });
+  const formRef = useRef<HTMLFormElement>(null);
+  const formStarted = useRef(false);
+  const formViewed = useRef(false);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -44,6 +51,40 @@ export function PublicDemoRequestForm({ enabled }: { enabled: boolean }) {
     });
   }, []);
 
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form || !enabled) {
+      return undefined;
+    }
+
+    const recordView = () => {
+      if (!formViewed.current && trackPublicEvent('demo_form_view')) {
+        formViewed.current = true;
+      }
+    };
+    const unsubscribe = onPublicAnalyticsConsentChanged(() => recordView());
+
+    if (!('IntersectionObserver' in window)) {
+      recordView();
+      return unsubscribe;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          recordView();
+        }
+      },
+      { threshold: 0.25 },
+    );
+    observer.observe(form);
+
+    return () => {
+      observer.disconnect();
+      unsubscribe();
+    };
+  }, [enabled]);
+
   async function submitDemoRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -54,6 +95,7 @@ export function PublicDemoRequestForm({ enabled }: { enabled: boolean }) {
     const form = event.currentTarget;
     const formData = new FormData(form);
     setFormState({ kind: 'submitting' });
+    trackPublicEvent('demo_form_submit');
 
     try {
       const response = await apiFetch<DemoRequestResponse>(
@@ -76,12 +118,14 @@ export function PublicDemoRequestForm({ enabled }: { enabled: boolean }) {
 
       form.reset();
       setFormState({ kind: 'success', requestId: response.requestId });
+      trackPublicEvent('demo_form_success');
     } catch {
       setFormState({
         kind: 'error',
         message:
           'No pudimos registrar tu solicitud. Intenta nuevamente en unos minutos.',
       });
+      trackPublicEvent('demo_form_error', { error_type: 'request_failed' });
     }
   }
 
@@ -91,7 +135,15 @@ export function PublicDemoRequestForm({ enabled }: { enabled: boolean }) {
     <form
       className="public-demo-form"
       onSubmit={submitDemoRequest}
+      onFocusCapture={() => {
+        if (!formStarted.current) {
+          formStarted.current = true;
+          trackPublicEvent('demo_form_start');
+        }
+      }}
+      ref={formRef}
       aria-describedby="demo-form-status"
+      data-demo-form
     >
       {Object.entries(attribution).map(([name, value]) => (
         <input

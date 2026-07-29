@@ -5,9 +5,19 @@ import {
   publicSiteName,
   resolvePublicSiteConfig,
 } from '../lib/public-site';
+import { PublicAnalytics } from '../components/public-analytics';
 import './globals.css';
 
 const publicSite = resolvePublicSiteConfig();
+const verificationEnabled =
+  process.env.PUBLIC_SITE_VERIFICATION_ENABLED?.trim().toLowerCase() ===
+  'true';
+const googleVerification = verificationEnabled
+  ? process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim()
+  : undefined;
+const bingVerification = verificationEnabled
+  ? process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION?.trim()
+  : undefined;
 
 export const metadata: Metadata = {
   metadataBase: publicSite.url,
@@ -49,6 +59,17 @@ export const metadata: Metadata = {
     images: ['/twitter-image'],
     title: publicSiteName,
   },
+  verification:
+    googleVerification || bingVerification
+      ? {
+          google: googleVerification,
+          other: bingVerification
+            ? {
+                'msvalidate.01': bingVerification,
+              }
+            : undefined,
+        }
+      : undefined,
 };
 
 export default function RootLayout({
@@ -58,7 +79,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es-419">
-      <body>{children}</body>
+      <body>
+        {children}
+        <PublicAnalytics
+          enabled={
+            process.env.NEXT_PUBLIC_ANALYTICS_ENABLED?.trim().toLowerCase() ===
+            'true'
+          }
+          measurementId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}
+        />
+      </body>
     </html>
   );
 }

@@ -63,7 +63,7 @@ El navegador envía datos del formulario, URL, referrer y UTMs. La API normaliza
 texto y correo, fija `consentedAt` y usa la versión de política configurada en el
 servidor. El honeypot devuelve una respuesta indistinguible sin persistir ni
 notificar. La huella antiabuso es SHA-256 y solo vive en memoria; no se almacena
-IP cruda.
+IP cruda. El reemplazo por rate limiting distribuido se sigue en #170.
 
 `DemoRequest` es una entidad de plataforma sin `organizationId`. Conserva:
 
@@ -84,7 +84,7 @@ Después de persistir, la API llama `POST https://api.resend.com/emails` con
 texto plano, `reply_to` del solicitante e `Idempotency-Key` derivado del
 `requestId`. Un error se guarda como `FAILED` y el endpoint mantiene el `201`.
 No existe todavía un worker de reintentos; si permanece así al cierre, se
-registrará como deuda técnica.
+registra como deuda técnica en #171.
 
 ## Redirecciones Y Correo
 
@@ -100,7 +100,8 @@ Antes de habilitar indexación:
 5. configurar SPF, DKIM y DMARC para el proveedor transaccional.
 
 Estas acciones requieren acceso al DNS y no se sustituyen con valores
-hardcodeados en el repositorio.
+hardcodeados en el repositorio. El gate operativo completo se sigue en #173 y
+la aplicación/verificación remota de `demo_requests`, en #172.
 
 ## Variables
 
@@ -123,5 +124,58 @@ Variables exclusivas de backend:
 | `DEMO_NOTIFICATION_TO`           | Destinatario interno                |
 | `DEMO_FROM_EMAIL`                | Remitente de un dominio verificado  |
 
-El lote de medición ampliará este contrato sin introducir secretos en variables
-`NEXT_PUBLIC_*`.
+## Consentimiento Y GA4
+
+`PublicAnalytics` es el único punto de carga de GA4. Requiere simultáneamente
+`NEXT_PUBLIC_ANALYTICS_ENABLED=true`, un ID `G-*` válido y consentimiento
+explícito guardado en el navegador. Antes de la decisión solo crea un
+`dataLayer` local con Consent Mode en `denied`; no descarga
+`googletagmanager.com` ni envía eventos.
+
+Al aceptar:
+
+1. actualiza `analytics_storage` a `granted`;
+2. carga `gtag.js` una sola vez;
+3. configura una ubicación de página sin query string;
+4. habilita eventos con nombres y parámetros allowlisted.
+
+Al rechazar o reabrir preferencias, vuelve a `denied`. El contrato de eventos
+vive en `apps/web/lib/public-analytics.ts`; cualquier parámetro no declarado se
+descarta antes de llegar a `gtag`. Los campos libres del formulario y la
+atribución completa nunca forman parte de analítica.
+
+## Search Console, Bing E IndexNow
+
+Las etiquetas de verificación se emiten solo con
+`PUBLIC_SITE_VERIFICATION_ENABLED=true`. Sus valores públicos provienen de
+`NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` y
+`NEXT_PUBLIC_BING_SITE_VERIFICATION`.
+
+IndexNow tiene tres barreras:
+
+- `INDEXNOW_ENABLED=true`;
+- dominio custom e indexación habilitados;
+- canonical exacto `https://soypms.com`.
+
+La clave pública y estable se sirve únicamente en
+`/soypms-indexnow-key.txt` cuando los gates pasan; `INDEXNOW_KEY` debe coincidir
+con `soypms-indexnow-key`.
+`pnpm indexnow:submit` envía las cinco URLs del sitemap; no descubre ni envía
+rutas autenticadas, legales en borrador o endpoints. La operación se ejecuta
+solo después de verificar DNS, canonical, legal, formulario y analítica.
+
+Google Search Console y Bing Webmaster Tools requieren acciones de propiedad
+externa. El repositorio prepara las etiquetas, sitemap y protocolo, pero no
+simula verificación ni solicitud de indexación.
+
+## Variables De Crecimiento
+
+| Variable                               | Propósito                              |
+| -------------------------------------- | -------------------------------------- |
+| `NEXT_PUBLIC_ANALYTICS_ENABLED`        | Gate público de banner y GA4           |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID`        | Identificador público `G-*`            |
+| `PUBLIC_SITE_VERIFICATION_ENABLED`     | Gate de etiquetas de propiedad         |
+| `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | Token público de Search Console         |
+| `NEXT_PUBLIC_BING_SITE_VERIFICATION`   | Token público de Bing Webmaster Tools  |
+| `INDEXNOW_ENABLED`                     | Gate operativo de IndexNow             |
+| `INDEXNOW_KEY`                         | Clave publicada en su ruta `.txt`      |
