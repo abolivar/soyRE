@@ -103,7 +103,12 @@ export function PublicLandingNavigation({
         </div>
 
         <div className="public-landing-nav-actions">
-          <Link className="public-landing-login-link" href="/login">
+          <Link
+            className="public-landing-login-link"
+            data-analytics-event="login_click"
+            data-analytics-location="navigation"
+            href="/login"
+          >
             Ingresar
           </Link>
           <Button
@@ -116,7 +121,13 @@ export function PublicLandingNavigation({
               .join(' ')}
             variant={navUsesCoral ? 'primary' : 'secondary'}
           >
-            <a href={demoHref}>Ver una demo</a>
+            <a
+              data-analytics-event="demo_cta_click"
+              data-analytics-location="navigation"
+              href={demoHref}
+            >
+              Ver una demo
+            </a>
           </Button>
         </div>
       </div>

@@ -18,7 +18,13 @@ export function DemoButton({
       data-demo-cta
       variant="primary"
     >
-      <a href={demoHref}>{children}</a>
+      <a
+        data-analytics-event="demo_cta_click"
+        data-analytics-location="content"
+        href={demoHref}
+      >
+        {children}
+      </a>
     </Button>
   );
 }
@@ -54,7 +60,13 @@ export function PublicMarketingFooter() {
             <div>
               <strong>Contacto</strong>
               <a href="mailto:hola@soypms.com">hola@soypms.com</a>
-              <Link href="/login">Ingresar</Link>
+              <Link
+                data-analytics-event="login_click"
+                data-analytics-location="footer"
+                href="/login"
+              >
+                Ingresar
+              </Link>
             </div>
             <div>
               <strong>Legal</strong>

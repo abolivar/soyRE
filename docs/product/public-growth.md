@@ -102,6 +102,25 @@ formulario, consultas orgánicas relevantes, páginas citadas y Core Web Vitals.
 Tráfico bruto o posiciones sin conversión son señales diagnósticas, no objetivos
 finales.
 
+El embudo público usa estos eventos:
+
+| Evento                | Pregunta que responde                         |
+| --------------------- | --------------------------------------------- |
+| `demo_cta_click`      | ¿Qué CTA abre el recorrido de demo?           |
+| `demo_form_view`      | ¿Cuántas visitas llegan al formulario?        |
+| `demo_form_start`     | ¿Cuántas comienzan a completarlo?             |
+| `demo_form_submit`    | ¿Cuántas intentan enviarlo?                    |
+| `demo_form_success`   | ¿Cuántas solicitudes fueron aceptadas?        |
+| `demo_form_error`     | ¿Cuántas encuentran un error técnico?         |
+| `login_click`         | ¿Cuánto tráfico público busca entrar?         |
+| `content_link_click`  | ¿Qué contenido profundiza la intención?       |
+| `web_vital`           | ¿Cómo rinde la experiencia en dispositivos?   |
+
+Los eventos solo aceptan parámetros cerrados como ubicación del CTA, ruta de
+destino, tipo técnico de error y métricas de rendimiento. Nombre, correo,
+empresa, país, reto, referrer completo y UTMs nunca se envían como parámetros
+de GA4.
+
 ## Conversión Y Consentimiento
 
 Todos los CTA públicos apuntan a `/#demo`. El formulario solicita únicamente:
@@ -122,3 +141,20 @@ y términos sean aprobados y publicados. Los borradores legales usan `noindex`.
 El lead se persiste antes de intentar la notificación. Una falla de Resend no
 convierte una solicitud válida en error ni elimina la evidencia de
 consentimiento.
+
+## Operación De Crecimiento
+
+Después de publicar y solicitar indexación:
+
+- día 7: confirmar cobertura, canonical, sitemap, primeras consultas, errores
+  de formulario y Core Web Vitals de laboratorio;
+- día 30: revisar consultas por intención, landing pages, conversión
+  CTA→inicio→éxito y referencias desde asistentes;
+- día 60: ajustar títulos, respuestas y enlaces solo con evidencia acumulada;
+- día 90: decidir contenido editorial o localización por país como inversión
+  de producto, no como generación masiva.
+
+Las referencias desde ChatGPT, Copilot, Perplexity y otros asistentes se
+analizan mediante hostname de referrer y UTMs en la tabla de solicitudes, y de
+forma agregada en las fuentes de adquisición de GA4. No se crean páginas ni
+claims para manipular respuestas generativas.

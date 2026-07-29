@@ -16,10 +16,17 @@
       "dependsOn": ["db:generate", "^build"],
       "env": [
         "API_PROXY_URL",
+        "INDEXNOW_ENABLED",
+        "INDEXNOW_KEY",
+        "NEXT_PUBLIC_ANALYTICS_ENABLED",
+        "NEXT_PUBLIC_BING_SITE_VERIFICATION",
         "NEXT_PUBLIC_DEMO_FORM_ENABLED",
+        "NEXT_PUBLIC_GA_MEASUREMENT_ID",
+        "NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION",
         "NEXT_PUBLIC_SITE_URL",
         "PUBLIC_SITE_CUSTOM_DOMAIN_ENABLED",
-        "PUBLIC_SITE_INDEXING_ENABLED"
+        "PUBLIC_SITE_INDEXING_ENABLED",
+        "PUBLIC_SITE_VERIFICATION_ENABLED"
       ],
       "outputs": [".next/**", "!.next/cache/**", "dist/**", "build/**"]
     },
