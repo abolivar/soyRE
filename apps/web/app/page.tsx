@@ -1,33 +1,34 @@
-import { Button, StatusBadge } from '@soyre/ui';
+import { StatusBadge } from '@soyre/ui';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
-import { BrandLogo } from '../components/brand-logo';
-import { PublicLandingNavigation } from '../components/public-landing-navigation';
+import {
+  DemoButton,
+  PublicMarketingFooter,
+  PublicMarketingHeader,
+} from '../components/public-marketing';
 import { PublicSiteJsonLd } from '../components/public-site-json-ld';
 
-const demoHref =
-  'mailto:hola@soypms.com?subject=Quiero%20ver%20una%20demo%20de%20SoyPMS';
+const homeTitle = 'Software inmobiliario para agencias y equipos | SoyPMS';
+const homeDescription =
+  'Centraliza propiedades, mandatos, expedientes, tareas, ofertas, cierres y comisiones. SoyPMS opera tu cartera sin reemplazar tu CRM. Solicita una demo.';
 
 export const metadata: Metadata = {
   alternates: {
     canonical: '/',
   },
   title: {
-    absolute: 'SoyPMS | Operación inmobiliaria para Latinoamérica',
+    absolute: homeTitle,
   },
-  description:
-    'Mandatos, expedientes, tareas y comisiones de toda tu cartera en un solo lugar, sin reemplazar el CRM de tu equipo.',
+  description: homeDescription,
   openGraph: {
-    description:
-      'Mandatos, expedientes, tareas y comisiones de toda tu cartera en un solo lugar, sin reemplazar el CRM de tu equipo.',
-    title: 'SoyPMS | Operación inmobiliaria para Latinoamérica',
+    description: homeDescription,
+    title: homeTitle,
     url: '/',
   },
 };
 
 const contextSignals = [
-  'Cada agencia con su propia base de datos',
+  'Datos aislados por organización',
   'Permisos y visibilidad por rol de agente',
   'Historial de quién cambió qué, y cuándo',
 ];
@@ -128,18 +129,73 @@ const boundaryItems = [
   'No se construye sobre datos simulados ni hojas sueltas.',
 ];
 
-function DemoButton({ children = 'Ver una demo' }: { children?: ReactNode }) {
-  return (
-    <Button
-      asChild
-      className="landing-demo-cta landing-demo-cta-coral"
-      data-demo-cta
-      variant="primary"
-    >
-      <a href={demoHref}>{children}</a>
-    </Button>
-  );
-}
+const publicJourneys = [
+  {
+    description:
+      'Propiedades, tareas, ofertas y cierres conectados en un recorrido operativo.',
+    href: '/producto',
+    title: 'Producto',
+  },
+  {
+    description:
+      'Vigencias, responsables y documentos unidos al inmueble que los origina.',
+    href: '/mandatos-y-expedientes',
+    title: 'Mandatos y expedientes',
+  },
+  {
+    description:
+      'Participantes y reglas de reparto visibles junto al negocio cerrado.',
+    href: '/comisiones-inmobiliarias',
+    title: 'Comisiones inmobiliarias',
+  },
+  {
+    description:
+      'Una separación clara entre el seguimiento comercial y la operación de cartera.',
+    href: '/crm-inmobiliario-vs-soypms',
+    title: 'CRM inmobiliario y SoyPMS',
+  },
+];
+
+const securityPrinciples = [
+  {
+    description:
+      'La organización es la frontera de acceso para los datos de cada agencia o equipo.',
+    title: 'Aislamiento por organización',
+  },
+  {
+    description:
+      'La visibilidad y las acciones disponibles dependen de la responsabilidad de cada rol.',
+    title: 'Permisos explícitos',
+  },
+  {
+    description:
+      'Los cambios relevantes conservan autor y momento para facilitar revisión operativa.',
+    title: 'Trazabilidad',
+  },
+];
+
+const frequentlyAskedQuestions = [
+  {
+    answer:
+      'No. El CRM puede seguir gestionando prospección, contactos y oportunidades. SoyPMS organiza la continuidad operativa de cada propiedad desde la captación.',
+    question: '¿SoyPMS reemplaza mi CRM inmobiliario?',
+  },
+  {
+    answer:
+      'SoyPMS está en alpha guiada. La demo permite validar el recorrido disponible y confirmar si encaja con la forma de operar de tu equipo.',
+    question: '¿El producto ya está disponible?',
+  },
+  {
+    answer:
+      'Está pensado para agencias y equipos inmobiliarios en Latinoamérica que comparten cartera, responsables, mandatos, documentos y cierres.',
+    question: '¿Para quién está pensado SoyPMS?',
+  },
+  {
+    answer:
+      'Las imágenes del sitio son vistas ilustrativas del producto. No se presentan como capturas con datos reales de clientes.',
+    question: '¿Los datos que aparecen en las vistas son reales?',
+  },
+];
 
 function PortfolioPreview({ compact = false }: { compact?: boolean }) {
   return (
@@ -244,31 +300,33 @@ export default function HomePage() {
   return (
     <main className="public-landing">
       <PublicSiteJsonLd />
-      <PublicLandingNavigation demoHref={demoHref} />
+      <PublicMarketingHeader />
 
       <header className="public-landing-hero" id="top">
         <div className="public-landing-container public-landing-hero-grid">
           <div className="public-landing-hero-copy" data-landing-reveal>
             <p className="public-landing-eyebrow">
-              PMS inmobiliario para Latinoamérica
+              Software inmobiliario para agencias y equipos
             </p>
-            <h1>Tu CRM persigue el lead. SoyPMS opera la cartera.</h1>
+            <h1>Opera toda tu cartera, de la captación a la comisión.</h1>
             <p className="public-landing-lead">
-              Mandatos, expedientes, tareas y comisiones de toda tu cartera en
-              un solo lugar. Sin pedirte que cambies el CRM con el que tu equipo
-              ya trabaja.
+              Centraliza propiedades, mandatos, expedientes, tareas, ofertas,
+              cierres y comisiones sin reemplazar el CRM con el que tu equipo ya
+              trabaja.
+            </p>
+            <p className="public-landing-differentiator">
+              Tu CRM persigue el lead. SoyPMS opera la cartera.
             </p>
             <div className="public-landing-hero-action">
               <DemoButton />
-              <small>30 minutos, con tu propia cartera en pantalla.</small>
+              <small>Alpha guiada · Conversación inicial de 30 minutos.</small>
             </div>
           </div>
 
           <figure className="landing-hero-preview" data-landing-reveal>
             <PortfolioPreview />
             <figcaption>
-              Vista ilustrativa del producto — se reemplazará por una captura
-              definitiva.
+              Vista ilustrativa del producto. No contiene datos de clientes.
             </figcaption>
           </figure>
         </div>
@@ -288,13 +346,39 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="public-landing-section public-landing-definition">
+        <div className="public-landing-container public-landing-container-narrow">
+          <div className="public-landing-section-heading" data-landing-reveal>
+            <p className="public-landing-eyebrow">Qué es SoyPMS</p>
+            <h2 className="public-landing-section-title">
+              Software de operación inmobiliaria para una cartera compartida.
+            </h2>
+            <p>
+              SoyPMS mantiene el contexto de cada propiedad mientras avanza por
+              mandato, expediente, tareas, oferta, cierre, comisión y archivo.
+              La propiedad es la entidad central; la organización define la
+              frontera de acceso del equipo.
+            </p>
+          </div>
+          <div className="public-landing-journey-grid">
+            {publicJourneys.map((journey) => (
+              <Link data-landing-reveal href={journey.href} key={journey.href}>
+                <strong>{journey.title}</strong>
+                <span>{journey.description}</span>
+                <small>Explorar →</small>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="public-landing-section">
         <div className="public-landing-container">
           <h2
             className="public-landing-section-title narrow"
             data-landing-reveal
           >
-            Lo que tu CRM no estaba hecho para resolver.
+            Problemas operativos que el CRM no fue diseñado para resolver.
           </h2>
           <div className="public-landing-lined-grid public-landing-problem-grid">
             {operationalProblems.map((problem) => (
@@ -360,6 +444,13 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+          <Link
+            className="public-dark-link"
+            data-landing-reveal
+            href="/crm-inmobiliario-vs-soypms"
+          >
+            Comparar CRM inmobiliario y SoyPMS →
+          </Link>
         </div>
       </section>
 
@@ -369,7 +460,10 @@ export default function HomePage() {
             <h2 className="public-landing-section-title">
               Así se ve por dentro.
             </h2>
-            <p>Vistas ilustrativas del producto.</p>
+            <p>
+              Vistas ilustrativas del producto. No contienen datos reales de
+              clientes.
+            </p>
           </div>
           <div
             className="public-landing-gallery"
@@ -442,51 +536,62 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="public-landing-section public-landing-security">
+        <div className="public-landing-container public-landing-container-narrow">
+          <div className="public-landing-section-heading" data-landing-reveal>
+            <p className="public-landing-eyebrow">Seguridad operativa</p>
+            <h2 className="public-landing-section-title">
+              Control desde la arquitectura, no desde una hoja compartida.
+            </h2>
+            <p>
+              SoyPMS aplica límites de acceso y conserva contexto operativo. No
+              publicamos certificaciones ni promesas regulatorias que todavía no
+              han sido verificadas.
+            </p>
+          </div>
+          <div className="public-landing-lined-grid public-landing-security-grid">
+            {securityPrinciples.map((principle) => (
+              <article data-landing-reveal key={principle.title}>
+                <h3>{principle.title}</h3>
+                <p>{principle.description}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="public-landing-section public-landing-faq">
+        <div className="public-landing-container public-landing-container-narrow">
+          <div className="public-landing-section-heading" data-landing-reveal>
+            <p className="public-landing-eyebrow">Preguntas frecuentes</p>
+            <h2 className="public-landing-section-title">
+              Lo esencial antes de solicitar una demo.
+            </h2>
+          </div>
+          <div className="public-landing-faq-list">
+            {frequentlyAskedQuestions.map((item) => (
+              <details data-landing-reveal key={item.question}>
+                <summary>{item.question}</summary>
+                <p>{item.answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="public-landing-closing" id="demo">
         <div data-landing-reveal>
+          <p className="public-landing-eyebrow">Alpha guiada</p>
           <h2>Ordena la operación antes de automatizarla.</h2>
           <p>
-            Te mostramos el sistema con tu propia cartera, en treinta minutos.
+            Cuéntanos cómo opera tu equipo y revisemos juntos el alcance actual
+            de SoyPMS.
           </p>
           <DemoButton />
         </div>
       </section>
 
-      <footer className="public-landing-footer">
-        <div className="public-landing-container">
-          <div className="public-landing-footer-main">
-            <div className="public-landing-footer-brand">
-              <Link
-                className="brand-link"
-                href="#top"
-                aria-label="SoyPMS inicio"
-              >
-                <BrandLogo />
-              </Link>
-              <p>
-                Sistema de operación de cartera inmobiliaria. Opera en Panamá.
-              </p>
-            </div>
-            <div className="public-landing-footer-links">
-              <div>
-                <strong>Producto</strong>
-                <Link href="#producto">Producto</Link>
-                <Link href="#como-funciona">Cómo funciona</Link>
-                <Link href="#alcance">Alcance</Link>
-              </div>
-              <div>
-                <strong>Contacto</strong>
-                <a href="mailto:hola@soypms.com">hola@soypms.com</a>
-                <Link href="/login">Ingresar</Link>
-              </div>
-            </div>
-          </div>
-          <div className="public-landing-footer-legal">
-            <span>© 2026 SoyPMS. Todos los derechos reservados.</span>
-            <span>Panamá · Español</span>
-          </div>
-        </div>
-      </footer>
+      <PublicMarketingFooter />
     </main>
   );
 }

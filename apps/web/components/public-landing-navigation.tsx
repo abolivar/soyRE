@@ -92,14 +92,14 @@ export function PublicLandingNavigation({
   return (
     <nav className="public-landing-nav" aria-label="Navegación pública">
       <div className="public-landing-container public-landing-nav-inner">
-        <Link className="brand-link" href="#top" aria-label="SoyPMS inicio">
+        <Link className="brand-link" href="/" aria-label="SoyPMS inicio">
           <BrandLogo />
         </Link>
 
         <div className="public-landing-nav-links">
-          <Link href="#producto">Producto</Link>
-          <Link href="#como-funciona">Cómo funciona</Link>
-          <Link href="#alcance">Alcance</Link>
+          <Link href="/producto">Producto</Link>
+          <Link href="/#como-funciona">Cómo funciona</Link>
+          <Link href="/#alcance">Alcance</Link>
         </div>
 
         <div className="public-landing-nav-actions">
