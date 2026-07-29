@@ -4,14 +4,26 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { BrandLogo } from '../components/brand-logo';
 import { PublicLandingNavigation } from '../components/public-landing-navigation';
+import { PublicSiteJsonLd } from '../components/public-site-json-ld';
 
 const demoHref =
   'mailto:hola@soypms.com?subject=Quiero%20ver%20una%20demo%20de%20SoyPMS';
 
 export const metadata: Metadata = {
-  title: 'SoyPMS | Operación inmobiliaria para Latinoamérica',
+  alternates: {
+    canonical: '/',
+  },
+  title: {
+    absolute: 'SoyPMS | Operación inmobiliaria para Latinoamérica',
+  },
   description:
     'Mandatos, expedientes, tareas y comisiones de toda tu cartera en un solo lugar, sin reemplazar el CRM de tu equipo.',
+  openGraph: {
+    description:
+      'Mandatos, expedientes, tareas y comisiones de toda tu cartera en un solo lugar, sin reemplazar el CRM de tu equipo.',
+    title: 'SoyPMS | Operación inmobiliaria para Latinoamérica',
+    url: '/',
+  },
 };
 
 const contextSignals = [
@@ -231,6 +243,7 @@ function CommissionPreview() {
 export default function HomePage() {
   return (
     <main className="public-landing">
+      <PublicSiteJsonLd />
       <PublicLandingNavigation demoHref={demoHref} />
 
       <header className="public-landing-hero" id="top">
