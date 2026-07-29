@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { DemoNotificationStatus } from '@soyre/database';
 import { PrismaService } from '../database/prisma.service.js';
+import { toSafeDemoNotificationError } from './demo-notification-error.js';
 import {
   DemoRequestNotifier,
   type NotifiableDemoRequest,
@@ -94,7 +95,7 @@ export class DemoRequestsService {
         data: {
           notificationAttempts: { increment: 1 },
           notificationLastAttemptAt: attemptedAt,
-          notificationLastError: toSafeError(error),
+          notificationLastError: toSafeDemoNotificationError(error),
           notificationStatus: DemoNotificationStatus.FAILED,
         },
         where: { id: request.id },
@@ -106,10 +107,4 @@ export class DemoRequestsService {
 function normalizeOptional(value?: string) {
   const normalized = value?.trim();
   return normalized || undefined;
-}
-
-function toSafeError(error: unknown) {
-  return (error instanceof Error ? error.message : 'Unknown notification error')
-    .replace(/\s+/g, ' ')
-    .slice(0, 500);
 }
