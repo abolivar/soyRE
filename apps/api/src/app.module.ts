@@ -8,6 +8,7 @@ import { BusinessesModule } from './businesses/businesses.module.js';
 import { ClientsModule } from './clients/clients.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { DatabaseModule } from './database/database.module.js';
+import { DemoRequestsModule } from './demo-requests/demo-requests.module.js';
 import { HealthController } from './health.controller.js';
 import { FinanceModule } from './finance/finance.module.js';
 import { OperationsModule } from './operations/operations.module.js';
@@ -19,6 +20,7 @@ import { UsersModule } from './users/users.module.js';
 @Module({
   imports: [
     DatabaseModule,
+    DemoRequestsModule,
     AuthModule,
     UsersModule,
     ClientsModule,

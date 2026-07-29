@@ -16,6 +16,7 @@
       "dependsOn": ["db:generate", "^build"],
       "env": [
         "API_PROXY_URL",
+        "NEXT_PUBLIC_DEMO_FORM_ENABLED",
         "NEXT_PUBLIC_SITE_URL",
         "PUBLIC_SITE_CUSTOM_DOMAIN_ENABLED",
         "PUBLIC_SITE_INDEXING_ENABLED"

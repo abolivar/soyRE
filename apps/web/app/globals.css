@@ -1001,6 +1001,124 @@ label {
   padding: 0 30px 24px 4px;
 }
 
+.public-demo-section {
+  background: var(--brand-surface);
+  color: var(--text-on-dark);
+  padding: clamp(72px, 9vw, 112px) 0;
+  scroll-margin-top: 66px;
+}
+
+.public-demo-section-heading {
+  align-items: end;
+  display: grid;
+  gap: clamp(28px, 6vw, 84px);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.7fr);
+  margin-bottom: 44px;
+}
+
+.public-demo-section-heading .public-landing-eyebrow {
+  color: var(--primary-soft);
+  margin-bottom: 16px;
+}
+
+.public-demo-section-heading h2 {
+  color: var(--text-on-dark);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+  max-width: 18ch;
+}
+
+.public-demo-section-heading > p {
+  color: var(--primary-soft);
+  line-height: 1.65;
+}
+
+.public-demo-form {
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--text-on-dark) 18%, transparent);
+  border-radius: 8px;
+  color: var(--ink);
+  padding: clamp(24px, 4vw, 42px);
+}
+
+.public-demo-form-grid {
+  display: grid;
+  gap: 22px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.public-demo-form-grid .input-field:has(textarea) {
+  grid-column: 1 / -1;
+}
+
+.public-demo-form textarea {
+  min-height: 132px;
+  resize: vertical;
+}
+
+.public-demo-honeypot {
+  height: 1px;
+  left: -10000px;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
+}
+
+.public-demo-consent {
+  align-items: flex-start;
+  display: flex;
+  font-size: 0.88rem;
+  font-weight: 400;
+  gap: 12px;
+  line-height: 1.55;
+  margin-top: 24px;
+}
+
+.public-demo-consent input {
+  flex: 0 0 auto;
+  height: 18px;
+  margin-top: 2px;
+  width: 18px;
+}
+
+.public-demo-consent a {
+  color: var(--primary-strong);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.public-demo-submit {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 22px;
+  justify-content: space-between;
+  margin-top: 28px;
+  padding-top: 28px;
+}
+
+.public-demo-submit .landing-demo-cta {
+  flex: 0 0 auto;
+}
+
+.public-demo-form-status {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.public-demo-form-status.is-error {
+  color: var(--danger);
+}
+
+.public-demo-form-status.is-success {
+  color: var(--success);
+}
+
 .public-landing-closing {
   padding: clamp(72px, 10vw, 132px) 24px;
   scroll-margin-top: 66px;
@@ -1252,6 +1370,18 @@ label {
   color: var(--muted);
   font-size: 0.92rem;
   line-height: 1.55;
+}
+
+.public-legal-back {
+  border-top: 1px solid var(--line);
+  color: var(--primary-strong);
+  font-weight: 650;
+  padding: 36px 0 64px;
+}
+
+.public-legal-back a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .landing-reveal-pending {
@@ -2514,6 +2644,11 @@ label {
   .public-related-grid {
     grid-template-columns: 1fr;
   }
+
+  .public-demo-section-heading {
+    align-items: start;
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
@@ -2624,6 +2759,27 @@ label {
   .public-content-hero-actions {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .public-demo-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .public-demo-form-grid .input-field:has(textarea) {
+    grid-column: auto;
+  }
+
+  .public-demo-submit {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .public-demo-submit .landing-demo-cta {
+    width: 100%;
+  }
+
+  .public-demo-form-status {
+    text-align: left;
   }
 
   .public-landing-gallery {

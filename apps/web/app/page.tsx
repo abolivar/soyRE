@@ -6,6 +6,7 @@ import {
   PublicMarketingFooter,
   PublicMarketingHeader,
 } from '../components/public-marketing';
+import { PublicDemoRequestSection } from '../components/public-demo-request-section';
 import { PublicSiteJsonLd } from '../components/public-site-json-ld';
 
 const homeTitle = 'Software inmobiliario para agencias y equipos | SoyPMS';
@@ -579,17 +580,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="public-landing-closing" id="demo">
-        <div data-landing-reveal>
-          <p className="public-landing-eyebrow">Alpha guiada</p>
-          <h2>Ordena la operación antes de automatizarla.</h2>
-          <p>
-            Cuéntanos cómo opera tu equipo y revisemos juntos el alcance actual
-            de SoyPMS.
-          </p>
-          <DemoButton />
-        </div>
-      </section>
+      <PublicDemoRequestSection />
 
       <PublicMarketingFooter />
     </main>

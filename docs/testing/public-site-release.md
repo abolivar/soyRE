@@ -50,6 +50,44 @@ PerplexityBot, GPTBot y Google-Extended. Los cuatro primeros deben recibir la
 superficie pública cuando el gate esté abierto; los dos últimos deben quedar
 bloqueados por `robots.txt`.
 
+## Formulario Y API
+
+- [ ] Con gates apagados, los campos se ven desactivados y explican el bloqueo.
+- [ ] Todos los CTA usan `/#demo`; no quedan CTA de demo por `mailto:`.
+- [ ] Con gates de QA activos, un formulario válido devuelve `201` y muestra la
+      referencia.
+- [ ] Faltantes, correo inválido, consentimiento falso, enum inválido y campos
+      extra devuelven `400`.
+- [ ] El sexto intento de una huella en 15 minutos devuelve `429`.
+- [ ] El honeypot no crea un registro.
+- [ ] La URL y UTMs se conservan; el correo no aparece en URL ni analítica.
+- [ ] Un fallo de Resend deja `notification_status=FAILED` y mantiene el `201`.
+- [ ] `demo_requests` no tiene `organization_id` ni columna de IP.
+- [ ] RLS está activo, sin políticas y sin privilegios para `anon` o
+      `authenticated`.
+- [ ] `/privacidad`, `/cookies` y `/terminos` dicen “Borrador no aprobado” y
+      emiten `noindex, follow`.
+
+Validación SQL remota esperada:
+
+```sql
+select relrowsecurity
+from pg_class
+where oid = 'public.demo_requests'::regclass;
+
+select policyname
+from pg_policies
+where schemaname = 'public' and tablename = 'demo_requests';
+
+select grantee, privilege_type
+from information_schema.role_table_grants
+where table_schema = 'public'
+  and table_name = 'demo_requests'
+  and grantee in ('anon', 'authenticated');
+```
+
+El primer query debe devolver `true`; los otros dos, cero filas.
+
 ## Calidad
 
 Revisar teclado, foco, jerarquía H1-H2-H3, contraste, FAQ expandible y ausencia

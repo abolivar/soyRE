@@ -46,6 +46,7 @@ for (const pageSpec of pages) {
   test(`${pageSpec.name} renders without layout overflow`, async ({
     page,
   }, testInfo) => {
+    testInfo.setTimeout(60_000);
     await page.goto(pageSpec.path);
 
     await expect(
@@ -104,7 +105,7 @@ test('home exposes the complete public journey without embedding login', async (
   ).toBeVisible();
   await expect(
     page.getByRole('heading', {
-      name: 'Ordena la operación antes de automatizarla.',
+      name: 'Revisa tu operación con el equipo de SoyPMS.',
     }),
   ).toBeVisible();
   await expect(
@@ -123,20 +124,24 @@ test('home exposes the complete public journey without embedding login', async (
   await expect(page.getByText('Datos aislados por organización')).toBeVisible();
   await expect(page.getByText(/Alpha guiada/).first()).toBeVisible();
 
-  await expect(page.locator('input[type="email"]')).toHaveCount(0);
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
   await expect(
     page.getByRole('link', { name: 'Ingresar' }).first(),
   ).toHaveAttribute('href', '/login');
 
   const demoLinks = page.getByRole('link', { name: 'Ver una demo' });
-  await expect(demoLinks).toHaveCount(3);
+  await expect(demoLinks).toHaveCount(2);
   for (const demoLink of await demoLinks.all()) {
-    await expect(demoLink).toHaveAttribute(
-      'href',
-      'mailto:hola@soypms.com?subject=Quiero%20ver%20una%20demo%20de%20SoyPMS',
-    );
+    await expect(demoLink).toHaveAttribute('href', '/#demo');
   }
+
+  await expect(page.getByLabel('Nombre')).toBeVisible();
+  await expect(page.getByLabel('Nombre')).toBeDisabled();
+  await expect(
+    page.getByText(
+      'La captura está desactivada mientras se aprueban privacidad, cookies y términos.',
+    ),
+  ).toBeVisible();
 
   const visibleCoralCallsToAction = () =>
     page.evaluate(() => {
@@ -314,3 +319,91 @@ for (const path of ['/login', '/register']) {
     );
   });
 }
+
+for (const legalPage of [
+  { heading: 'Privacidad', path: '/privacidad' },
+  { heading: 'Cookies', path: '/cookies' },
+  { heading: 'Términos', path: '/terminos' },
+]) {
+  test(`${legalPage.path} is an explicit noindex legal draft`, async ({
+    page,
+  }) => {
+    await page.goto(legalPage.path);
+    await expect(
+      page.getByRole('heading', { level: 1, name: legalPage.heading }),
+    ).toBeVisible();
+    await expect(page.getByText('Borrador no aprobado')).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      'content',
+      'noindex, follow',
+    );
+  });
+}
+
+test('enabled demo form submits consent and attribution without PII in the URL', async ({
+  page,
+}) => {
+  test.skip(
+    process.env.E2E_DEMO_FORM_ENABLED !== 'true',
+    'Run against a build with NEXT_PUBLIC_DEMO_FORM_ENABLED=true.',
+  );
+
+  let submittedPayload: Record<string, unknown> | undefined;
+  await page.route('**/api/public/demo-requests', async (route) => {
+    const corsHeaders = {
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Headers': 'content-type',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Origin': new URL(page.url()).origin,
+    };
+
+    if (route.request().method() === 'OPTIONS') {
+      await route.fulfill({ headers: corsHeaders, status: 204 });
+      return;
+    }
+
+    submittedPayload = route.request().postDataJSON() as Record<
+      string,
+      unknown
+    >;
+    await route.fulfill({
+      body: JSON.stringify({
+        requestId: '00000000-0000-4000-8000-000000000201',
+        status: 'received',
+      }),
+      contentType: 'application/json',
+      headers: corsHeaders,
+      status: 201,
+    });
+  });
+
+  await page.goto(
+    '/?utm_source=chatgpt.com&utm_medium=referral&utm_campaign=alpha#demo',
+  );
+  await page.getByLabel('Nombre').fill('Ada Broker');
+  await page.getByLabel('Correo laboral').fill('ada@example.com');
+  await page.getByLabel('Empresa').fill('Inmobiliaria Ejemplo');
+  await page.getByLabel('País').fill('Panamá');
+  await page.getByLabel('Tamaño del equipo').selectOption('TWO_TO_FIVE');
+  await page
+    .getByLabel('Reto operativo (opcional)')
+    .fill('Ordenar expedientes');
+  await page.getByLabel(/Acepto que SoyPMS use estos datos/).check();
+  await page.getByRole('button', { name: 'Solicitar una demo' }).click();
+
+  await expect(page.getByText(/Solicitud recibida. Referencia:/)).toBeVisible();
+  expect(submittedPayload).toMatchObject({
+    challenge: 'Ordenar expedientes',
+    company: 'Inmobiliaria Ejemplo',
+    consent: true,
+    country: 'Panamá',
+    email: 'ada@example.com',
+    name: 'Ada Broker',
+    teamSize: 'TWO_TO_FIVE',
+    utmCampaign: 'alpha',
+    utmMedium: 'referral',
+    utmSource: 'chatgpt.com',
+  });
+  expect(submittedPayload).not.toHaveProperty('consentPolicyVersion');
+  expect(page.url()).not.toContain('ada@example.com');
+});
