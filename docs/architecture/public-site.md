@@ -86,8 +86,20 @@ la API backend. La fuente canónica es la migración
 Después de persistir, la API llama `POST https://api.resend.com/emails` con
 texto plano, `reply_to` del solicitante e `Idempotency-Key` derivado del
 `requestId`. Un error se guarda como `FAILED` y el endpoint mantiene el `201`.
-No existe todavía un worker de reintentos; si permanece así al cierre, se
-registra como deuda técnica en #171.
+
+El worker durable se activa con `DEMO_NOTIFICATION_RETRY_ENABLED=true`. Cada
+réplica busca registros `FAILED` o `PENDING` atascados, pero un
+`updateMany` condicionado por id, estado, contador y última fecha permite que
+solo una los reclame. Reintenta con backoff de 5 minutos, 15 minutos, 1 hora y
+6 horas, hasta un máximo de cinco intentos totales. Un registro
+`FAILED` con `notification_attempts >= 5` es terminal y requiere revisión
+operativa. Si el proceso cae después del claim, el estado `PENDING` vuelve a ser
+elegible tras el backoff. La clave idempotente evita duplicados si Resend aceptó
+el correo pero la actualización de base falló.
+
+Cada ejecución emite un log estructurado `demo_notification_retry_batch` con
+`scanned`, `claimed`, `sent`, `failed` y `terminal`, sin identidad ni contenido
+del lead.
 
 ## Redirecciones Y Correo
 
@@ -118,15 +130,16 @@ la aplicación/verificación remota de `demo_requests`, en #172.
 
 Variables exclusivas de backend:
 
-| Variable                            | Propósito                            |
-| ----------------------------------- | ------------------------------------ |
-| `DEMO_REQUESTS_ENABLED`             | Gate del endpoint público            |
-| `DEMO_CONSENT_POLICY_VERSION`       | Versión aprobada que se persiste     |
-| `DEMO_REQUEST_RATE_LIMIT_SECRET`    | Secreto de la huella SHA-256         |
-| `DEMO_REQUEST_RATE_LIMIT_REDIS_URL` | Conexión privada al Redis compartido |
-| `RESEND_API_KEY`                    | Credencial de envío, nunca pública   |
-| `DEMO_NOTIFICATION_TO`              | Destinatario interno                 |
-| `DEMO_FROM_EMAIL`                   | Remitente de un dominio verificado   |
+| Variable                            | Propósito                             |
+| ----------------------------------- | ------------------------------------- |
+| `DEMO_REQUESTS_ENABLED`             | Gate del endpoint público             |
+| `DEMO_CONSENT_POLICY_VERSION`       | Versión aprobada que se persiste      |
+| `DEMO_REQUEST_RATE_LIMIT_SECRET`    | Secreto de la huella SHA-256          |
+| `DEMO_REQUEST_RATE_LIMIT_REDIS_URL` | Conexión privada al Redis compartido  |
+| `RESEND_API_KEY`                    | Credencial de envío, nunca pública    |
+| `DEMO_NOTIFICATION_TO`              | Destinatario interno                  |
+| `DEMO_FROM_EMAIL`                   | Remitente de un dominio verificado    |
+| `DEMO_NOTIFICATION_RETRY_ENABLED`   | Gate del worker durable de reintentos |
 
 ## Consentimiento Y GA4
 

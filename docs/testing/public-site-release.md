@@ -66,6 +66,12 @@ bloqueados por `robots.txt`.
 - [ ] El honeypot no crea un registro.
 - [ ] La URL y UTMs se conservan; el correo no aparece en URL ni analítica.
 - [ ] Un fallo de Resend deja `notification_status=FAILED` y mantiene el `201`.
+- [ ] Un fallo transitorio se reclama una sola vez entre dos workers y un
+      reintento exitoso termina en `SENT`.
+- [ ] Un quinto fallo queda terminal como `FAILED` con
+      `notification_attempts=5` y no vuelve a seleccionarse.
+- [ ] El log `demo_notification_retry_batch` contiene solo contadores y ningún
+      dato del lead.
 - [ ] `demo_requests` no tiene `organization_id` ni columna de IP.
 - [ ] RLS está activo, sin políticas y sin privilegios para `anon` o
       `authenticated`.
@@ -91,6 +97,17 @@ where table_schema = 'public'
 ```
 
 El primer query debe devolver `true`; los otros dos, cero filas.
+
+Recuperación manual de notificaciones terminales:
+
+1. revisar en Resend y logs la causa usando el `requestId`, sin copiar PII a
+   observabilidad;
+2. corregir credenciales, dominio o disponibilidad del proveedor;
+3. mediante Supabase MCP, devolver solo el registro confirmado a
+   `notification_status='FAILED'`, `notification_attempts=1` y limpiar
+   `notification_last_error`;
+4. ejecutar/verificar un batch y confirmar `SENT` antes de intervenir otro
+   registro.
 
 ## Consentimiento Y Analítica
 
