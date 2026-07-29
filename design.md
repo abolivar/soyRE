@@ -91,6 +91,7 @@ Paleta construida sobre **una familia primaria (Teal)** + dos familias de acento
 5. **Nunca pongas un acento sobre el fondo de otro acento.** Los fondos de pantalla son siempre neutros.
 6. **Fondos oscuros** usan `--color-dark` (#141412), nunca negro puro.
 7. **Prohibido:** gradientes decorativos saturados, glow, sombras de color fuerte. Las sombras son neutras y suaves (§5).
+8. **Excepción de marketing:** la landing pública puede usar `--coral` y `--coral-strong` exclusivamente para `Ver una demo`, con un solo CTA coral visible por viewport. La aplicación autenticada continúa usando teal para todas sus acciones.
 
 ### Contraste (WCAG AA)
 

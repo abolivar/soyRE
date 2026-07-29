@@ -12,6 +12,9 @@ Las pantallas operativas deben ser rápidas de reconocer y usar. Login, onboardi
 
 - Teal es el único acento con carga de marca: `#1A9E8F`, fuerte `#0D6B61`, suave `#D0F0EC`.
 - El teal se usa en acción primaria, foco, enlaces y en el único dato realmente activo de una pantalla.
+- La landing pública admite coral únicamente en el CTA comercial
+  `Ver una demo`. Solo puede haber un CTA coral visible por viewport; esta
+  excepción no se traslada a la aplicación autenticada.
 - El resto de la interfaz es neutra, salvo urgencias reales.
 - Venta, alquiler y destacada se usan solo para etiquetar tipo de operación inmobiliaria.
 - El teal oscuro `#0D3F38` es la superficie de marca para sidebar, login y onboarding.
