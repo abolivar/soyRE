@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { Body, Controller, HttpCode, Inject, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { Public } from '../auth/public.decorator.js';
@@ -18,21 +17,17 @@ export class DemoRequestsController {
 
   @Post()
   @HttpCode(201)
-  create(@Body() dto: CreateDemoRequestDto, @Req() request: Request) {
-    this.rateLimiter.assertAllowed(fingerprintRequest(request));
+  async create(@Body() dto: CreateDemoRequestDto, @Req() request: Request) {
+    await this.rateLimiter.assertAllowed(resolveRequestAddress(request));
     return this.demoRequests.create(dto);
   }
 }
 
-function fingerprintRequest(request: Request) {
+function resolveRequestAddress(request: Request) {
   const forwardedFor = request.headers['x-forwarded-for'];
   const forwardedAddress = Array.isArray(forwardedFor)
     ? forwardedFor[0]
     : forwardedFor?.split(',')[0];
-  const address = forwardedAddress?.trim() || request.ip || 'unknown';
-  const salt =
-    process.env.DEMO_REQUEST_RATE_LIMIT_SECRET?.trim() ||
-    'soypms-demo-request-rate-limit';
 
-  return createHash('sha256').update(`${salt}:${address}`).digest('hex');
+  return forwardedAddress?.trim() || request.ip || 'unknown';
 }

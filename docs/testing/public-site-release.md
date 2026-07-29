@@ -58,7 +58,11 @@ bloqueados por `robots.txt`.
       referencia.
 - [ ] Faltantes, correo inválido, consentimiento falso, enum inválido y campos
       extra devuelven `400`.
-- [ ] El sexto intento de una huella en 15 minutos devuelve `429`.
+- [ ] El sexto intento de una huella en 15 minutos devuelve `429`, incluso
+      alternando entre dos instancias de API.
+- [ ] Las claves Redis expiran automáticamente y solo contienen la huella
+      SHA-256; nunca contienen la IP cruda.
+- [ ] Con el formulario activo y Redis ausente, la API falla cerrada con `503`.
 - [ ] El honeypot no crea un registro.
 - [ ] La URL y UTMs se conservan; el correo no aparece en URL ni analítica.
 - [ ] Un fallo de Resend deja `notification_status=FAILED` y mantiene el `201`.
@@ -140,12 +144,12 @@ Baseline local del 28/07/2026, build de producción con formulario, medición,
 verificaciones e indexación habilitados en modo QA; Lighthouse 13.0.1, Chrome
 149, simulación móvil. Se hicieron tres corridas:
 
-| Métrica       | Corrida 1 | Corrida 2 | Corrida 3 | Mediana | Objetivo |
-| ------------- | --------- | --------- | --------- | ------- | -------- |
-| Performance   | 96        | 98        | 92        | 96      | ≥ 90     |
-| LCP           | 2109 ms   | 2003 ms   | 2737 ms   | 2109 ms | ≤ 2500   |
-| TBT           | 194 ms    | 144 ms    | 213 ms    | 194 ms  | ≤ 200    |
-| CLS           | 0.0008    | 0.0008    | 0.0008    | 0.0008  | ≤ 0.1    |
+| Métrica       | Corrida 1 | Corrida 2 | Corrida 3 | Mediana | Objetivo  |
+| ------------- | --------- | --------- | --------- | ------- | --------- |
+| Performance   | 96        | 98        | 92        | 96      | ≥ 90      |
+| LCP           | 2109 ms   | 2003 ms   | 2737 ms   | 2109 ms | ≤ 2500    |
+| TBT           | 194 ms    | 144 ms    | 213 ms    | 194 ms  | ≤ 200     |
+| CLS           | 0.0008    | 0.0008    | 0.0008    | 0.0008  | ≤ 0.1     |
 | Transferencia | 254 KiB   | 254 KiB   | 254 KiB   | 254 KiB | ≤ 235 KiB |
 
 La transferencia excede 19 KiB (8.1 %). Se acepta como desviación inicial:
@@ -173,12 +177,12 @@ una respuesta local de IndexNow.
 
 ## Seguimiento 7/30/60/90
 
-| Momento | Revisión                                                    |
-| ------- | ----------------------------------------------------------- |
-| Día 7   | cobertura, sitemap, canonical, errores y Web Vitals         |
-| Día 30  | consultas, páginas, asistentes y embudo de demo             |
-| Día 60  | títulos, respuestas, enlazado y calidad del tráfico         |
-| Día 90  | expansión editorial/localización basada en evidencia        |
+| Momento | Revisión                                             |
+| ------- | ---------------------------------------------------- |
+| Día 7   | cobertura, sitemap, canonical, errores y Web Vitals  |
+| Día 30  | consultas, páginas, asistentes y embudo de demo      |
+| Día 60  | títulos, respuestas, enlazado y calidad del tráfico  |
+| Día 90  | expansión editorial/localización basada en evidencia |
 
 ## Calidad
 

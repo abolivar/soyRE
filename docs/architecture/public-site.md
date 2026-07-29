@@ -62,8 +62,11 @@ Ambos gates permanecen en `false` hasta completar la revisión legal y el correo
 El navegador envía datos del formulario, URL, referrer y UTMs. La API normaliza
 texto y correo, fija `consentedAt` y usa la versión de política configurada en el
 servidor. El honeypot devuelve una respuesta indistinguible sin persistir ni
-notificar. La huella antiabuso es SHA-256 y solo vive en memoria; no se almacena
-IP cruda. El reemplazo por rate limiting distribuido se sigue en #170.
+notificar. El rate limiting usa un sorted set compartido en Redis y un script
+Lua atómico para aplicar una ventana móvil de cinco intentos en 15 minutos. La
+clave contiene únicamente una huella SHA-256 con secreto de servidor, expira
+automáticamente y nunca almacena IP cruda. Si Redis o el secreto no están
+disponibles, la API falla cerrada con `503` en lugar de omitir la protección.
 
 `DemoRequest` es una entidad de plataforma sin `organizationId`. Conserva:
 
@@ -115,14 +118,15 @@ la aplicación/verificación remota de `demo_requests`, en #172.
 
 Variables exclusivas de backend:
 
-| Variable                         | Propósito                           |
-| -------------------------------- | ----------------------------------- |
-| `DEMO_REQUESTS_ENABLED`          | Gate del endpoint público           |
-| `DEMO_CONSENT_POLICY_VERSION`    | Versión aprobada que se persiste    |
-| `DEMO_REQUEST_RATE_LIMIT_SECRET` | Sal de la huella temporal antiabuso |
-| `RESEND_API_KEY`                 | Credencial de envío, nunca pública  |
-| `DEMO_NOTIFICATION_TO`           | Destinatario interno                |
-| `DEMO_FROM_EMAIL`                | Remitente de un dominio verificado  |
+| Variable                            | Propósito                            |
+| ----------------------------------- | ------------------------------------ |
+| `DEMO_REQUESTS_ENABLED`             | Gate del endpoint público            |
+| `DEMO_CONSENT_POLICY_VERSION`       | Versión aprobada que se persiste     |
+| `DEMO_REQUEST_RATE_LIMIT_SECRET`    | Secreto de la huella SHA-256         |
+| `DEMO_REQUEST_RATE_LIMIT_REDIS_URL` | Conexión privada al Redis compartido |
+| `RESEND_API_KEY`                    | Credencial de envío, nunca pública   |
+| `DEMO_NOTIFICATION_TO`              | Destinatario interno                 |
+| `DEMO_FROM_EMAIL`                   | Remitente de un dominio verificado   |
 
 ## Consentimiento Y GA4
 
@@ -170,12 +174,12 @@ simula verificación ni solicitud de indexación.
 
 ## Variables De Crecimiento
 
-| Variable                               | Propósito                              |
-| -------------------------------------- | -------------------------------------- |
-| `NEXT_PUBLIC_ANALYTICS_ENABLED`        | Gate público de banner y GA4           |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID`        | Identificador público `G-*`            |
-| `PUBLIC_SITE_VERIFICATION_ENABLED`     | Gate de etiquetas de propiedad         |
-| `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | Token público de Search Console         |
-| `NEXT_PUBLIC_BING_SITE_VERIFICATION`   | Token público de Bing Webmaster Tools  |
-| `INDEXNOW_ENABLED`                     | Gate operativo de IndexNow             |
-| `INDEXNOW_KEY`                         | Clave publicada en su ruta `.txt`      |
+| Variable                               | Propósito                             |
+| -------------------------------------- | ------------------------------------- |
+| `NEXT_PUBLIC_ANALYTICS_ENABLED`        | Gate público de banner y GA4          |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID`        | Identificador público `G-*`           |
+| `PUBLIC_SITE_VERIFICATION_ENABLED`     | Gate de etiquetas de propiedad        |
+| `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | Token público de Search Console       |
+| `NEXT_PUBLIC_BING_SITE_VERIFICATION`   | Token público de Bing Webmaster Tools |
+| `INDEXNOW_ENABLED`                     | Gate operativo de IndexNow            |
+| `INDEXNOW_KEY`                         | Clave publicada en su ruta `.txt`     |
