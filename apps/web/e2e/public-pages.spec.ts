@@ -175,3 +175,56 @@ test('home remains readable with reduced motion', async ({ page }) => {
   await expect(revealElements.last()).toBeVisible();
   await expect(revealElements.first()).toHaveCSS('opacity', '1');
 });
+
+test('public discovery metadata is explicit and safe before launch', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/');
+
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es-419');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    'href',
+    'https://soypms-alpha.vercel.app',
+  );
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    'content',
+    'noindex, nofollow',
+  );
+  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(
+    1,
+  );
+
+  const graph = await page
+    .locator('script[type="application/ld+json"]')
+    .evaluate((element) => JSON.parse(element.textContent ?? '{}'));
+  expect(
+    graph['@graph'].map((entity: { '@type': string }) => entity['@type']),
+  ).toEqual(['WebSite', 'Organization', 'WebApplication']);
+
+  const robots = await request.get('/robots.txt');
+  expect(robots.ok()).toBe(true);
+  expect(await robots.text()).toContain('Disallow: /');
+
+  const sitemap = await request.get('/sitemap.xml');
+  expect(sitemap.ok()).toBe(true);
+  expect(await sitemap.text()).toContain('https://soypms-alpha.vercel.app/');
+
+  for (const asset of [
+    '/manifest.webmanifest',
+    '/opengraph-image',
+    '/twitter-image',
+  ]) {
+    expect((await request.get(asset)).ok()).toBe(true);
+  }
+});
+
+for (const path of ['/login', '/register']) {
+  test(`${path} stays outside search indexes`, async ({ page }) => {
+    await page.goto(path);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      'content',
+      'noindex, follow',
+    );
+  });
+}

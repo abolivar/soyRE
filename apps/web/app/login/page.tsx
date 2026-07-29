@@ -1,8 +1,18 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BrandLogo } from '../../components/brand-logo';
 import { LoginForm } from '../../components/login-form';
 import { PasswordRecoveryForm } from '../../components/password-recovery-form';
 import { resolveLoginRedirectTarget } from '../../lib/auth-routing';
+
+export const metadata: Metadata = {
+  description: 'Acceso privado al espacio operativo de SoyPMS.',
+  robots: {
+    follow: true,
+    index: false,
+  },
+  title: 'Ingresar',
+};
 
 type LoginPageProps = {
   searchParams: Promise<{
