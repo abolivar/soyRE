@@ -101,3 +101,24 @@ Las métricas primarias son demos recibidas y calificadas, conversión del
 formulario, consultas orgánicas relevantes, páginas citadas y Core Web Vitals.
 Tráfico bruto o posiciones sin conversión son señales diagnósticas, no objetivos
 finales.
+
+## Conversión Y Consentimiento
+
+Todos los CTA públicos apuntan a `/#demo`. El formulario solicita únicamente:
+
+- nombre;
+- correo laboral;
+- empresa;
+- país;
+- tamaño del equipo;
+- reto operativo opcional;
+- consentimiento obligatorio.
+
+La URL, referrer y UTMs viajan como atribución oculta. La versión de la política
+no la decide el navegador: la API toma `DEMO_CONSENT_POLICY_VERSION` del entorno.
+El formulario permanece visible pero desactivado hasta que privacidad, cookies
+y términos sean aprobados y publicados. Los borradores legales usan `noindex`.
+
+El lead se persiste antes de intentar la notificación. Una falla de Resend no
+convierte una solicitud válida en error ni elimina la evidencia de
+consentimiento.

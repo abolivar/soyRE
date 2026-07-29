@@ -45,8 +45,46 @@ Los componentes de marketing compartidos viven en `apps/web/components`:
 - `public-content-page.tsx`: estructura semántica de páginas de intención;
 - `public-breadcrumb-json-ld.tsx`: datos estructurados de navegación.
 
-El CTA seguirá usando correo únicamente hasta que el lote de captura habilite
-el formulario persistente detrás del gate legal.
+Todos los CTA usan `/#demo`. El formulario queda detrás de
+`NEXT_PUBLIC_DEMO_FORM_ENABLED` y la API detrás de `DEMO_REQUESTS_ENABLED`.
+Ambos gates permanecen en `false` hasta completar la revisión legal y el correo.
+
+## Solicitudes De Demo
+
+`POST /api/public/demo-requests` es una ruta Nest pública pero validada:
+
+- `201 { requestId, status: "received" }` para solicitudes aceptadas;
+- `400` para DTOs inválidos;
+- `429` después de cinco intentos por huella en 15 minutos;
+- `503` mientras el gate operativo esté cerrado o no exista versión de
+  consentimiento.
+
+El navegador envía datos del formulario, URL, referrer y UTMs. La API normaliza
+texto y correo, fija `consentedAt` y usa la versión de política configurada en el
+servidor. El honeypot devuelve una respuesta indistinguible sin persistir ni
+notificar. La huella antiabuso es SHA-256 y solo vive en memoria; no se almacena
+IP cruda.
+
+`DemoRequest` es una entidad de plataforma sin `organizationId`. Conserva:
+
+- estado `NEW`, `CONTACTED`, `QUALIFIED`, `CLOSED` o `SPAM`;
+- identidad laboral y contexto del equipo;
+- consentimiento, versión y fecha;
+- atribución de página/referrer/UTMs;
+- estado, intentos y último error de notificación.
+
+La tabla `demo_requests` habilita RLS, revoca permisos de `anon` y
+`authenticated` y no define políticas. La escritura ocurre exclusivamente por
+la API backend. La fuente canónica es la migración
+`20260728220000_public_demo_requests`.
+
+## Resend
+
+Después de persistir, la API llama `POST https://api.resend.com/emails` con
+texto plano, `reply_to` del solicitante e `Idempotency-Key` derivado del
+`requestId`. Un error se guarda como `FAILED` y el endpoint mantiene el `201`.
+No existe todavía un worker de reintentos; si permanece así al cierre, se
+registrará como deuda técnica.
 
 ## Redirecciones Y Correo
 
@@ -69,9 +107,21 @@ hardcodeados en el repositorio.
 | Variable                            | Visibilidad | Propósito                                 |
 | ----------------------------------- | ----------- | ----------------------------------------- |
 | `NEXT_PUBLIC_SITE_URL`              | Pública     | Origen absoluto de canonical y metadata   |
+| `NEXT_PUBLIC_DEMO_FORM_ENABLED`     | Pública     | Gate de interacción del formulario        |
 | `PUBLIC_SITE_CUSTOM_DOMAIN_ENABLED` | Build       | Gate de redirecciones al dominio canónico |
 | `PUBLIC_SITE_INDEXING_ENABLED`      | Servidor    | Gate explícito de crawling e indexación   |
 | `API_PROXY_URL`                     | Build       | Rewrite same-origin hacia la API          |
 
-Los lotes de leads y medición ampliarán este contrato sin introducir secretos
-en variables `NEXT_PUBLIC_*`.
+Variables exclusivas de backend:
+
+| Variable                         | Propósito                           |
+| -------------------------------- | ----------------------------------- |
+| `DEMO_REQUESTS_ENABLED`          | Gate del endpoint público           |
+| `DEMO_CONSENT_POLICY_VERSION`    | Versión aprobada que se persiste    |
+| `DEMO_REQUEST_RATE_LIMIT_SECRET` | Sal de la huella temporal antiabuso |
+| `RESEND_API_KEY`                 | Credencial de envío, nunca pública  |
+| `DEMO_NOTIFICATION_TO`           | Destinatario interno                |
+| `DEMO_FROM_EMAIL`                | Remitente de un dominio verificado  |
+
+El lote de medición ampliará este contrato sin introducir secretos en variables
+`NEXT_PUBLIC_*`.

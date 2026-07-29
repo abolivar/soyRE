@@ -561,6 +561,61 @@ enum WorkflowStageScope {
   BUSINESS
 }
 
+enum DemoRequestStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CLOSED
+  SPAM
+}
+
+enum DemoRequestTeamSize {
+  SOLO
+  TWO_TO_FIVE
+  SIX_TO_TEN
+  ELEVEN_TO_TWENTY
+  TWENTY_ONE_PLUS
+}
+
+enum DemoNotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model DemoRequest {
+  id                        String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  status                    DemoRequestStatus      @default(NEW)
+  name                      String
+  email                     String
+  company                   String
+  country                   String
+  teamSize                  DemoRequestTeamSize    @map("team_size")
+  challenge                 String?
+  consentGiven              Boolean                @map("consent_given")
+  consentPolicyVersion      String                 @map("consent_policy_version")
+  consentedAt               DateTime               @map("consented_at")
+  pageUrl                   String?                @map("page_url")
+  referrer                  String?
+  utmSource                 String?                @map("utm_source")
+  utmMedium                 String?                @map("utm_medium")
+  utmCampaign               String?                @map("utm_campaign")
+  utmTerm                   String?                @map("utm_term")
+  utmContent                String?                @map("utm_content")
+  notificationStatus        DemoNotificationStatus @default(PENDING) @map("notification_status")
+  notificationAttempts      Int                    @default(0) @map("notification_attempts")
+  notificationLastAttemptAt DateTime?              @map("notification_last_attempt_at")
+  notificationLastError     String?                @map("notification_last_error")
+  notifiedAt                DateTime?              @map("notified_at")
+  createdAt                 DateTime               @default(now()) @map("created_at")
+  updatedAt                 DateTime               @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([email, createdAt])
+  @@index([notificationStatus, createdAt])
+  @@map("demo_requests")
+}
+
 model Organization {
   id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                    String

@@ -4,8 +4,7 @@ import type { ReactNode } from 'react';
 import { BrandLogo } from './brand-logo';
 import { PublicLandingNavigation } from './public-landing-navigation';
 
-export const demoHref =
-  'mailto:hola@soypms.com?subject=Quiero%20ver%20una%20demo%20de%20SoyPMS';
+export const demoHref = '/#demo';
 
 export function DemoButton({
   children = 'Ver una demo',
@@ -56,6 +55,12 @@ export function PublicMarketingFooter() {
               <strong>Contacto</strong>
               <a href="mailto:hola@soypms.com">hola@soypms.com</a>
               <Link href="/login">Ingresar</Link>
+            </div>
+            <div>
+              <strong>Legal</strong>
+              <Link href="/privacidad">Privacidad</Link>
+              <Link href="/cookies">Cookies</Link>
+              <Link href="/terminos">Términos</Link>
             </div>
           </div>
         </div>
