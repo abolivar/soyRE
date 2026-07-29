@@ -6,6 +6,9 @@ import { DocumentChecklistTemplatesController } from './document-checklist-templ
 import { DocumentChecklistTemplatesService } from './document-checklist-templates.service.js';
 import { DocumentsController } from './documents.controller.js';
 import { ListingsController } from './listings.controller.js';
+import { ListingMaterialStorageService } from './listing-material-storage.service.js';
+import { ListingMaterialsService } from './listing-materials.service.js';
+import { ListingsService } from './listings.service.js';
 import { MandatesController } from './mandates.controller.js';
 import { MandatesService } from './mandates.service.js';
 import { OffersController } from './offers.controller.js';
@@ -30,6 +33,9 @@ import { WorkflowStagesController } from './workflow-stages.controller.js';
     BusinessDocumentChecklistsService,
     DocumentChecklistTemplatesService,
     MandatesService,
+    ListingsService,
+    ListingMaterialsService,
+    ListingMaterialStorageService,
   ],
 })
 export class OperationsModule {}

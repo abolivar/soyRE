@@ -246,3 +246,17 @@ Errores visibles se traducen a español y no exponen nombres internos.
 
 Cada bloque usa issue, branch, commits vinculados, PR y gate propio. Los cambios
 de base se aplican por Supabase MCP y se verifican con schema, SQL y advisors.
+
+## Estado De Implementación
+
+El lote #127 implementa en branch el modelo operativo, la migración, el
+servicio de dominio, readiness, historial, transiciones y materiales privados.
+La migración separa la ampliación de `ListingStatus` de las tablas que consumen
+el valor nuevo para respetar el límite transaccional de PostgreSQL. Los
+materiales binarios usan el bucket privado `listing-materials`, paths generados
+por el servidor, validación de firma y MIME, límite de 15 MB y previews firmados
+por 60 segundos. Los enlaces de video requieren HTTPS.
+
+La aplicación remota, los advisors de Supabase y las pruebas integrales A/B
+siguen siendo gates del PR: el código local aprobado no se presenta como schema
+remoto verificado hasta completar esas evidencias.
