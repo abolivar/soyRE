@@ -33,6 +33,21 @@ El grafo solo incluye datos verificables. No contiene ratings, ofertas,
 dirección legal ni perfiles sociales sin confirmar. Las rutas de autenticación
 y la aplicación operativa usan `noindex, follow`.
 
+Las rutas de intención `/producto`, `/mandatos-y-expedientes`,
+`/comisiones-inmobiliarias` y `/crm-inmobiliario-vs-soypms` declaran metadata,
+canonical y `BreadcrumbList` propios. Todas forman parte del sitemap. El home
+conserva el grafo de entidades del sitio; los breadcrumbs no se inventan para la
+ruta raíz.
+
+Los componentes de marketing compartidos viven en `apps/web/components`:
+
+- `public-marketing.tsx`: header, CTA temporal y footer;
+- `public-content-page.tsx`: estructura semántica de páginas de intención;
+- `public-breadcrumb-json-ld.tsx`: datos estructurados de navegación.
+
+El CTA seguirá usando correo únicamente hasta que el lote de captura habilite
+el formulario persistente detrás del gate legal.
+
 ## Redirecciones Y Correo
 
 Antes de habilitar indexación:

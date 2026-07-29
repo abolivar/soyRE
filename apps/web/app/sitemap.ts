@@ -1,7 +1,13 @@
 import type { MetadataRoute } from 'next';
 import { resolvePublicSiteConfig } from '../lib/public-site';
 
-const publicRoutes = ['/'];
+const publicRoutes = [
+  '/',
+  '/producto',
+  '/mandatos-y-expedientes',
+  '/comisiones-inmobiliarias',
+  '/crm-inmobiliario-vs-soypms',
+];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const publicSite = resolvePublicSiteConfig();

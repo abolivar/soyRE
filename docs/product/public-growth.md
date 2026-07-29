@@ -26,13 +26,48 @@ principal porque puede confundirse con property management y hospitality.
 El home responde la intención de categoría `software inmobiliario para agencias
 y equipos`. Las páginas públicas profundizan intenciones distintas:
 
-- producto y recorrido operativo;
-- mandatos y expedientes;
-- comisiones;
-- comparación entre CRM y software operativo.
+| Ruta                          | Intención principal                       |
+| ----------------------------- | ----------------------------------------- |
+| `/`                           | software inmobiliario para agencias       |
+| `/producto`                   | software de operación inmobiliaria        |
+| `/mandatos-y-expedientes`     | mandatos y expedientes inmobiliarios      |
+| `/comisiones-inmobiliarias`   | control de comisiones inmobiliarias       |
+| `/crm-inmobiliario-vs-soypms` | CRM inmobiliario vs. operación de cartera |
 
 No se crean páginas por país hasta que exista oferta, vocabulario, soporte y
 evidencia reales para esa jurisdicción.
+
+## Copy Canónico
+
+- Title del home: `Software inmobiliario para agencias y equipos | SoyPMS`.
+- Description: `Centraliza propiedades, mandatos, expedientes, tareas, ofertas,
+cierres y comisiones. SoyPMS opera tu cartera sin reemplazar tu CRM. Solicita
+una demo.`
+- Eyebrow: `Software inmobiliario para agencias y equipos`.
+- H1: `Opera toda tu cartera, de la captación a la comisión.`
+- Diferenciador secundario: `Tu CRM persigue el lead. SoyPMS opera la cartera.`
+- Estado comercial visible: `Alpha guiada`.
+
+## Vocabulario Y Keywords
+
+La keyword principal se integra en títulos, introducciones y enlaces cuando
+describe naturalmente la página. Los clusters secundarios son:
+
+- operación y cartera inmobiliaria;
+- propiedades, mandatos y expedientes;
+- tareas, ofertas, cierres y comisiones;
+- agencias, brokers y equipos inmobiliarios;
+- CRM inmobiliario frente a software operativo.
+
+No se repiten variantes para aumentar densidad. Se priorizan definiciones
+claras, relaciones entre entidades y respuestas completas a la intención.
+
+## Enlazado Interno
+
+El home enlaza las cuatro páginas mediante textos descriptivos. Cada página
+incluye enlaces contextuales y un bloque de siguientes lecturas. Los anchors del
+home se reservan para secciones del recorrido y no sustituyen las URLs
+indexables.
 
 ## Claims Permitidos
 
@@ -56,6 +91,9 @@ producto. Se permiten crawlers de búsqueda y citación, y se bloquean tokens de
 entrenamiento conocidos según `docs/architecture/public-site.md`.
 
 No se mantiene `llms.txt` porque no forma parte del contrato de Google Search.
+Las páginas usan un H1 único, secciones con H2, definiciones autocontenidas,
+migas de pan y enlaces que explican la relación. Esto facilita lectura humana,
+extracción y citación sin crear contenido exclusivo para bots.
 
 ## Métricas
 

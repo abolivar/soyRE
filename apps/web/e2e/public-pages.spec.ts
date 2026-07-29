@@ -24,7 +24,7 @@ async function revealFullPage(page: import('@playwright/test').Page) {
 const pages = [
   {
     cta: 'Ver una demo',
-    heading: 'Tu CRM persigue el lead. SoyPMS opera la cartera.',
+    heading: 'Opera toda tu cartera, de la captación a la comisión.',
     name: 'home',
     path: '/',
   },
@@ -86,7 +86,7 @@ test('home exposes the complete public journey without embedding login', async (
 
   await expect(
     page.getByRole('heading', {
-      name: 'Lo que tu CRM no estaba hecho para resolver.',
+      name: 'Problemas operativos que el CRM no fue diseñado para resolver.',
     }),
   ).toBeVisible();
   await expect(
@@ -107,6 +107,21 @@ test('home exposes the complete public journey without embedding login', async (
       name: 'Ordena la operación antes de automatizarla.',
     }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('heading', {
+      name: 'Control desde la arquitectura, no desde una hoja compartida.',
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', {
+      name: 'Lo esencial antes de solicitar una demo.',
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Tu CRM persigue el lead. SoyPMS opera la cartera.'),
+  ).toBeVisible();
+  await expect(page.getByText('Datos aislados por organización')).toBeVisible();
+  await expect(page.getByText(/Alpha guiada/).first()).toBeVisible();
 
   await expect(page.locator('input[type="email"]')).toHaveCount(0);
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
@@ -152,15 +167,15 @@ test('home anchor navigation accounts for the fixed navigation', async ({
 }) => {
   await page.goto('/');
   await page
-    .getByRole('link', { name: 'Producto', exact: true })
-    .first()
+    .getByRole('link', { name: 'Cómo funciona', exact: true })
+    .last()
     .click();
-  await expect(page).toHaveURL(/#producto$/);
+  await expect(page).toHaveURL(/#como-funciona$/);
 
   await expect
     .poll(() =>
       page
-        .locator('#producto')
+        .locator('#como-funciona')
         .evaluate((element) => element.getBoundingClientRect().top),
     )
     .toBeGreaterThanOrEqual(60);
@@ -194,6 +209,10 @@ test('public discovery metadata is explicit and safe before launch', async ({
   await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(
     1,
   );
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    'content',
+    'Centraliza propiedades, mandatos, expedientes, tareas, ofertas, cierres y comisiones. SoyPMS opera tu cartera sin reemplazar tu CRM. Solicita una demo.',
+  );
 
   const graph = await page
     .locator('script[type="application/ld+json"]')
@@ -208,7 +227,18 @@ test('public discovery metadata is explicit and safe before launch', async ({
 
   const sitemap = await request.get('/sitemap.xml');
   expect(sitemap.ok()).toBe(true);
-  expect(await sitemap.text()).toContain('https://soypms-alpha.vercel.app/');
+  const sitemapContent = await sitemap.text();
+  for (const pathname of [
+    '/',
+    '/producto',
+    '/mandatos-y-expedientes',
+    '/comisiones-inmobiliarias',
+    '/crm-inmobiliario-vs-soypms',
+  ]) {
+    expect(sitemapContent).toContain(
+      `https://soypms-alpha.vercel.app${pathname}`,
+    );
+  }
 
   for (const asset of [
     '/manifest.webmanifest',
@@ -218,6 +248,62 @@ test('public discovery metadata is explicit and safe before launch', async ({
     expect((await request.get(asset)).ok()).toBe(true);
   }
 });
+
+const publicContentPages = [
+  {
+    heading:
+      'Software de operación inmobiliaria para organizar toda la cartera',
+    path: '/producto',
+  },
+  {
+    heading: 'Mandatos y expedientes inmobiliarios, unidos a cada propiedad',
+    path: '/mandatos-y-expedientes',
+  },
+  {
+    heading: 'Comisiones inmobiliarias con reglas visibles desde el cierre',
+    path: '/comisiones-inmobiliarias',
+  },
+  {
+    heading: 'CRM inmobiliario y SoyPMS: dos trabajos distintos',
+    path: '/crm-inmobiliario-vs-soypms',
+  },
+];
+
+for (const publicContentPage of publicContentPages) {
+  test(`${publicContentPage.path} exposes semantic content and discovery metadata`, async ({
+    page,
+  }) => {
+    await page.goto(publicContentPage.path);
+
+    await expect(
+      page.getByRole('heading', {
+        level: 1,
+        name: publicContentPage.heading,
+      }),
+    ).toBeVisible();
+    await expect(page.locator('h1')).toHaveCount(1);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      'href',
+      `https://soypms-alpha.vercel.app${publicContentPage.path}`,
+    );
+    await expect(
+      page.locator('script[type="application/ld+json"]'),
+    ).toHaveCount(1);
+
+    const breadcrumbSchema = await page
+      .locator('script[type="application/ld+json"]')
+      .evaluate((element) => JSON.parse(element.textContent ?? '{}'));
+    expect(breadcrumbSchema['@type']).toBe('BreadcrumbList');
+    expect(breadcrumbSchema.itemListElement).toHaveLength(2);
+
+    const horizontalOverflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth >
+        document.documentElement.clientWidth,
+    );
+    expect(horizontalOverflow).toBe(false);
+  });
+}
 
 for (const path of ['/login', '/register']) {
   test(`${path} stays outside search indexes`, async ({ page }) => {
