@@ -16,6 +16,7 @@
     "@nestjs/core": "^11.1.27",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.1.27",
+    "@redis/client": "^6.1.0",
     "@soyre/database": "workspace:*",
     "@soyre/shared": "workspace:*",
     "bcryptjs": "^3.0.3",

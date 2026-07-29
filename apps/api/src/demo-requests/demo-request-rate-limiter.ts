@@ -1,48 +1,53 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { createHash, randomUUID } from 'node:crypto';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { DemoRequestRateLimitStore } from './demo-request-rate-limit-store.js';
 
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_REQUESTS = 5;
+const MINIMUM_SECRET_LENGTH = 32;
 
 @Injectable()
 export class DemoRequestRateLimiter {
-  private readonly attempts = new Map<string, number[]>();
-  private checksSinceCleanup = 0;
+  constructor(
+    @Inject(DemoRequestRateLimitStore)
+    private readonly store: DemoRequestRateLimitStore,
+  ) {}
 
-  assertAllowed(fingerprint: string, now = Date.now()) {
-    const windowStart = now - WINDOW_MS;
-    const recentAttempts = (this.attempts.get(fingerprint) ?? []).filter(
-      (attemptedAt) => attemptedAt > windowStart,
-    );
+  async assertAllowed(address: string, now = Date.now()) {
+    if (process.env.DEMO_REQUESTS_ENABLED?.trim().toLowerCase() !== 'true') {
+      return;
+    }
 
-    if (recentAttempts.length >= MAX_REQUESTS) {
+    const secret = process.env.DEMO_REQUEST_RATE_LIMIT_SECRET?.trim();
+
+    if (!secret || secret.length < MINIMUM_SECRET_LENGTH) {
+      throw new ServiceUnavailableException(
+        'Demo request protection is not configured.',
+      );
+    }
+
+    const fingerprint = createHash('sha256')
+      .update(`${secret}:${address}`)
+      .digest('hex');
+    const allowed = await this.store.consume({
+      attemptedAt: now,
+      fingerprint,
+      maxRequests: MAX_REQUESTS,
+      member: `${now}:${randomUUID()}`,
+      windowMs: WINDOW_MS,
+    });
+
+    if (!allowed) {
       throw new HttpException(
         'Too many demo requests. Try again later.',
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
-
-    recentAttempts.push(now);
-    this.attempts.set(fingerprint, recentAttempts);
-    this.checksSinceCleanup += 1;
-
-    if (this.checksSinceCleanup >= 100) {
-      this.cleanup(windowStart);
-    }
-  }
-
-  private cleanup(windowStart: number) {
-    for (const [fingerprint, attempts] of this.attempts) {
-      const recentAttempts = attempts.filter(
-        (attemptedAt) => attemptedAt > windowStart,
-      );
-
-      if (recentAttempts.length === 0) {
-        this.attempts.delete(fingerprint);
-      } else {
-        this.attempts.set(fingerprint, recentAttempts);
-      }
-    }
-
-    this.checksSinceCleanup = 0;
   }
 }

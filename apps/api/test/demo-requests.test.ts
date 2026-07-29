@@ -53,9 +53,12 @@ const storedRequest = {
 
 const originalDemoRequestsEnabled = process.env.DEMO_REQUESTS_ENABLED;
 const originalConsentPolicyVersion = process.env.DEMO_CONSENT_POLICY_VERSION;
+const originalRateLimitSecret = process.env.DEMO_REQUEST_RATE_LIMIT_SECRET;
 
 beforeEach(() => {
   process.env.DEMO_CONSENT_POLICY_VERSION = 'draft-2026-07-28';
+  process.env.DEMO_REQUEST_RATE_LIMIT_SECRET =
+    'test-secret-with-at-least-32-characters';
   process.env.DEMO_REQUESTS_ENABLED = 'true';
 });
 
@@ -70,6 +73,12 @@ afterEach(() => {
     delete process.env.DEMO_CONSENT_POLICY_VERSION;
   } else {
     process.env.DEMO_CONSENT_POLICY_VERSION = originalConsentPolicyVersion;
+  }
+
+  if (originalRateLimitSecret === undefined) {
+    delete process.env.DEMO_REQUEST_RATE_LIMIT_SECRET;
+  } else {
+    process.env.DEMO_REQUEST_RATE_LIMIT_SECRET = originalRateLimitSecret;
   }
 });
 
@@ -175,18 +184,72 @@ describe('DemoRequestsService', () => {
 });
 
 describe('DemoRequestRateLimiter', () => {
-  it('returns 429 after five attempts within the window', () => {
-    const limiter = new DemoRequestRateLimiter();
+  it('returns 429 after five attempts shared by two logical instances', async () => {
+    const attempts = new Map<string, number[]>();
+    const createStore = () => ({
+      consume: async ({
+        attemptedAt,
+        fingerprint,
+        maxRequests,
+        windowMs,
+      }: {
+        attemptedAt: number;
+        fingerprint: string;
+        maxRequests: number;
+        windowMs: number;
+      }) => {
+        const recentAttempts = (attempts.get(fingerprint) ?? []).filter(
+          (attempt) => attempt > attemptedAt - windowMs,
+        );
+
+        if (recentAttempts.length >= maxRequests) {
+          return false;
+        }
+
+        attempts.set(fingerprint, [...recentAttempts, attemptedAt]);
+        return true;
+      },
+    });
+    const firstInstance = new DemoRequestRateLimiter(createStore() as never);
+    const secondInstance = new DemoRequestRateLimiter(createStore() as never);
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      limiter.assertAllowed('fingerprint', 1_000 + attempt);
+      const limiter = attempt % 2 === 0 ? firstInstance : secondInstance;
+      await limiter.assertAllowed('203.0.113.10', 1_000 + attempt);
     }
 
-    assert.throws(
-      () => limiter.assertAllowed('fingerprint', 2_000),
+    await assert.rejects(
+      () => secondInstance.assertAllowed('203.0.113.10', 2_000),
       (error: unknown) =>
         error instanceof HttpException && error.getStatus() === 429,
     );
+    assert.equal(attempts.has('203.0.113.10'), false);
+    assert.match([...attempts.keys()][0] ?? '', /^[a-f0-9]{64}$/);
+  });
+
+  it('fails closed when the shared store is unavailable', async () => {
+    const limiter = new DemoRequestRateLimiter({
+      consume: async () => {
+        throw new HttpException('unavailable', 503);
+      },
+    } as never);
+
+    await assert.rejects(
+      () => limiter.assertAllowed('203.0.113.10'),
+      (error: unknown) =>
+        error instanceof HttpException && error.getStatus() === 503,
+    );
+  });
+
+  it('does not contact Redis while the public endpoint gate is closed', async () => {
+    process.env.DEMO_REQUESTS_ENABLED = 'false';
+    const limiter = new DemoRequestRateLimiter({
+      consume: async () => {
+        assert.fail('the shared store must stay idle while the gate is closed');
+      },
+    } as never);
+
+    await limiter.assertAllowed('203.0.113.10');
   });
 });
 
